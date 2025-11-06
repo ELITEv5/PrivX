@@ -44,13 +44,11 @@ This creates an on-chain safe: everyone sees that it exists, but no one knows wh
 3. The Obfuscation Layer — The Key
 When the user later withdraws:
 
-solidity
-Copy code
+
 withdraw(string secret, address[] recipients)
 The contract recomputes:
 
-solidity
-Copy code
+
 bytes32 hash = keccak256(abi.encode(secret));
 If that matches a stored deposit, it unlocks the funds.
 
