@@ -5,7 +5,7 @@
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Network](https://img.shields.io/badge/Network-PulseChain-purple.svg)
-![Version](https://img.shields.io/badge/Version-7.2--FINAL-success.svg)
+![Version](https://img.shields.io/badge/Version-7.3--FINAL-success.svg)
 
 **Dev:** ELITE TEAM6 | **License:** MIT | **Network:** PulseChain  
 
