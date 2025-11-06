@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🛡️ **PrivX Shield Relay — v7.2 FINAL**
+# 🛡️ **PrivX Shield Relay — v7.3 FINAL**
 ### Immutable. Ownerless. Deflationary. Private.
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
