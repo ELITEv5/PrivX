@@ -152,7 +152,7 @@ Use at your own discretion — no one can recover lost secrets, reverse burns, o
 Once deployed, the contract is immutable and controlled by no entity.
 
 🏁 Conclusion
-The PrivX Shield Relay (v7.2) merges privacy, deflation, and autonomy into a single immutable protocol.
+The PrivX Shield Relay (v7.3) merges privacy, deflation, and autonomy into a single immutable protocol.
 By removing administrative control and enforcing transparent, permanent burns, it builds a trustless foundation for economic and behavioral privacy within the PrivX ecosystem.
 
 Simple. Secure. Unstoppable.
