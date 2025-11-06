@@ -74,6 +74,7 @@ This pattern creates **natural transaction noise**, increasing obfuscation in on
 Users generate a random 32-byte secret and compute its hash locally:
 
 ```bash
+
 node -e "const { ethers } = require('ethers'); const crypto = require('crypto'); 
 const s = crypto.randomBytes(32).toString('hex'); 
 const h = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(['string'], [s])); 
@@ -81,24 +82,21 @@ console.log('\n🔐 Secret:', s, '\n🧩 Hash:', h, '\n');"
 Step 2: Deposit
 Deposit PRIVX tokens to the relay:
 
-solidity
-Copy code
+
 deposit(uint256 amount, bytes32 secretHash)
 The contract records the amount and timestamp, but not the depositor’s address.
 
 Step 3: Withdraw
 Withdraw using your secret and up to 3 recipient wallets:
 
-solidity
-Copy code
+
 withdraw(string secret, address[] recipients)
 Tokens are distributed in randomized but deterministic patterns.
 
 Step 4: Reclaim (After 7 Days)
 If unclaimed, any user may trigger:
 
-solidity
-Copy code
+
 reclaim(bytes32 hash)
 → 95% of the amount is burned
 → 5% rewarded to the caller
