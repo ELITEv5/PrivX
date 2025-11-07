@@ -3,209 +3,210 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PrivX Shield Relay — Official Helper</title>
+<title>PrivX Shield Relay — Official Helper v3.3</title>
 
-<!-- ✅ Load ethers v5.7.2 (CSP-safe) -->
+<!-- ✅ Safe CDN version of ethers.js -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
-  body {
-    font-family: system-ui, sans-serif;
-    background: #0a0a0a;
-    color: #eee;
-    text-align: center;
-    padding: 2rem;
-    max-width: 900px;
-    margin: auto;
-  }
-  h1 { color: #8b5cf6; font-size: 2rem; margin-bottom: 0.3rem; }
-  h3 { color: #00ffcc; }
-  a { color: #8b5cf6; text-decoration: none; }
-  a:hover { text-decoration: underline; color: #a36fff; }
-  button {
-    background: #5c00ff;
-    color: #fff;
-    padding: 0.6rem 1rem;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    cursor: pointer;
-    margin: 0.3rem;
-    transition: 0.2s ease;
-  }
-  button:hover { background: #6f14ff; }
-  button:disabled { background: #333; cursor: not-allowed; }
-  input {
-    width: 90%; max-width: 420px; margin: 0.3rem 0; padding: 0.6rem;
-    border-radius: 8px; border: none; font-size: 1rem;
-    text-align: center; background: #161616; color: #00ffcc;
-  }
-  .section {
-    border: 1px solid #222; border-radius: 12px;
-    padding: 1.3rem; margin: 1.5rem 0;
-    background: #111;
-  }
-  #status { margin-bottom: 1rem; color: #f55; font-weight: bold; }
-  footer { margin-top: 2rem; font-size: 0.9rem; color: #777; }
-  small { color: #aaa; display: block; margin-top: 0.5rem; }
-  .warning { color: #ffcc00; }
-  hr { border:none; border-top:1px solid #333; margin:1.5rem 0; }
+  body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#eee;text-align:center;
+  padding:2rem;max-width:900px;margin:auto}
+  h1{color:#8b5cf6;font-size:2rem;margin-bottom:.3rem}
+  h3{color:#00ffcc}
+  a{color:#8b5cf6;text-decoration:none}
+  a:hover{text-decoration:underline;color:#a36fff}
+  button{background:#5c00ff;color:#fff;padding:.6rem 1rem;border:none;border-radius:8px;
+  font-size:1rem;cursor:pointer;margin:.3rem;transition:.2s}
+  button:hover{background:#6f14ff}
+  button:disabled{background:#333;cursor:not-allowed}
+  input{width:90%;max-width:420px;margin:.3rem 0;padding:.6rem;border-radius:8px;border:none;
+  font-size:1rem;text-align:center;background:#161616;color:#00ffcc}
+  .section{border:1px solid #222;border-radius:12px;padding:1.3rem;margin:1.5rem 0;background:#111}
+  #status{margin-bottom:1rem;color:#f55;font-weight:bold}
+  footer{margin-top:2rem;font-size:.9rem;color:#777}
+  small{color:#aaa;display:block;margin-top:.5rem}
+  .warning{color:#ffcc00}
+  hr{border:none;border-top:1px solid #333;margin:1.5rem 0}
 </style>
 </head>
 <body>
-  <h1>🛡️ PrivX Shield Relay Helper</h1>
-  <p><b>Built by Elite Team6 • © Elite Labs • v3.1</b></p>
+<h1>🛡️ PrivX Shield Relay Helper</h1>
+<p><b>Built by Elite Team6 • © Elite Labs • v3.3</b></p>
 
-  <p>Status: <span id="status">Disconnected</span></p>
-  <button id="connect">🔗 Connect Wallet</button>
+<p>Status: <span id="status">Disconnected</span></p>
+<button id="connect">🔗 Connect Wallet</button>
+<button id="disconnect" style="display:none;background:#333;">🔌 Disconnect</button>
 
-  <div class="section">
-    <h3>💰 Deposit Funds</h3>
-    <p>Deposit <b>PRIVX tokens</b> into the Shield Relay using your <b>secret hash</b>.</p>
-    <p>Example: deposit <code>10 PRIVX</code> → enter <b>10</b>. The app automatically applies 18 decimals.</p>
-    <input id="depositAmount" placeholder="Amount (e.g. 10)" /><br/>
-    <input id="depositHash" placeholder="Secret Hash (0x… from Generator)" /><br/>
-    <button id="approveBtn">✅ Approve PRIVX (one-time)</button>
-    <button id="depositBtn">🚀 Deposit</button>
-    <small>💡 Approve once to allow the Shield Relay to spend your PRIVX.</small>
-  </div>
+<div class="section">
+<h3>💰 Deposit Funds</h3>
+<p>Deposit <b>PRIVX</b> into the Shield Relay using your <b>secret hash</b>.</p>
+<p>Example: enter <b>10</b> for 10 PRIVX (18 decimals added automatically).</p>
+<input id="depositAmount" placeholder="Amount (e.g. 10)" /><br/>
+<input id="depositHash" placeholder="Secret Hash (0x…)" /><br/>
+<button id="approveBtn">✅ Approve PRIVX (one-time)</button>
+<button id="depositBtn">🚀 Deposit</button>
+<small>Approve once to allow the Shield Relay to spend your PRIVX.</small>
+</div>
 
-  <div class="section">
-    <h3>💎 Withdraw Funds</h3>
-    <p>Use your <b>Secret</b> to withdraw your deposit to 1–3 wallets.</p>
-    <input id="withdrawSecret" placeholder="Secret (UTF-8 string)" /><br/>
-    <input id="wallet1" placeholder="Wallet 1 (0x…)" /><br/>
-    <input id="wallet2" placeholder="Wallet 2 (optional)" /><br/>
-    <input id="wallet3" placeholder="Wallet 3 (optional)" /><br/>
-    <button id="withdrawBtn">💎 Withdraw</button>
-    <small class="warning">⚠️ Anyone with your Secret can withdraw within 7 days.</small>
-  </div>
+<div class="section">
+<h3>💎 Withdraw Funds</h3>
+<p>Use your <b>Secret</b> to withdraw to 1–3 wallets within 7 days.</p>
+<input id="withdrawSecret" placeholder="Secret (UTF-8 string)" /><br/>
+<input id="wallet1" placeholder="Wallet 1 (0x…)" /><br/>
+<input id="wallet2" placeholder="Wallet 2 (optional)" /><br/>
+<input id="wallet3" placeholder="Wallet 3 (optional)" /><br/>
+<button id="withdrawBtn">💎 Withdraw</button>
+<small class="warning">⚠️ Anyone with your Secret can withdraw within 7 days.</small>
+</div>
 
-  <div class="section">
-    <h3>🔥 Reclaim Expired Deposits</h3>
-    <p>After 7 days without withdrawal, <b>anyone</b> can reclaim using its hash.</p>
-    <input id="reclaimHash" placeholder="Deposit Hash (0x…)" /><br/>
-    <button id="reclaimBtn">🔥 Reclaim</button>
-    <small>95 % burn 🔥 • 5 % reward 💎 to caller.</small>
-  </div>
+<div class="section">
+<h3>🔥 Reclaim Expired Deposits</h3>
+<p>After 7 days without withdrawal, <b>anyone</b> can reclaim using its hash.</p>
+<input id="reclaimHash" placeholder="Deposit Hash (0x…)" /><br/>
+<button id="reclaimBtn">🔥 Reclaim</button>
+<small>95 % burn 🔥 • 5 % reward 💎 to caller.</small>
+</div>
 
-  <div class="section" style="background:#141414;">
-    <h3>📘 Understanding PrivX</h3>
-    <p>
-      <b>7-Day Window:</b> Only the Secret holder can withdraw within 7 days.  
-      After that, anyone can <code>reclaim(hash)</code> → 95 % burn / 5 % reward.<br/><br/>
+<div class="section" style="background:#141414;">
+<h3>📘 Understanding PrivX</h3>
+<p>
+<b>7-Day Window:</b> Only the Secret holder can withdraw within 7 days. After that anyone can reclaim (95 % burn / 5 % reward).<br/><br/>
+<b>Mathematical Privacy:</b> PrivX doesn’t hide — it multiplies. Privacy grows with each transaction and Secret.<br/><br/>
+<a href="https://elitev5.github.io/PrivX/Hash-Generator/"
+target="_blank" rel="noopener noreferrer"
+style="display:inline-block;background:#5c00ff;color:#fff;padding:.6rem 1rem;
+border-radius:8px;text-decoration:none;font-weight:600;margin:.3rem;">
+🔐 Open Secret + Hash Generator 🔗</a><br/>
+<small>Opens in a new tab for safe generation and copying of your hash.</small><br/><br/>
+<a href="https://github.com/elitev5/PrivX" target="_blank" rel="noopener noreferrer">
+📘 Learn more about PrivX on GitHub</a>
+</p>
+</div>
 
-      <b>Mathematical Privacy:</b> PrivX doesn’t hide — it multiplies.  
-      Privacy grows with each transaction and Secret.<br/><br/>
+<div class="section" style="background:#101010;">
+  <h3>🧭 Step-by-Step: Using PrivX Safely</h3>
+  <ol style="text-align:left;line-height:1.5em;">
+    <li><b>Connect Wallet</b> — Click “Connect Wallet” and approve in your wallet (Rabby, MetaMask, etc.).</li>
+    <li><b>Approve PRIVX</b> — Click “✅ Approve PRIVX”. This allows the Shield Relay to spend PRIVX for deposits.</li>
+    <li><b>Generate a Secret & Hash</b> — Open the <b>Hash Generator</b> to create your unique pair. Keep your Secret private.</li>
+    <li><b>Deposit</b> — Paste your Hash, enter the amount (e.g. 10 PRIVX), and confirm. Funds lock for 7 days.</li>
+    <li><b>Withdraw</b> — Within 7 days, use your Secret to withdraw to 1–3 wallet addresses.</li>
+    <li><b>After 7 days</b> — If unclaimed, anyone can reclaim the deposit (95 % burn / 5 % reward).</li>
+  </ol>
 
-      <a href="https://elitev5.github.io/PrivX/Hash-Generator/"
-         target="_blank" rel="noopener noreferrer"
-         style="display:inline-block;background:#5c00ff;color:#fff;padding:0.6rem 1rem;border-radius:8px;text-decoration:none;font-weight:600;margin:0.3rem;">
-         🔐 Open Secret + Hash Generator 🔗
-      </a><br/>
-      <small>Opens in a new tab so you can safely generate and copy your hash.</small><br/><br/>
+  <h4 style="color:#ffcc00;">⚠️ Responsibility & Risk</h4>
+  <ul style="text-align:left;line-height:1.5em;">
+    <li><b>Secrets are one-time keys.</b> Anyone with your Secret can withdraw within the 7-day window.</li>
+    <li><b>Lost or leaked Secrets</b> cannot be recovered. The protocol is immutable and ownerless.</li>
+    <li><b>Use at your own risk.</b> PrivX is 100 % on-chain and irreversible.</li>
+    <li>Always verify wallet addresses and amounts before confirming transactions.</li>
+  </ul>
+</div>
 
-      <a href="https://github.com/elitev5/PrivX" target="_blank" rel="noopener noreferrer">
-        📘 Learn more about PrivX on GitHub
-      </a>
-    </p>
-  </div>
-
-  <footer>
-    <hr>
-    <p>PulseChain Native • MIT License • Open Source</p>
-    <p><a href="https://github.com/elitev5/PrivX" target="_blank" rel="noopener noreferrer">View Source on GitHub</a></p>
-    <p style="margin-top:1rem;color:#8b5cf6;font-weight:bold;">“We don’t hide. We outnumber.”</p>
-  </footer>
+<footer>
+<hr>
+<p>PulseChain Native • MIT License • Open Source</p>
+<p><a href="https://github.com/elitev5/PrivX" target="_blank" rel="noopener noreferrer">
+View Source on GitHub</a></p>
+<p style="margin-top:1rem;color:#8b5cf6;font-weight:bold;">“We don’t hide. We outnumber.”</p>
+</footer>
 
 <script>
-(async () => {
-  const relayAddress = "0xccCFA11f70aBf3d32f38D93FEA4d31D5A99E19dA";
-  const tokenAddress = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-  const PULSECHAIN_ID = "0x171"; // 369 decimal
+(async ()=>{
+ const relayAddress="0xccCFA11f70aBf3d32f38D93FEA4d31D5A99E19dA";
+ const tokenAddress="0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+ const PULSECHAIN_ID="0x171"; // chainId 369
 
-  let provider, signer, contract, account, privx;
-  const abi = await fetch("./abi.json").then(r => r.json());
+ let provider,signer,contract,account,privx;
+ const abi=await fetch("./abi.json").then(r=>r.json());
 
-  async function ensurePulseChain() {
-    const chain = await window.ethereum.request({ method: "eth_chainId" });
-    if (chain !== PULSECHAIN_ID) {
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: PULSECHAIN_ID }]
-        });
-        alert("✅ Switched to PulseChain");
-      } catch {
-        alert("⚠️ Please manually switch to PulseChain in your wallet.");
-      }
-    }
-  }
+ async function ensurePulse(){
+   const chain=await window.ethereum.request({method:"eth_chainId"});
+   if(chain!==PULSECHAIN_ID){
+     alert("⚠️ Please switch to PulseChain network in your wallet before continuing.");
+     return false;
+   }
+   return true;
+ }
 
-  async function connect() {
-    if (!window.ethereum)
-      return alert("No wallet found. Please install MetaMask or compatible wallet.");
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    await ensurePulseChain();
-    await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
-    account = await signer.getAddress();
-    document.getElementById("status").textContent =
-      "✅ Connected: " + account.slice(0,6)+"…"+account.slice(-4);
-    document.getElementById("status").style.color = "#0f0";
-    contract = new ethers.Contract(relayAddress, abi, signer);
-    privx = new ethers.Contract(tokenAddress,
-      ["function approve(address spender,uint256 amount) external returns (bool)"],
-      signer);
-  }
+ async function connect(){
+   if(!window.ethereum)
+     return alert("No wallet found. Install MetaMask, Rabby, or compatible wallet.");
+   provider=new ethers.providers.Web3Provider(window.ethereum);
+   await provider.send("eth_requestAccounts",[]);
+   if(!await ensurePulse())return;
+   signer=provider.getSigner();
+   account=await signer.getAddress();
+   document.getElementById("status").textContent=
+     "✅ Connected: "+account.slice(0,6)+"…"+account.slice(-4);
+   document.getElementById("status").style.color="#0f0";
+   document.getElementById("disconnect").style.display="inline-block";
+   contract=new ethers.Contract(relayAddress,abi,signer);
+   privx=new ethers.Contract(tokenAddress,
+     ["function approve(address,uint256) external returns (bool)"],signer);
+ }
 
-  async function approve() {
-    try {
-      const tx = await privx.approve(relayAddress, ethers.constants.MaxUint256);
-      alert("✅ Max approval sent!\n\nTx hash:\n" + tx.hash);
-    } catch(e) {
-      alert("Approval failed:\n" + e.message);
-    }
-  }
+ function disconnect(){
+   provider=null; signer=null; contract=null; privx=null; account=null;
+   document.getElementById("status").textContent="Disconnected";
+   document.getElementById("status").style.color="#f55";
+   document.getElementById("disconnect").style.display="none";
+   alert("Wallet disconnected.");
+ }
 
-  async function deposit() {
-    const amt = document.getElementById("depositAmount").value.trim();
-    const hash = document.getElementById("depositHash").value.trim();
-    if (!amt || !hash) return alert("Enter amount and hash.");
-    try {
-      const value = ethers.utils.parseUnits(amt, 18);
-      const tx = await contract.deposit(value, hash);
-      alert("✅ Deposit submitted!\n\nTx hash:\n" + tx.hash);
-    } catch(e){ alert("Deposit failed:\n" + e.message); }
-  }
+ async function approve(){
+   try{
+     await provider.send("eth_requestAccounts",[]); // Rabby friendly
+     signer=provider.getSigner();
+     privx=new ethers.Contract(tokenAddress,
+       ["function approve(address,uint256) external returns (bool)"],signer);
+     const tx=await privx.approve(relayAddress,ethers.constants.MaxUint256);
+     alert("✅ Max approval sent!\n\nTx hash:\n"+tx.hash);
+   }catch(e){console.error(e);alert("Approval failed:\n"+(e.message||e));}
+ }
 
-  async function withdraw() {
-    const secret = document.getElementById("withdrawSecret").value.trim();
-    const addrs = ["wallet1","wallet2","wallet3"]
-      .map(id => document.getElementById(id).value.trim())
-      .filter(x => x && ethers.utils.isAddress(x));
-    if (!secret || addrs.length===0)
-      return alert("Enter your Secret and at least one valid wallet address.");
-    try {
-      const tx = await contract.withdraw(secret, addrs);
-      alert("✅ Withdraw submitted!\n\nTx hash:\n" + tx.hash);
-    } catch(e){ alert("Withdraw failed:\n" + e.message); }
-  }
+ async function deposit(){
+   const amt=document.getElementById("depositAmount").value.trim();
+   const hash=document.getElementById("depositHash").value.trim();
+   if(!amt||!hash)return alert("Enter amount and hash.");
+   if(!await ensurePulse())return;
+   try{
+     const val=ethers.utils.parseUnits(amt,18);
+     const tx=await contract.deposit(val,hash);
+     alert("✅ Deposit submitted!\n\nTx hash:\n"+tx.hash);
+   }catch(e){alert("Deposit failed:\n"+e.message);}
+ }
 
-  async function reclaim() {
-    const hash = document.getElementById("reclaimHash").value.trim();
-    if (!hash) return alert("Enter the deposit hash to reclaim.");
-    try {
-      const tx = await contract.reclaim(hash);
-      alert("✅ Reclaim submitted!\n\nTx hash:\n" + tx.hash);
-    } catch(e){ alert("Reclaim failed:\n" + e.message); }
-  }
+ async function withdraw(){
+   const secret=document.getElementById("withdrawSecret").value.trim();
+   const addrs=["wallet1","wallet2","wallet3"]
+     .map(id=>document.getElementById(id).value.trim())
+     .filter(x=>x&&ethers.utils.isAddress(x));
+   if(!secret||addrs.length===0)
+     return alert("Enter your Secret and at least one wallet address.");
+   if(!await ensurePulse())return;
+   try{
+     const tx=await contract.withdraw(secret,addrs);
+     alert("✅ Withdraw submitted!\n\nTx hash:\n"+tx.hash);
+   }catch(e){alert("Withdraw failed:\n"+e.message);}
+ }
 
-  document.getElementById("connect").onclick = connect;
-  document.getElementById("approveBtn").onclick = approve;
-  document.getElementById("depositBtn").onclick = deposit;
-  document.getElementById("withdrawBtn").onclick = withdraw;
-  document.getElementById("reclaimBtn").onclick = reclaim;
+ async function reclaim(){
+   const hash=document.getElementById("reclaimHash").value.trim();
+   if(!hash)return alert("Enter the deposit hash to reclaim.");
+   if(!await ensurePulse())return;
+   try{
+     const tx=await contract.reclaim(hash);
+     alert("✅ Reclaim submitted!\n\nTx hash:\n"+tx.hash);
+   }catch(e){alert("Reclaim failed:\n"+e.message);}
+ }
+
+ document.getElementById("connect").onclick=connect;
+ document.getElementById("disconnect").onclick=disconnect;
+ document.getElementById("approveBtn").onclick=approve;
+ document.getElementById("depositBtn").onclick=deposit;
+ document.getElementById("withdrawBtn").onclick=withdraw;
+ document.getElementById("reclaimBtn").onclick=reclaim;
 })();
 </script>
 </body>
