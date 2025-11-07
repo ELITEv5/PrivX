@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrivX Hash Generator (Offline)</title>
+
+<!-- Load ethers.js locally (download from CDN and place in same folder) -->
+<script src="./ethers.umd.min.js"></script>
+
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    background: #0a0a0a;
+    color: #eaeaea;
+    text-align: center;
+    padding: 2rem;
+    max-width: 750px;
+    margin: 0 auto;
+  }
+  h1 {
+    color: #8b5cf6;
+  }
+  button {
+    padding: 0.7rem 1.2rem;
+    background: #5c00ff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin: 0.3rem;
+  }
+  button:disabled {
+    background: #333;
+    cursor: not-allowed;
+  }
+  pre {
+    background: #111;
+    color: #00ff7f;
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.9rem;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  small { color: #aaa; display: block; margin-top: 1rem; }
+  .instructions {
+    background: #161616;
+    padding: 1rem;
+    border-radius: 10px;
+    text-align: left;
+    margin-bottom: 1.5rem;
+    line-height: 1.4em;
+  }
+  a { color: #8b5cf6; text-decoration: none; }
+</style>
+</head>
+
+<body>
+  <h1>🔐 PrivX Hash Generator</h1>
+  <p>This tool runs 100% locally in your browser. No data ever leaves your device.</p>
+
+  <div class="instructions">
+    <h3>🧭 How to Use</h3>
+    <ol>
+      <li>Click <b>Generate Secret & Hash</b> to create your unique deposit pair.</li>
+      <li>The <b>Hash</b> is what you paste into the <b>PrivX deposit field</b> when locking funds.</li>
+      <li>The <b>Secret</b> is your private key to unlock those funds within 7 days — keep it safe!</li>
+      <li>After 7 days, the deposit expires. Anyone can then reclaim it using the <b>deposit hash</b> (not the secret).<br>95% is burned, and 5% is rewarded to the reclaimer.</li>
+      <li>If you wish to send a private payment, share only the <b>Secret</b> with the recipient. They can use it to withdraw the funds into 1–3 wallet addresses within 7 days.</li>
+    </ol>
+    <p><b>⚠️ Important:</b> Anyone with your secret can withdraw your deposit within 7 days. After 7 days, the secret no longer matters — only the hash can trigger a reclaim (burn/reward event).</p>
+  </div>
+
+  <button id="generate">Generate Secret & Hash</button>
+  <button id="copySecret" disabled>Copy Secret ⚠️</button>
+  <button id="copyHash" disabled>Copy Hash</button>
+  <button id="saveTxt" disabled>Save .txt</button>
+
+  <pre id="output">Click “Generate” to create your secret and hash.</pre>
+
+  <small>
+    💡 The <b>secret</b> is used for withdrawal within 7 days.<br>
+    The <b>hash</b> is used for deposit (and potential reclaim after expiration).<br>
+    Works fully offline — verify by disconnecting your internet and reloading the page.
+  </small>
+
+  <script>
+    let secret = '';
+    let hash = '';
+
+    // Generate
+    document.getElementById('generate').onclick = () => {
+      const bytes = crypto.getRandomValues(new Uint8Array(32));
+      secret = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+      const abi = new ethers.AbiCoder();
+      const encoded = abi.encode(['string'], [secret]);
+      hash = ethers.keccak256(encoded);
+
+      document.getElementById('output').textContent =
+        `Secret (for withdrawal within 7 days):\n${secret}\n\nHash (for deposit):\n${hash}\n\n⚠️ Store your secret securely. Share it only with intended recipients within the 7-day window.`;
+      document.getElementById('copySecret').disabled = false;
+      document.getElementById('copyHash').disabled = false;
+      document.getElementById('saveTxt').disabled = false;
+    };
+
+    // Copy Secret
+    document.getElementById('copySecret').onclick = async () => {
+      if (!secret) return;
+      const ok = confirm("⚠️ WARNING: This is your private withdrawal key.\nAnyone with it can claim your deposit within 7 days.\n\nCopy to clipboard?");
+      if (!ok) return;
+      await navigator.clipboard.writeText(secret);
+      alert('Secret copied to clipboard ✅ (store securely)');
+    };
+
+    // Copy Hash
+    document.getElementById('copyHash').onclick = async () => {
+      if (!hash) return;
+      await navigator.clipboard.writeText(hash);
+      alert('Hash copied to clipboard ✅ (use for deposit)');
+    };
+
+    // Save as text file
+    document.getElementById('saveTxt').onclick = () => {
+      if (!secret || !hash) return;
+      const blob = new Blob(
+        [
+          "PrivX Secret + Hash\n\n",
+          "Secret (valid for 7-day withdrawal):\n", secret, "\n\n",
+          "Hash (deposit reference):\n", hash, "\n\n",
+          "⚠️ Keep this file private. Anyone with the secret can withdraw within 7 days.\n",
+          "After 7 days, funds become reclaimable (95% burn, 5% reward).\n"
+        ],
+        { type: 'text/plain' }
+      );
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'privx-secret-hash.txt';
+      link.click();
+    };
+  </script>
+</body>
+</html>
