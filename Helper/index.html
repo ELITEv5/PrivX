@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PrivX Shield Relay — Official Helper v3.3</title>
+<title>PrivX Shield Relay — Official Helper v3.4</title>
 
 <!-- ✅ Safe CDN version of ethers.js -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
@@ -31,7 +31,15 @@
 </head>
 <body>
 <h1>🛡️ PrivX Shield Relay Helper</h1>
-<p><b>Built by Elite Team6 • © Elite Labs • v3.3</b></p>
+<p><b>Built by Elite Team6 • © Elite Labs • v3.4</b></p>
+
+<!-- 🔒 Vault Tracker -->
+<div class="section" id="vaultTracker" style="background:#121212;">
+  <h3>🔒 Shield Vault Tracker</h3>
+  <p>Total PRIVX currently locked in the Shield Relay:</p>
+  <h2 id="vaultBalance" style="color:#00ff99;font-weight:bold;">Loading...</h2>
+  <small id="vaultUpdate">⏳ Waiting for data...</small>
+</div>
 
 <p>Status: <span id="status">Disconnected</span></p>
 <button id="connect">🔗 Connect Wallet</button>
@@ -120,6 +128,24 @@ View Source on GitHub</a></p>
  let provider,signer,contract,account,privx;
  const abi=await fetch("./abi.json").then(r=>r.json());
 
+ // Create a read-only provider (for Vault Tracker)
+ const publicProvider=new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
+ const publicContract=new ethers.Contract(relayAddress,abi,publicProvider);
+
+ async function updateVaultBalance(){
+   try{
+     const balance=await publicContract.totalVaultBalance();
+     const human=ethers.utils.formatUnits(balance,18);
+     document.getElementById("vaultBalance").textContent=human+" PRIVX";
+     document.getElementById("vaultUpdate").textContent="✅ Updated "+new Date().toLocaleTimeString();
+   }catch(e){
+     document.getElementById("vaultBalance").textContent="Error fetching balance";
+     document.getElementById("vaultUpdate").textContent=e.message;
+   }
+ }
+ setInterval(updateVaultBalance,15000);
+ updateVaultBalance();
+
  async function ensurePulse(){
    const chain=await window.ethereum.request({method:"eth_chainId"});
    if(chain!==PULSECHAIN_ID){
@@ -144,6 +170,7 @@ View Source on GitHub</a></p>
    contract=new ethers.Contract(relayAddress,abi,signer);
    privx=new ethers.Contract(tokenAddress,
      ["function approve(address,uint256) external returns (bool)"],signer);
+   updateVaultBalance();
  }
 
  function disconnect(){
@@ -174,6 +201,7 @@ View Source on GitHub</a></p>
      const val=ethers.utils.parseUnits(amt,18);
      const tx=await contract.deposit(val,hash);
      alert("✅ Deposit submitted!\n\nTx hash:\n"+tx.hash);
+     updateVaultBalance();
    }catch(e){alert("Deposit failed:\n"+e.message);}
  }
 
@@ -188,6 +216,7 @@ View Source on GitHub</a></p>
    try{
      const tx=await contract.withdraw(secret,addrs);
      alert("✅ Withdraw submitted!\n\nTx hash:\n"+tx.hash);
+     updateVaultBalance();
    }catch(e){alert("Withdraw failed:\n"+e.message);}
  }
 
@@ -198,6 +227,7 @@ View Source on GitHub</a></p>
    try{
      const tx=await contract.reclaim(hash);
      alert("✅ Reclaim submitted!\n\nTx hash:\n"+tx.hash);
+     updateVaultBalance();
    }catch(e){alert("Reclaim failed:\n"+e.message);}
  }
 
