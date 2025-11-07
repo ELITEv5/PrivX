@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PrivX Shield Relay — Official Helper v3.9</title>
+<title>PrivX Shield Relay — Official Helper v4.0</title>
 
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
@@ -27,23 +27,21 @@
   .ca-copy{background:#333;color:#00ffcc;border:none;border-radius:6px;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.85rem;margin-left:0.4rem;}
   .ca-copy:hover{background:#555;}
   .explainer{background:#141414;border-left:5px solid #8b5cf6;padding:1rem;border-radius:8px;text-align:left;line-height:1.5em;margin-bottom:1.5rem;}
+  .hashList{background:#0f0f0f;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:220px;overflow-y:auto;}
+  .hashItem{margin:0.5rem 0;padding:0.5rem;background:#161616;border-radius:8px;font-size:0.9rem;word-break:break-all;}
+  .hashItem button{background:#ff006e;padding:0.3rem 0.8rem;font-size:0.8rem;border-radius:6px;margin-left:0.5rem;}
 </style>
 </head>
 <body>
 <h1>🛡️ PrivX Shield Relay Helper</h1>
-<p><b>Built by Elite Team6 • © Elite Labs • v3.9</b></p>
+<p><b>Built by Elite Team6 • © Elite Labs • v4.0</b></p>
 
 <div class="explainer">
-  <h3>🌐 Strength in Numbers</h3>
-  <p>
-    PrivX isn’t about hiding — it’s about <b>blending</b>. The more people who use the Shield Relay, 
-    the harder it becomes to trace any single transaction. Every deposit adds another layer of 
-    privacy for everyone else. 
-  </p>
-  <p>
-    <b>We don’t hide. We outnumber.</b>  
-    By walking together, we create true on-chain privacy through <b>participation</b>, not isolation.
-  </p>
+  <h3>🌐 The PrivX Vision — Strength in Numbers</h3>
+  <p><b>PrivX isn’t about hiding, it’s about blending in.</b>  
+  Every transaction joins a crowd. Every crowd becomes a shield. The more people who use the Shield Relay, the more complex, private, and resilient the network becomes.</p>
+  <p><b>We don’t hide. We outnumber.</b>  
+  This is privacy by participation — transparent, decentralized, and unstoppable.</p>
 </div>
 
 <!-- 📜 Official CAs -->
@@ -76,9 +74,10 @@
 <button id="connect">🔗 Connect Wallet</button>
 <button id="disconnect" style="display:none;background:#333;">🔌 Disconnect</button>
 
+<!-- DEPOSIT -->
 <div class="section">
 <h3>💰 Step 1 — Deposit PRIVX</h3>
-<p>1️⃣ Generate your <b>Secret & Hash</b> first using the <a href="https://elitev5.github.io/PrivX/Hash-Generator/" target="_blank">official Hash Generator ↗</a>.</p>
+<p>1️⃣ Generate your <b>Secret & Hash</b> using the <a href="https://elitev5.github.io/PrivX/Hash-Generator/" target="_blank">official Hash Generator ↗</a>.</p>
 <p>2️⃣ Copy your <b>Hash</b> and paste it below.</p>
 <p>3️⃣ Enter how much PRIVX you want to deposit (e.g. 10).</p>
 <input id="depositAmount" placeholder="Amount (e.g. 10)" /><br/>
@@ -88,6 +87,7 @@
 <small>⚙️ Approve once, then deposit anytime with new hashes.</small>
 </div>
 
+<!-- WITHDRAW -->
 <div class="section">
 <h3>💎 Step 2 — Withdraw Funds</h3>
 <p>Use your <b>Secret</b> to withdraw to up to 3 wallet addresses within 7 days.</p>
@@ -99,6 +99,7 @@
 <small class="warning">⚠️ Anyone with your Secret can withdraw your funds within 7 days. Keep it safe.</small>
 </div>
 
+<!-- RECLAIM -->
 <div class="section">
 <h3>🔥 Step 3 — Reclaim Expired Deposits</h3>
 <p>After 7 days, anyone can reclaim unclaimed deposits using their hash.</p>
@@ -107,23 +108,13 @@
 <small>💎 Reclaim rewards 5% to the caller • 95% permanently burned 🔥</small>
 </div>
 
+<!-- CLAIM HELPER -->
 <div class="section" style="background:#161616;">
-  <h3>🔍 Step 4 — Check Deposit Status</h3>
-  <p>Enter any <b>Deposit Hash</b> to verify if it’s unclaimed or expired.</p>
-  <input id="checkHash" placeholder="Deposit Hash (0x…)" /><br/>
-  <button id="checkBtn">🔍 Check Status</button>
-  <div id="checkResult" style="margin-top:1rem;color:#00ff99;font-family:monospace;"></div>
-</div>
-
-<div class="section" style="background:#101010;">
-  <h3>🧭 Safe-Use Summary</h3>
-  <ul style="text-align:left;line-height:1.6em;">
-    <li>💠 <b>Always back up your Secret.</b> Losing it = losing access.</li>
-    <li>🕓 <b>7-day window:</b> Withdraw within 7 days or anyone can reclaim.</li>
-    <li>🔥 <b>Unclaimed deposits:</b> 95% burned, 5% reward to reclaim caller.</li>
-    <li>🧩 <b>No admins, no resets:</b> 100% on-chain and autonomous.</li>
-    <li>🧠 <b>Privacy through participation:</b> The more users, the more obfuscation.</li>
-  </ul>
+  <h3>🧩 Claim Helper — Find Unclaimed Deposits</h3>
+  <p>View all expired deposits ready to reclaim. You can copy or reclaim directly below.</p>
+  <button id="loadReclaimable">🔍 Load Reclaimable Hashes</button>
+  <div id="reclaimList" class="hashList">Press the button to view reclaimable deposits...</div>
+  <small>Auto-refreshes every 30 seconds • View-only • No wallet needed</small>
 </div>
 
 <footer>
@@ -242,21 +233,38 @@ async function copyCA(id){
    }catch(e){alert("Reclaim failed:\n"+e.message);}
  }
 
- async function checkDepositStatus(){
-   const hash=document.getElementById("checkHash").value.trim();
-   const resultDiv=document.getElementById("checkResult");
-   if(!hash)return alert("Enter a deposit hash.");
+ // Claim Helper: fetch reclaimable deposits
+ async function loadReclaimable(){
+   const list=document.getElementById("reclaimList");
+   list.innerHTML="⏳ Loading reclaimable hashes...";
    try{
-     const info=await publicContract.getDeposit(hash);
-     const amount=ethers.utils.formatUnits(info.amount,18);
-     const date=new Date(info.timestamp*1000).toLocaleString();
-     const claimed=info.claimed?"✅ Claimed":"⏳ Unclaimed";
-     resultDiv.innerHTML=`Amount: ${amount} PRIVX<br>Deposited: ${date}<br>Status: ${claimed}`;
-   }catch(e){
-     resultDiv.style.color="#f55";
-     resultDiv.textContent="Invalid or not found: "+e.message;
-   }
+     const hashes=await publicContract.getReclaimableDeposits();
+     if(hashes.length===0){list.innerHTML="✅ No reclaimable deposits at this time.";}
+     else{
+       list.innerHTML="";
+       hashes.forEach(h=>{
+         const div=document.createElement("div");
+         div.className="hashItem";
+         div.innerHTML=`<code>${h}</code> <button onclick="copyHash('${h}')">Copy</button> <button onclick="reclaimHashNow('${h}')">🔥 Reclaim</button>`;
+         list.appendChild(div);
+       });
+     }
+   }catch(e){list.innerHTML="❌ Error loading reclaimable deposits: "+e.message;}
  }
+ async function copyHash(h){
+   await navigator.clipboard.writeText(h);
+   alert("✅ Copied Hash:\n"+h);
+ }
+ window.reclaimHashNow=async function(h){
+   if(!provider)return alert("Connect your wallet first.");
+   if(!await ensurePulse())return;
+   try{
+     const tx=await contract.reclaim(h);
+     alert("🔥 Reclaimed!\nTx hash: "+tx.hash);
+   }catch(e){alert("Reclaim failed:\n"+e.message);}
+ };
+ document.getElementById("loadReclaimable").onclick=loadReclaimable;
+ setInterval(loadReclaimable,30000);
 
  document.getElementById("connect").onclick=connect;
  document.getElementById("disconnect").onclick=disconnect;
@@ -264,10 +272,10 @@ async function copyCA(id){
  document.getElementById("depositBtn").onclick=deposit;
  document.getElementById("withdrawBtn").onclick=withdraw;
  document.getElementById("reclaimBtn").onclick=reclaim;
- document.getElementById("checkBtn").onclick=checkDepositStatus;
 })();
 </script>
 </body>
 </html>
+
 
 
