@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PrivX Shield Relay — Official Helper</title>
+<script src="./ethers.umd.min.js"></script>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    background: #0a0a0a;
+    color: #eee;
+    text-align: center;
+    padding: 2rem;
+    max-width: 900px;
+    margin: auto;
+  }
+  h1 { color: #8b5cf6; font-size: 2rem; margin-bottom: 0.3rem; }
+  h3 { color: #00ffcc; }
+  a { color: #8b5cf6; text-decoration: none; }
+  a:hover { text-decoration: underline; color: #a36fff; }
+  button {
+    background: #5c00ff;
+    color: #fff;
+    padding: 0.6rem 1rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    margin: 0.3rem;
+    transition: 0.2s ease;
+  }
+  button:hover { background: #6f14ff; }
+  button:disabled { background: #333; cursor: not-allowed; }
+  input {
+    width: 90%; max-width: 420px; margin: 0.3rem 0; padding: 0.6rem;
+    border-radius: 8px; border: none; font-size: 1rem;
+    text-align: center; background: #161616; color: #00ffcc;
+  }
+  .section {
+    border: 1px solid #222; border-radius: 12px;
+    padding: 1.3rem; margin: 1.5rem 0;
+    background: #111;
+  }
+  #status { margin-bottom: 1rem; color: #f55; font-weight: bold; }
+  footer { margin-top: 2rem; font-size: 0.9rem; color: #777; }
+  small { color: #aaa; display: block; margin-top: 0.5rem; }
+  .warning { color: #ffcc00; }
+  hr { border:none; border-top:1px solid #333; margin:1.5rem 0; }
+</style>
+</head>
+<body>
+  <h1>🛡️ PrivX Shield Relay Helper</h1>
+  <p><b>Built by Elite Team6 • © Elite Labs • v3.0</b></p>
+
+  <p>Status: <span id="status">Disconnected</span></p>
+  <button id="connect">🔗 Connect Wallet</button>
+
+  <div class="section">
+    <h3>💰 Deposit Funds</h3>
+    <p>Deposit <b>PRIVX tokens</b> into the Shield Relay using your <b>secret hash</b>.</p>
+    <p>Example: Deposit <code>10 PRIVX</code> by entering <b>10</b>. The app automatically applies 18 decimals.</p>
+    <input id="depositAmount" placeholder="Amount (e.g. 10)" /><br/>
+    <input id="depositHash" placeholder="Secret Hash (0x... from Hash Generator)" /><br/>
+    <button id="approveBtn">✅ Approve PRIVX (one-time)</button>
+    <button id="depositBtn">🚀 Deposit</button>
+    <small>💡 Approve once to allow the Shield Relay to spend your PRIVX. Future deposits won’t need it again.</small>
+  </div>
+
+  <div class="section">
+    <h3>💎 Withdraw Funds</h3>
+    <p>Use your <b>Secret</b> (not the hash) to withdraw your deposit to 1–3 wallets.</p>
+    <input id="withdrawSecret" placeholder="Secret (UTF-8 string from generator)" /><br/>
+    <input id="wallet1" placeholder="Wallet 1 (0x...)" /><br/>
+    <input id="wallet2" placeholder="Wallet 2 (optional)" /><br/>
+    <input id="wallet3" placeholder="Wallet 3 (optional)" /><br/>
+    <button id="withdrawBtn">💎 Withdraw</button>
+    <small class="warning">⚠️ Anyone with your Secret can withdraw within 7 days. After that, it expires permanently.</small>
+  </div>
+
+  <div class="section">
+    <h3>🔥 Reclaim Expired Deposits</h3>
+    <p>If 7 days pass without withdrawal, <b>anyone</b> can reclaim the deposit using its hash.</p>
+    <input id="reclaimHash" placeholder="Deposit Hash (0x...)" /><br/>
+    <button id="reclaimBtn">🔥 Reclaim</button>
+    <small>95% burn 🔥 • 5% reward 💎 to the caller.</small>
+  </div>
+
+  <div class="section" style="background:#141414;">
+    <h3>📘 Understanding PrivX</h3>
+    <p>
+      <b>7-Day Window:</b> Each deposit is locked for 7 days.  
+      Only the holder of the matching <b>Secret</b> can withdraw during this time.  
+      After 7 days, anyone can <code>reclaim(hash)</code> — 95% burns, 5% rewards the caller.<br/><br/>
+
+      <b>Mathematical Privacy:</b> PrivX doesn’t hide — it multiplies.  
+      Privacy grows with each transaction, each secret, each unique pattern of withdrawal.<br/><br/>
+
+      <b>Transparent by Design:</b> Every hash and transfer is visible, but unlinkable without the secret.  
+      Proof-of-Privacy through volume — not obfuscation.<br/><br/>
+
+      <!-- 💡 New native link (styled as button) -->
+      <a href="https://elitev5.github.io/PrivX/Hash-Generator/"
+         target="_blank" rel="noopener noreferrer"
+         style="display:inline-block; background:#5c00ff; color:#fff; padding:0.6rem 1rem; border-radius:8px; text-decoration:none; font-weight:600; margin:0.3rem;">
+         🔐 Open Secret + Hash Generator 🔗
+      </a><br/>
+      <small>Opens in a new tab so you can safely generate and copy your deposit hash.</small><br/><br/>
+
+      <a href="https://github.com/elitev5/PrivX" target="_blank" rel="noopener noreferrer">
+        📘 Learn more about PrivX on GitHub
+      </a>
+    </p>
+  </div>
+
+  <footer>
+    <hr>
+    <p>PulseChain Native • MIT License • Open Source</p>
+    <p><a href="https://github.com/elitev5/PrivX" target="_blank" rel="noopener noreferrer">View Source on GitHub</a></p>
+    <p style="margin-top:1rem; color:#8b5cf6; font-weight:bold;">“We don’t hide. We outnumber.”</p>
+  </footer>
+
+<script>
+(async () => {
+  const relayAddress = "0xccCFA11f70aBf3d32f38D93FEA4d31D5A99E19dA";
+  const tokenAddress = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+  const PULSECHAIN_ID = "0x171"; // 369 decimal
+
+  let provider, signer, contract, account, privx;
+  const abi = await fetch("./abi.json").then(r => r.json());
+
+  async function ensurePulseChain() {
+    const chain = await window.ethereum.request({ method: "eth_chainId" });
+    if (chain !== PULSECHAIN_ID) {
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: PULSECHAIN_ID }]
+        });
+        alert("✅ Switched to PulseChain");
+      } catch {
+        alert("⚠️ Please manually switch to PulseChain in your wallet.");
+      }
+    }
+  }
+
+  async function connect() {
+    if (!window.ethereum) return alert("No wallet found. Please install MetaMask or compatible wallet.");
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await ensurePulseChain();
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    account = await signer.getAddress();
+    document.getElementById("status").innerHTML = "✅ Connected: " + account.slice(0,6)+"…"+account.slice(-4);
+    document.getElementById("status").style.color = "#0f0";
+    contract = new ethers.Contract(relayAddress, abi, signer);
+    privx = new ethers.Contract(tokenAddress, [
+      "function approve(address spender, uint256 amount) external returns (bool)"
+    ], signer);
+  }
+
+  async function approve() {
+    try {
+      const tx = await privx.approve(relayAddress, ethers.MaxUint256);
+      alert("✅ Max approval submitted!\n\nTx hash:\n" + tx.hash);
+    } catch(e) {
+      alert("Approval failed:\n" + e.message);
+    }
+  }
+
+  async function deposit() {
+    const amt = document.getElementById("depositAmount").value.trim();
+    const hash = document.getElementById("depositHash").value.trim();
+    if (!amt || !hash) return alert("Please enter both amount and hash.");
+    try {
+      const value = ethers.parseUnits(amt, 18);
+      const tx = await contract.deposit(value, hash);
+      alert("✅ Deposit submitted!\n\nTx hash:\n" + tx.hash);
+    } catch(e){ alert("Deposit failed:\n" + e.message); }
+  }
+
+  async function withdraw() {
+    const secret = document.getElementById("withdrawSecret").value.trim();
+    const addrs = ["wallet1","wallet2","wallet3"]
+      .map(id => document.getElementById(id).value.trim())
+      .filter(x => x && ethers.isAddress(x));
+    if (!secret || addrs.length===0) return alert("Enter your Secret and at least one valid wallet address.");
+    try {
+      const tx = await contract.withdraw(secret, addrs);
+      alert("✅ Withdraw submitted!\n\nTx hash:\n" + tx.hash);
+    } catch(e){ alert("Withdraw failed:\n" + e.message); }
+  }
+
+  async function reclaim() {
+    const hash = document.getElementById("reclaimHash").value.trim();
+    if (!hash) return alert("Enter the deposit hash to reclaim.");
+    try {
+      const tx = await contract.reclaim(hash);
+      alert("✅ Reclaim submitted!\n\nTx hash:\n" + tx.hash);
+    } catch(e){ alert("Reclaim failed:\n" + e.message); }
+  }
+
+  document.getElementById("connect").onclick = connect;
+  document.getElementById("approveBtn").onclick = approve;
+  document.getElementById("depositBtn").onclick = deposit;
+  document.getElementById("withdrawBtn").onclick = withdraw;
+  document.getElementById("reclaimBtn").onclick = reclaim;
+})();
+</script>
+</body>
+</html>
