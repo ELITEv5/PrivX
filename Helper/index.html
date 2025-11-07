@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PrivX Shield Relay — Official Helper v4.0</title>
-
+<title>PrivX Shield Relay — Official Helper v4.1</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
@@ -34,12 +33,12 @@
 </head>
 <body>
 <h1>🛡️ PrivX Shield Relay Helper</h1>
-<p><b>Built by Elite Team6 • © Elite Labs • v4.0</b></p>
+<p><b>Built by Elite Team6 • © Elite Labs • v4.1</b></p>
 
 <div class="explainer">
   <h3>🌐 The PrivX Vision — Strength in Numbers</h3>
   <p><b>PrivX isn’t about hiding, it’s about blending in.</b>  
-  Every transaction joins a crowd. Every crowd becomes a shield. The more people who use the Shield Relay, the more complex, private, and resilient the network becomes.</p>
+  Every transaction joins a growing crowd. Every crowd becomes a human shield. The more people who use the Shield Relay, the more complex, private, and resilient the network becomes.</p>
   <p><b>We don’t hide. We outnumber.</b>  
   This is privacy by participation — transparent, decentralized, and unstoppable.</p>
 </div>
@@ -115,6 +114,16 @@
   <button id="loadReclaimable">🔍 Load Reclaimable Hashes</button>
   <div id="reclaimList" class="hashList">Press the button to view reclaimable deposits...</div>
   <small>Auto-refreshes every 30 seconds • View-only • No wallet needed</small>
+</div>
+
+<!-- DEPOSIT CHECKER -->
+<div class="section" style="background:#101010;">
+  <h3>🔍 Check Your Deposit Status</h3>
+  <p>Enter your <b>Deposit Hash</b> to see how much PRIVX you locked, when it was deposited, and whether it’s claimed.</p>
+  <input id="checkHash" placeholder="Deposit Hash (0x…)" /><br/>
+  <button id="checkBtn">🔍 Check Status</button>
+  <div id="checkResult" style="margin-top:1rem;color:#00ff99;font-family:monospace;"></div>
+  <small>Works even without wallet connection.</small>
 </div>
 
 <footer>
@@ -266,6 +275,24 @@ async function copyCA(id){
  document.getElementById("loadReclaimable").onclick=loadReclaimable;
  setInterval(loadReclaimable,30000);
 
+ // Check Deposit Info
+ async function checkDepositStatus(){
+   const hash=document.getElementById("checkHash").value.trim();
+   const result=document.getElementById("checkResult");
+   if(!hash)return alert("Enter a deposit hash.");
+   try{
+     const d=await publicContract.getDeposit(hash);
+     const amount=ethers.utils.formatUnits(d.amount,18);
+     const time=new Date(d.timestamp*1000).toLocaleString();
+     const status=d.claimed?"✅ Claimed":"⏳ Unclaimed";
+     result.innerHTML=`Amount: ${amount} PRIVX<br>Timestamp: ${time}<br>Status: ${status}`;
+   }catch(e){
+     result.style.color="#f55";
+     result.textContent="❌ Error: "+e.message;
+   }
+ }
+ document.getElementById("checkBtn").onclick=checkDepositStatus;
+
  document.getElementById("connect").onclick=connect;
  document.getElementById("disconnect").onclick=disconnect;
  document.getElementById("approveBtn").onclick=approve;
@@ -276,6 +303,7 @@ async function copyCA(id){
 </script>
 </body>
 </html>
+
 
 
 
