@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PrivX Shield Relay — Official Helper v4.1</title>
+<title>PrivX Shield Relay — Official Helper v4.5</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
@@ -29,11 +29,16 @@
   .hashList{background:#0f0f0f;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:220px;overflow-y:auto;}
   .hashItem{margin:0.5rem 0;padding:0.5rem;background:#161616;border-radius:8px;font-size:0.9rem;word-break:break-all;}
   .hashItem button{background:#ff006e;padding:0.3rem 0.8rem;font-size:0.8rem;border-radius:6px;margin-left:0.5rem;}
+  .timer-glow{color:#ffcc00;text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;animation:pulseGlow 2s infinite alternate;}
+  @keyframes pulseGlow{
+    from{text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;}
+    to{text-shadow:0 0 20px #ffaa00,0 0 40px #ff8800;}
+  }
 </style>
 </head>
 <body>
 <h1>🛡️ PrivX Shield Relay Helper</h1>
-<p><b>Built by Elite Team6 • © Elite Labs • v4.1</b></p>
+<p><b>Built by Elite Team6 • © Elite Labs • v4.5</b></p>
 
 <div class="explainer">
   <h3>🌐 The PrivX Vision — Strength in Numbers</h3>
@@ -60,7 +65,9 @@
   </div>
   <small>✅ Verified Immutable Contracts — No Admin, No Upgrades, 100% On-Chain.</small>
 </div>
-  <div class="section" style="background:#121212;">
+
+<!-- 💠 Tokenomics -->
+<div class="section" style="background:#121212;">
   <h3>💠 PrivX Tokenomics</h3>
   <p>
     The <b>PRIVX</b> token powers the entire Shield ecosystem — fixed at 
@@ -145,7 +152,7 @@
   <small>Works even without wallet connection.</small>
 </div>
 
-  <!-- 📘 How It Works & Best Practices -->
+<!-- 📘 How It Works & Best Practices -->
 <div class="section" style="background:#131313;">
   <h3>📘 How It Works — Step by Step</h3>
   <ol style="text-align:left;line-height:1.6em;">
@@ -180,176 +187,55 @@
 </footer>
 
 <script>
-async function copyCA(id){
-  const text=document.getElementById(id).textContent.trim();
-  await navigator.clipboard.writeText(text);
-  alert("✅ Copied:\n"+text);
-}
+async function copyCA(id){const text=document.getElementById(id).textContent.trim();await navigator.clipboard.writeText(text);alert("✅ Copied:\n"+text);}
+(async()=>{
+const relayAddress="0xccCFA11f70aBf3d32f38D93FEA4d31D5A99E19dA";
+const tokenAddress="0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+const PULSECHAIN_ID="0x171";
+let provider,signer,contract,account,privx;
+const abi=await fetch("./abi.json").then(r=>r.json());
+const publicProvider=new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
+const publicContract=new ethers.Contract(relayAddress,abi,publicProvider);
 
-(async ()=>{
- const relayAddress="0xccCFA11f70aBf3d32f38D93FEA4d31D5A99E19dA";
- const tokenAddress="0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
- const PULSECHAIN_ID="0x171";
+async function updateVaultBalance(){try{const b=await publicContract.totalVaultBalance();document.getElementById("vaultBalance").textContent=ethers.utils.formatUnits(b,18)+" PRIVX";document.getElementById("vaultUpdate").textContent="✅ Updated "+new Date().toLocaleTimeString();}catch(e){document.getElementById("vaultBalance").textContent="Error";document.getElementById("vaultUpdate").textContent=e.message;}}
+setInterval(updateVaultBalance,15000);updateVaultBalance();
 
- let provider,signer,contract,account,privx;
- const abi=await fetch("./abi.json").then(r=>r.json());
- const publicProvider=new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
- const publicContract=new ethers.Contract(relayAddress,abi,publicProvider);
+async function ensurePulse(){const c=await window.ethereum.request({method:"eth_chainId"});if(c!==PULSECHAIN_ID){alert("⚠️ Please switch to PulseChain.");return false;}return true;}
 
- async function updateVaultBalance(){
-   try{
-     const balance=await publicContract.totalVaultBalance();
-     const human=ethers.utils.formatUnits(balance,18);
-     document.getElementById("vaultBalance").textContent=human+" PRIVX";
-     document.getElementById("vaultUpdate").textContent="✅ Updated "+new Date().toLocaleTimeString();
-   }catch(e){
-     document.getElementById("vaultBalance").textContent="Error fetching balance";
-     document.getElementById("vaultUpdate").textContent=e.message;
-   }
- }
- setInterval(updateVaultBalance,15000);
- updateVaultBalance();
+async function connect(){if(!window.ethereum)return alert("No wallet found.");provider=new ethers.providers.Web3Provider(window.ethereum);await provider.send("eth_requestAccounts",[]);if(!await ensurePulse())return;signer=provider.getSigner();account=await signer.getAddress();document.getElementById("status").textContent="✅ Connected: "+account.slice(0,6)+"…"+account.slice(-4);document.getElementById("status").style.color="#0f0";document.getElementById("disconnect").style.display="inline-block";contract=new ethers.Contract(relayAddress,abi,signer);privx=new ethers.Contract(tokenAddress,["function approve(address,uint256) external returns (bool)"],signer);updateVaultBalance();}
+function disconnect(){provider=null;signer=null;contract=null;privx=null;account=null;document.getElementById("status").textContent="Disconnected";document.getElementById("status").style.color="#f55";document.getElementById("disconnect").style.display="none";alert("Wallet disconnected.");}
 
- async function ensurePulse(){
-   const chain=await window.ethereum.request({method:"eth_chainId"});
-   if(chain!==PULSECHAIN_ID){
-     alert("⚠️ Please switch to PulseChain.");
-     return false;
-   }
-   return true;
- }
+async function approve(){try{await provider.send("eth_requestAccounts",[]);signer=provider.getSigner();privx=new ethers.Contract(tokenAddress,["function approve(address,uint256) external returns (bool)"],signer);const tx=await privx.approve(relayAddress,ethers.constants.MaxUint256);alert("✅ Max approval sent!\n\nTx hash:\n"+tx.hash);}catch(e){alert("Approval failed:\n"+e.message);}}
 
- async function connect(){
-   if(!window.ethereum) return alert("No wallet found. Install MetaMask or Rabby.");
-   provider=new ethers.providers.Web3Provider(window.ethereum);
-   await provider.send("eth_requestAccounts",[]);
-   if(!await ensurePulse())return;
-   signer=provider.getSigner();
-   account=await signer.getAddress();
-   document.getElementById("status").textContent="✅ Connected: "+account.slice(0,6)+"…"+account.slice(-4);
-   document.getElementById("status").style.color="#0f0";
-   document.getElementById("disconnect").style.display="inline-block";
-   contract=new ethers.Contract(relayAddress,abi,signer);
-   privx=new ethers.Contract(tokenAddress,["function approve(address,uint256) external returns (bool)"],signer);
-   updateVaultBalance();
- }
+async function deposit(){const a=document.getElementById("depositAmount").value.trim(),h=document.getElementById("depositHash").value.trim();if(!a||!h)return alert("Enter amount and hash.");if(!await ensurePulse())return;try{const v=ethers.utils.parseUnits(a,18);const tx=await contract.deposit(v,h);alert("✅ Deposit submitted!\n\nTx hash:\n"+tx.hash);updateVaultBalance();}catch(e){alert("Deposit failed:\n"+e.message);}}
 
- function disconnect(){
-   provider=null;signer=null;contract=null;privx=null;account=null;
-   document.getElementById("status").textContent="Disconnected";
-   document.getElementById("status").style.color="#f55";
-   document.getElementById("disconnect").style.display="none";
-   alert("Wallet disconnected.");
- }
+async function withdraw(){const s=document.getElementById("withdrawSecret").value.trim();const adds=["wallet1","wallet2","wallet3"].map(i=>document.getElementById(i).value.trim()).filter(x=>x&&ethers.utils.isAddress(x));if(!s||adds.length===0)return alert("Enter your Secret and at least one wallet address.");if(!await ensurePulse())return;try{const tx=await contract.withdraw(s,adds);alert("✅ Withdraw submitted!\n\nTx hash:\n"+tx.hash);updateVaultBalance();}catch(e){alert("Withdraw failed:\n"+e.message);}}
 
- async function approve(){
-   try{
-     await provider.send("eth_requestAccounts",[]);
-     signer=provider.getSigner();
-     privx=new ethers.Contract(tokenAddress,["function approve(address,uint256) external returns (bool)"],signer);
-     const tx=await privx.approve(relayAddress,ethers.constants.MaxUint256);
-     alert("✅ Max approval sent!\n\nTx hash:\n"+tx.hash);
-   }catch(e){alert("Approval failed:\n"+e.message);}
- }
+async function reclaim(){const h=document.getElementById("reclaimHash").value.trim();if(!h)return alert("Enter the deposit hash.");if(!await ensurePulse())return;try{const tx=await contract.reclaim(h);alert("✅ Reclaim submitted!\n\nTx hash:\n"+tx.hash);updateVaultBalance();}catch(e){alert("Reclaim failed:\n"+e.message);}}
 
- async function deposit(){
-   const amt=document.getElementById("depositAmount").value.trim();
-   const hash=document.getElementById("depositHash").value.trim();
-   if(!amt||!hash)return alert("Enter amount and hash.");
-   if(!await ensurePulse())return;
-   try{
-     const val=ethers.utils.parseUnits(amt,18);
-     const tx=await contract.deposit(val,hash);
-     alert("✅ Deposit submitted!\n\nTx hash:\n"+tx.hash);
-     updateVaultBalance();
-   }catch(e){alert("Deposit failed:\n"+e.message);}
- }
-
- async function withdraw(){
-   const secret=document.getElementById("withdrawSecret").value.trim();
-   const addrs=["wallet1","wallet2","wallet3"].map(id=>document.getElementById(id).value.trim()).filter(x=>x&&ethers.utils.isAddress(x));
-   if(!secret||addrs.length===0)return alert("Enter your Secret and at least one wallet address.");
-   if(!await ensurePulse())return;
-   try{
-     const tx=await contract.withdraw(secret,addrs);
-     alert("✅ Withdraw submitted!\n\nTx hash:\n"+tx.hash);
-     updateVaultBalance();
-   }catch(e){alert("Withdraw failed:\n"+e.message);}
- }
-
- async function reclaim(){
-   const hash=document.getElementById("reclaimHash").value.trim();
-   if(!hash)return alert("Enter the deposit hash to reclaim.");
-   if(!await ensurePulse())return;
-   try{
-     const tx=await contract.reclaim(hash);
-     alert("✅ Reclaim submitted!\n\nTx hash:\n"+tx.hash);
-     updateVaultBalance();
-   }catch(e){alert("Reclaim failed:\n"+e.message);}
- }
-
- // Claim Helper: fetch reclaimable deposits
- async function loadReclaimable(){
-   const list=document.getElementById("reclaimList");
-   list.innerHTML="⏳ Loading reclaimable hashes...";
-   try{
-     const hashes=await publicContract.getReclaimableDeposits();
-     if(hashes.length===0){list.innerHTML="✅ No reclaimable deposits at this time.";}
-     else{
-       list.innerHTML="";
-       hashes.forEach(h=>{
-         const div=document.createElement("div");
-         div.className="hashItem";
-         div.innerHTML=`<code>${h}</code> <button onclick="copyHash('${h}')">Copy</button> <button onclick="reclaimHashNow('${h}')">🔥 Reclaim</button>`;
-         list.appendChild(div);
-       });
-     }
-   }catch(e){list.innerHTML="❌ Error loading reclaimable deposits: "+e.message;}
- }
- async function copyHash(h){
-   await navigator.clipboard.writeText(h);
-   alert("✅ Copied Hash:\n"+h);
- }
- window.reclaimHashNow=async function(h){
-   if(!provider)return alert("Connect your wallet first.");
-   if(!await ensurePulse())return;
-   try{
-     const tx=await contract.reclaim(h);
-     alert("🔥 Reclaimed!\nTx hash: "+tx.hash);
-   }catch(e){alert("Reclaim failed:\n"+e.message);}
- };
- document.getElementById("loadReclaimable").onclick=loadReclaimable;
- setInterval(loadReclaimable,30000);
-
- // Check Deposit Info
- async function checkDepositStatus(){
-   const hash=document.getElementById("checkHash").value.trim();
-   const result=document.getElementById("checkResult");
-   if(!hash)return alert("Enter a deposit hash.");
-   try{
-     const d=await publicContract.getDeposit(hash);
-     const amount=ethers.utils.formatUnits(d.amount,18);
-     const time=new Date(d.timestamp*1000).toLocaleString();
-     const status=d.claimed?"✅ Claimed":"⏳ Unclaimed";
-     result.innerHTML=`Amount: ${amount} PRIVX<br>Timestamp: ${time}<br>Status: ${status}`;
-   }catch(e){
-     result.style.color="#f55";
-     result.textContent="❌ Error: "+e.message;
-   }
- }
- document.getElementById("checkBtn").onclick=checkDepositStatus;
-
- document.getElementById("connect").onclick=connect;
- document.getElementById("disconnect").onclick=disconnect;
- document.getElementById("approveBtn").onclick=approve;
- document.getElementById("depositBtn").onclick=deposit;
- document.getElementById("withdrawBtn").onclick=withdraw;
- document.getElementById("reclaimBtn").onclick=reclaim;
+async function checkDepositStatus(){
+const hash=document.getElementById("checkHash").value.trim(),res=document.getElementById("checkResult");
+if(!hash)return alert("Enter a deposit hash.");
+try{const d=await publicContract.getDeposit(hash);const amt=ethers.utils.formatUnits(d.amount,18);
+const dep=d.timestamp*1000,exp=dep+(7*24*60*60*1000),claimed=d.claimed,now=Date.now();
+let status=claimed?"✅ Claimed":"⏳ Unclaimed";res.style.color="#00ff99";
+res.innerHTML=`Amount: ${amt} PRIVX<br>Deposited: ${new Date(dep).toLocaleString()}<br>Status: ${status}`;
+if(!claimed){
+if(now>=exp){res.innerHTML+=`<br><span style="color:#ff006e;font-weight:bold;">🔥 Claimable Now (7 days passed)</span>`;}
+else{
+const updateTimer=()=>{const rem=exp-Date.now();if(rem<=0){clearInterval(timer);
+res.innerHTML=`Amount: ${amt} PRIVX<br>Deposited: ${new Date(dep).toLocaleString()}<br>Status: 🔥 Claimable Now`;
+}else{const d=Math.floor(rem/(1000*60*60*24)),h=Math.floor((rem/(1000*60*60))%24),m=Math.floor((rem/(1000*60))%60),s=Math.floor((rem/1000)%60);
+res.innerHTML=`Amount: ${amt} PRIVX<br>Deposited: ${new Date(dep).toLocaleString()}<br>Status: ${status}<br><span class="timer-glow">🕓 Time until claimable: ${d}d ${h}h ${m}m ${s}s</span>`;}};updateTimer();const timer=setInterval(updateTimer,1000);}}}
+catch(e){res.style.color="#f55";res.textContent="❌ Error: "+e.message;}}
+document.getElementById("connect").onclick=connect;
+document.getElementById("disconnect").onclick=disconnect;
+document.getElementById("approveBtn").onclick=approve;
+document.getElementById("depositBtn").onclick=deposit;
+document.getElementById("withdrawBtn").onclick=withdraw;
+document.getElementById("reclaimBtn").onclick=reclaim;
+document.getElementById("checkBtn").onclick=checkDepositStatus;
 })();
 </script>
 </body>
 </html>
-
-
-
-
