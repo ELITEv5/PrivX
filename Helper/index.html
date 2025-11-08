@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PrivX Shield Relay — Official Helper v4.5</title>
+<title>PrivX Shield Relay — Official Helper v4.8 “Pulse Edition”</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
@@ -30,20 +30,23 @@
   .hashItem{margin:0.5rem 0;padding:0.5rem;background:#161616;border-radius:8px;font-size:0.9rem;word-break:break-all;}
   .hashItem button{background:#ff006e;padding:0.3rem 0.8rem;font-size:0.8rem;border-radius:6px;margin-left:0.5rem;}
   .timer-glow{color:#ffcc00;text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;animation:pulseGlow 2s infinite alternate;}
-  @keyframes pulseGlow{
-    from{text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;}
-    to{text-shadow:0 0 20px #ffaa00,0 0 40px #ff8800;}
-  }
+  @keyframes pulseGlow{from{text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;}to{text-shadow:0 0 20px #ffaa00,0 0 40px #ff8800;}}
+  .feed{background:#0d0d0d;border:1px solid #222;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:180px;overflow-y:auto;}
+  .feed-entry{font-size:0.9rem;margin:0.4rem 0;}
+  .feed-entry span{font-weight:bold;}
+  .glow{color:#8b5cf6;text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff;}
 </style>
 </head>
+
 <body>
 <h1>🛡️ PrivX Shield Relay Helper</h1>
-<p><b>Built by Elite Team6 • © Elite Labs • v4.5</b></p>
+<p><b>Built by Elite Team6 • © Elite Labs • v4.8 “Pulse Edition”</b></p>
 
 <div class="explainer">
   <h3>🌐 The PrivX Vision — Strength in Numbers</h3>
-  <p><b>PrivX isn’t about hiding, it’s about blending in.</b>  
-  Every transaction joins a growing crowd. Every crowd becomes a human shield. The more people who use the Shield Relay, the more complex, private, and resilient the network becomes.</p>
+  <p><b>PrivX isn’t about hiding — it’s about blending in.</b>  
+  Every transaction joins a growing crowd. Every crowd becomes a human shield.  
+  The more people who use the Shield Relay, the more complex, private, and resilient the network becomes.</p>
   <p><b>We don’t hide. We outnumber.</b>  
   This is privacy by participation — transparent, decentralized, and unstoppable.</p>
 </div>
@@ -63,28 +66,23 @@
     <button class="ca-copy" onclick="copyCA('caRelay')">Copy</button><br>
     <a href="https://scan.pulsechain.com/address/0xccCFA11f70aBf3d32f38D93FEA4d31D5A99E19dA" target="_blank">View on PulseChainScan ↗</a>
   </div>
-  <small>✅ Verified Immutable Contracts — No Admin, No Upgrades, 100% On-Chain.</small>
+  <small>✅ Verified Immutable Contracts — No Admin, No Upgrades, 100 % On-Chain.</small>
 </div>
 
 <!-- 💠 Tokenomics -->
 <div class="section" style="background:#121212;">
   <h3>💠 PrivX Tokenomics</h3>
-  <p>
-    The <b>PRIVX</b> token powers the entire Shield ecosystem — fixed at 
-    <b>21,000,000 PRIVX</b> total supply with no minting, no owner, and 
-    a built-in deflationary burn mechanism.
-  </p>
-  <p>
-    Every use of the <b>Shield Relay</b> contributes to PRIVX scarcity:
-    withdrawals incur a small 0.3% burn, while expired deposits burn 95% 
-    of their balance permanently.
-  </p>
-  <p>
-    As the network expands, PRIVX will serve as the <b>“gas token”</b> 
-    for future cross-token relays — allowing any ERC-20 asset to pass 
-    through a PrivX-powered shield while consuming PRIVX for usage fees.
-  </p>
+  <p>The <b>PRIVX</b> token powers the entire Shield ecosystem — fixed at <b>21 million PRIVX</b> total supply with no minting, no owner, and a built-in deflationary burn mechanism.</p>
+  <p>Every use of the <b>Shield Relay</b> contributes to PRIVX scarcity: withdrawals incur a small 0.3 % burn, while expired deposits burn 95 % of their balance permanently.</p>
+  <p>As the network expands, PRIVX will serve as the <b>“gas token”</b> for future cross-token relays — allowing any ERC-20 asset to pass through a PrivX-powered shield while consuming PRIVX for usage fees.</p>
   <small>⚙️ Deflationary. Autonomous. Utility by design.</small>
+</div>
+
+<!-- 🔥 Burn Counter -->
+<div class="section" style="background:#121212;">
+  <h3>🔥 Total PRIVX Burned</h3>
+  <h2 id="burnCounter" class="glow">Loading...</h2>
+  <small id="burnUpdate">⏳ Fetching on-chain data…</small>
 </div>
 
 <!-- 🔒 Vault Tracker -->
@@ -92,12 +90,21 @@
   <h3>🔒 Shield Vault Tracker</h3>
   <p>Total PRIVX currently locked in the Shield Relay:</p>
   <h2 id="vaultBalance" style="color:#00ff99;font-weight:bold;">Loading...</h2>
-  <small id="vaultUpdate">⏳ Waiting for data...</small>
+  <small id="vaultUpdate">⏳ Waiting for data…</small>
 </div>
 
 <p>Status: <span id="status">Disconnected</span></p>
 <button id="connect">🔗 Connect Wallet</button>
 <button id="disconnect" style="display:none;background:#333;">🔌 Disconnect</button>
+
+<!-- Transaction Feed -->
+<div class="section" style="background:#121212;">
+  <h3>📡 Recent Transactions</h3>
+  <div id="txFeed" class="feed">
+    <p style="color:#777;">No recent transactions yet.</p>
+  </div>
+  <small>Updates in real time as you send transactions.</small>
+</div>
 
 <!-- DEPOSIT -->
 <div class="section">
@@ -111,7 +118,6 @@
 <button id="depositBtn">🚀 Deposit</button>
 <small>⚙️ Approve once, then deposit anytime with new hashes.</small>
 </div>
-
 <!-- WITHDRAW -->
 <div class="section">
 <h3>💎 Step 2 — Withdraw Funds</h3>
@@ -121,7 +127,7 @@
 <input id="wallet2" placeholder="Wallet 2 (optional)" /><br/>
 <input id="wallet3" placeholder="Wallet 3 (optional)" /><br/>
 <button id="withdrawBtn">💎 Withdraw</button>
-<small class="warning">⚠️ Anyone with your Secret can withdraw your funds within 7 days. Keep it safe.</small>
+<small class="warning">⚠️ Anyone with your Secret can withdraw within 7 days — keep it safe.</small>
 </div>
 
 <!-- RECLAIM -->
@@ -130,22 +136,22 @@
 <p>After 7 days, anyone can reclaim unclaimed deposits using their hash.</p>
 <input id="reclaimHash" placeholder="Deposit Hash (0x…)" /><br/>
 <button id="reclaimBtn">🔥 Reclaim</button>
-<small>💎 Reclaim rewards 5% to the caller • 95% permanently burned 🔥</small>
+<small>💎 Reclaim rewards 5 % to the caller • 95 % burned forever 🔥</small>
 </div>
 
 <!-- CLAIM HELPER -->
 <div class="section" style="background:#161616;">
   <h3>🧩 Claim Helper — Find Unclaimed Deposits</h3>
-  <p>View all expired deposits ready to reclaim. You can copy or reclaim directly below.</p>
+  <p>View all expired deposits ready to reclaim. Copy or reclaim directly below.</p>
   <button id="loadReclaimable">🔍 Load Reclaimable Hashes</button>
-  <div id="reclaimList" class="hashList">Press the button to view reclaimable deposits...</div>
+  <div id="reclaimList" class="hashList">Press the button to view reclaimable deposits…</div>
   <small>Auto-refreshes every 30 seconds • View-only • No wallet needed</small>
 </div>
 
 <!-- DEPOSIT CHECKER -->
 <div class="section" style="background:#101010;">
   <h3>🔍 Check Your Deposit Status</h3>
-  <p>Enter your <b>Deposit Hash</b> to see how much PRIVX you locked, when it was deposited, and whether it’s claimed.</p>
+  <p>Enter your <b>Deposit Hash</b> to see amount, date, and status (plus countdown timer).</p>
   <input id="checkHash" placeholder="Deposit Hash (0x…)" /><br/>
   <button id="checkBtn">🔍 Check Status</button>
   <div id="checkResult" style="margin-top:1rem;color:#00ff99;font-family:monospace;"></div>
@@ -156,26 +162,24 @@
 <div class="section" style="background:#131313;">
   <h3>📘 How It Works — Step by Step</h3>
   <ol style="text-align:left;line-height:1.6em;">
-    <li><b>Generate Secret & Hash</b> — Use the <a href="https://elitev5.github.io/PrivX/Hash-Generator/" target="_blank">Hash Generator</a> to create a unique secret and hash pair. The <b>hash</b> is used for deposit; the <b>secret</b> is used to withdraw within 7 days.</li>
-    <li><b>Deposit PRIVX</b> — Enter your hash and amount, then approve PRIVX once. Your tokens are locked in the Shield Relay, ready for withdrawal.</li>
-    <li><b>Withdraw</b> — Within 7 days, use your secret to send funds to up to 3 wallets. A 0.3% fee is burned automatically.</li>
-    <li><b>Reclaim</b> — After 7 days, if a deposit isn’t withdrawn, anyone can reclaim it. 95% burns permanently, 5% is rewarded to the caller.</li>
-    <li><b>Check</b> — You can verify any deposit by its hash — amount, date, and status are public on-chain.</li>
+    <li><b>Generate Secret & Hash</b> — Use the <a href="https://elitev5.github.io/PrivX/Hash-Generator/" target="_blank">Hash Generator</a> to create a unique pair.</li>
+    <li><b>Deposit PRIVX</b> — Enter hash and amount, approve once, then deposit.</li>
+    <li><b>Withdraw</b> — Within 7 days use your Secret to withdraw to up to 3 wallets (0.3 % burn).</li>
+    <li><b>Reclaim</b> — After 7 days anyone can reclaim (95 % burn / 5 % reward).</li>
+    <li><b>Check</b> — Verify any deposit on-chain by its hash.</li>
   </ol>
 
   <h3>🧭 Best Practices</h3>
   <ul style="text-align:left;line-height:1.6em;">
-    <li>🪙 <b>Backup your Secret.</b> Losing it means losing access — there is no recovery or admin reset.</li>
+    <li>🪙 <b>Backup your Secret.</b> Lose it = lose access.</li>
     <li>🔐 <b>Keep your Secret private.</b> Anyone with it can withdraw within 7 days.</li>
-    <li>🕓 <b>Respect the 7-day window.</b> Withdraw on time, or your funds become reclaimable by anyone.</li>
-    <li>🔥 <b>Expired deposits are burned.</b> 95% destroyed, 5% rewarded — all on-chain, no intermediaries.</li>
-    <li>⚙️ <b>Always verify contract addresses.</b> Use only the official PrivX Token and Shield Relay addresses.</li>
-    <li>🧩 <b>More users = more privacy.</b> Each deposit adds noise and obfuscation to the network.</li>
+    <li>🕓 <b>Respect the 7-day window.</b> Withdraw on time or funds become claimable.</li>
+    <li>🔥 <b>Expired deposits burned.</b> 95 % destroyed • 5 % rewarded • no middlemen.</li>
+    <li>⚙️ <b>Verify contract addresses.</b> Only use official PRIVX and Shield Relay CAs.</li>
+    <li>🧩 <b>More users = more privacy.</b> Each deposit adds noise and protection.</li>
   </ul>
 
-  <p style="color:#8b5cf6;font-weight:bold;margin-top:1rem;">
-    “The more we walk together, the harder we are to follow.”
-  </p>
+  <p style="color:#8b5cf6;font-weight:bold;margin-top:1rem;">“The more we walk together, the harder we are to follow.”</p>
   <p style="color:#00ffcc;">PrivX — Privacy by participation. Strength in numbers.</p>
 </div>
 
@@ -186,48 +190,182 @@
 <p style="margin-top:1rem;color:#8b5cf6;font-weight:bold;">“We don’t hide. We outnumber.”</p>
 </footer>
 
+<!-- ==== MAIN LOGIC ==== -->
 <script>
-async function copyCA(id){const text=document.getElementById(id).textContent.trim();await navigator.clipboard.writeText(text);alert("✅ Copied:\n"+text);}
+async function copyCA(id){
+  const t=document.getElementById(id).textContent.trim();
+  await navigator.clipboard.writeText(t);
+  alert("✅ Copied:\n"+t);
+}
+
 (async()=>{
 const relayAddress="0xccCFA11f70aBf3d32f38D93FEA4d31D5A99E19dA";
 const tokenAddress="0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 const PULSECHAIN_ID="0x171";
 let provider,signer,contract,account,privx;
 const abi=await fetch("./abi.json").then(r=>r.json());
-const publicProvider=new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
-const publicContract=new ethers.Contract(relayAddress,abi,publicProvider);
+const pubProv=new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
+const pubContract=new ethers.Contract(relayAddress,abi,pubProv);
 
-async function updateVaultBalance(){try{const b=await publicContract.totalVaultBalance();document.getElementById("vaultBalance").textContent=ethers.utils.formatUnits(b,18)+" PRIVX";document.getElementById("vaultUpdate").textContent="✅ Updated "+new Date().toLocaleTimeString();}catch(e){document.getElementById("vaultBalance").textContent="Error";document.getElementById("vaultUpdate").textContent=e.message;}}
+function addTxFeed(label,hash,status){
+ const f=document.getElementById("txFeed");
+ const a=document.createElement("div");
+ a.className="feed-entry";
+ a.innerHTML=`<span>${label}</span>: <a href="https://scan.pulsechain.com/tx/${hash}" target="_blank">${hash.slice(0,10)}…</a> — ${status}`;
+ f.prepend(a);
+ while(f.childNodes.length>6)f.removeChild(f.lastChild);
+}
+
+async function updateVaultBalance(){
+ try{
+  const b=await pubContract.totalVaultBalance();
+  document.getElementById("vaultBalance").textContent=ethers.utils.formatUnits(b,18)+" PRIVX";
+  document.getElementById("vaultUpdate").textContent="✅ Updated "+new Date().toLocaleTimeString();
+ }catch(e){
+  document.getElementById("vaultBalance").textContent="Error";
+  document.getElementById("vaultUpdate").textContent=e.message;
+ }}
 setInterval(updateVaultBalance,15000);updateVaultBalance();
 
-async function ensurePulse(){const c=await window.ethereum.request({method:"eth_chainId"});if(c!==PULSECHAIN_ID){alert("⚠️ Please switch to PulseChain.");return false;}return true;}
+async function updateBurnCounter(){
+ try{
+  const burned=await pubContract.totalBurned();
+  document.getElementById("burnCounter").textContent=ethers.utils.formatUnits(burned,18)+" PRIVX 🔥";
+  document.getElementById("burnUpdate").textContent="✅ Synced "+new Date().toLocaleTimeString();
+ }catch(e){
+  document.getElementById("burnCounter").textContent="Error";
+  document.getElementById("burnUpdate").textContent=e.message;
+ }}
+setInterval(updateBurnCounter,20000);updateBurnCounter();
 
-async function connect(){if(!window.ethereum)return alert("No wallet found.");provider=new ethers.providers.Web3Provider(window.ethereum);await provider.send("eth_requestAccounts",[]);if(!await ensurePulse())return;signer=provider.getSigner();account=await signer.getAddress();document.getElementById("status").textContent="✅ Connected: "+account.slice(0,6)+"…"+account.slice(-4);document.getElementById("status").style.color="#0f0";document.getElementById("disconnect").style.display="inline-block";contract=new ethers.Contract(relayAddress,abi,signer);privx=new ethers.Contract(tokenAddress,["function approve(address,uint256) external returns (bool)"],signer);updateVaultBalance();}
-function disconnect(){provider=null;signer=null;contract=null;privx=null;account=null;document.getElementById("status").textContent="Disconnected";document.getElementById("status").style.color="#f55";document.getElementById("disconnect").style.display="none";alert("Wallet disconnected.");}
+async function ensurePulse(){
+ const c=await window.ethereum.request({method:"eth_chainId"});
+ if(c!==PULSECHAIN_ID){alert("⚠️ Please switch to PulseChain.");return false;}
+ return true;
+}
 
-async function approve(){try{await provider.send("eth_requestAccounts",[]);signer=provider.getSigner();privx=new ethers.Contract(tokenAddress,["function approve(address,uint256) external returns (bool)"],signer);const tx=await privx.approve(relayAddress,ethers.constants.MaxUint256);alert("✅ Max approval sent!\n\nTx hash:\n"+tx.hash);}catch(e){alert("Approval failed:\n"+e.message);}}
+async function connect(){
+ if(!window.ethereum)return alert("No wallet found.");
+ provider=new ethers.providers.Web3Provider(window.ethereum);
+ await provider.send("eth_requestAccounts",[]);
+ if(!await ensurePulse())return;
+ signer=provider.getSigner();account=await signer.getAddress();
+ document.getElementById("status").textContent="✅ Connected: "+account.slice(0,6)+"…"+account.slice(-4);
+ document.getElementById("status").style.color="#0f0";
+ document.getElementById("disconnect").style.display="inline-block";
+ contract=new ethers.Contract(relayAddress,abi,signer);
+ privx=new ethers.Contract(tokenAddress,["function approve(address,uint256) external returns(bool)"],signer);
+ updateVaultBalance();updateBurnCounter();
+}
 
-async function deposit(){const a=document.getElementById("depositAmount").value.trim(),h=document.getElementById("depositHash").value.trim();if(!a||!h)return alert("Enter amount and hash.");if(!await ensurePulse())return;try{const v=ethers.utils.parseUnits(a,18);const tx=await contract.deposit(v,h);alert("✅ Deposit submitted!\n\nTx hash:\n"+tx.hash);updateVaultBalance();}catch(e){alert("Deposit failed:\n"+e.message);}}
+function disconnect(){
+ provider=signer=contract=privx=account=null;
+ document.getElementById("status").textContent="Disconnected";
+ document.getElementById("status").style.color="#f55";
+ document.getElementById("disconnect").style.display="none";
+ alert("Wallet disconnected.");
+}
 
-async function withdraw(){const s=document.getElementById("withdrawSecret").value.trim();const adds=["wallet1","wallet2","wallet3"].map(i=>document.getElementById(i).value.trim()).filter(x=>x&&ethers.utils.isAddress(x));if(!s||adds.length===0)return alert("Enter your Secret and at least one wallet address.");if(!await ensurePulse())return;try{const tx=await contract.withdraw(s,adds);alert("✅ Withdraw submitted!\n\nTx hash:\n"+tx.hash);updateVaultBalance();}catch(e){alert("Withdraw failed:\n"+e.message);}}
+async function trackTx(label,txp){
+ try{
+  addTxFeed(label,txp.hash,"🟡 Pending");
+  const r=await txp.wait();
+  addTxFeed(label,txp.hash,"🟢 Confirmed ("+r.confirmations+")");
+ }catch(e){
+  addTxFeed(label,txp.hash,"🔴 Failed");
+ }}
 
-async function reclaim(){const h=document.getElementById("reclaimHash").value.trim();if(!h)return alert("Enter the deposit hash.");if(!await ensurePulse())return;try{const tx=await contract.reclaim(h);alert("✅ Reclaim submitted!\n\nTx hash:\n"+tx.hash);updateVaultBalance();}catch(e){alert("Reclaim failed:\n"+e.message);}}
+async function approve(){
+ try{
+  const tx=await privx.approve(relayAddress,ethers.constants.MaxUint256);
+  alert("✅ Approval sent! \n\nTx: "+tx.hash);
+  trackTx("Approve",tx);
+ }catch(e){alert("Approval failed:\n"+e.message);}
+}
+
+async function deposit(){
+ const a=document.getElementById("depositAmount").value.trim(),
+       h=document.getElementById("depositHash").value.trim();
+ if(!a||!h)return alert("Enter amount and hash.");
+ if(!await ensurePulse())return;
+ try{
+  const val=ethers.utils.parseUnits(a,18);
+  const gas=await contract.estimateGas.deposit(val,h);
+  if(!confirm(`Estimated Gas: ${gas.toString()}\nProceed?`))return;
+  const tx=await contract.deposit(val,h);
+  alert("✅ Deposit submitted! \nTx: "+tx.hash);
+  trackTx("Deposit",tx);updateVaultBalance();
+ }catch(e){alert("Deposit failed:\n"+e.message);}
+}
+
+async function withdraw(){
+ const s=document.getElementById("withdrawSecret").value.trim();
+ const addrs=["wallet1","wallet2","wallet3"].map(i=>document.getElementById(i).value.trim()).filter(x=>x&&ethers.utils.isAddress(x));
+ if(!s||addrs.length===0)return alert("Enter your Secret and at least one wallet address.");
+ if(!await ensurePulse())return;
+ try{
+  const tx=await contract.withdraw(s,addrs);
+  alert("✅ Withdraw submitted!\nTx: "+tx.hash);
+  trackTx("Withdraw",tx);updateVaultBalance();
+ }catch(e){alert("Withdraw failed:\n"+e.message);}
+}
+
+async function reclaim(){
+ const h=document.getElementById("reclaimHash").value.trim();
+ if(!h)return alert("Enter deposit hash.");
+ if(!await ensurePulse())return;
+ try{
+  const tx=await contract.reclaim(h);
+  alert("✅ Reclaim submitted!\nTx: "+tx.hash);
+  trackTx("Reclaim",tx);updateVaultBalance();
+ }catch(e){alert("Reclaim failed:\n"+e.message);}
+}
+
+async function loadReclaimable(){
+ const list=document.getElementById("reclaimList");
+ list.innerHTML="⏳ Loading…";
+ try{
+  const hashes=await pubContract.getReclaimableDeposits();
+  if(!hashes.length){list.innerHTML="✅ No reclaimable deposits now.";}
+  else{
+   list.innerHTML="";
+   hashes.forEach(h=>{
+    const d=document.createElement("div");
+    d.className="hashItem";
+    d.innerHTML=`<code>${h}</code> <button onclick="navigator.clipboard.writeText('${h}')">Copy</button>`;
+    list.appendChild(d);
+   });
+  }
+ }catch(e){list.innerHTML="❌ Error: "+e.message;}
+}
+document.getElementById("loadReclaimable").onclick=loadReclaimable;
+setInterval(loadReclaimable,30000);
 
 async function checkDepositStatus(){
-const hash=document.getElementById("checkHash").value.trim(),res=document.getElementById("checkResult");
-if(!hash)return alert("Enter a deposit hash.");
-try{const d=await publicContract.getDeposit(hash);const amt=ethers.utils.formatUnits(d.amount,18);
-const dep=d.timestamp*1000,exp=dep+(7*24*60*60*1000),claimed=d.claimed,now=Date.now();
-let status=claimed?"✅ Claimed":"⏳ Unclaimed";res.style.color="#00ff99";
-res.innerHTML=`Amount: ${amt} PRIVX<br>Deposited: ${new Date(dep).toLocaleString()}<br>Status: ${status}`;
-if(!claimed){
-if(now>=exp){res.innerHTML+=`<br><span style="color:#ff006e;font-weight:bold;">🔥 Claimable Now (7 days passed)</span>`;}
-else{
-const updateTimer=()=>{const rem=exp-Date.now();if(rem<=0){clearInterval(timer);
-res.innerHTML=`Amount: ${amt} PRIVX<br>Deposited: ${new Date(dep).toLocaleString()}<br>Status: 🔥 Claimable Now`;
-}else{const d=Math.floor(rem/(1000*60*60*24)),h=Math.floor((rem/(1000*60*60))%24),m=Math.floor((rem/(1000*60))%60),s=Math.floor((rem/1000)%60);
-res.innerHTML=`Amount: ${amt} PRIVX<br>Deposited: ${new Date(dep).toLocaleString()}<br>Status: ${status}<br><span class="timer-glow">🕓 Time until claimable: ${d}d ${h}h ${m}m ${s}s</span>`;}};updateTimer();const timer=setInterval(updateTimer,1000);}}}
-catch(e){res.style.color="#f55";res.textContent="❌ Error: "+e.message;}}
+ const hash=document.getElementById("checkHash").value.trim();
+ const res=document.getElementById("checkResult");
+ if(!hash)return alert("Enter a deposit hash.");
+ try{
+  const d=await pubContract.getDeposit(hash);
+  if(d.amount.eq(0)||d.timestamp.eq(0)){res.style.color="#f55";res.innerHTML="❌ No deposit found.";return;}
+  const amt=ethers.utils.formatUnits(d.amount,18);
+  const dep=d.timestamp*1000,exp=dep+(7*24*60*60*1000),now=Date.now(),claimed=d.claimed;
+  let status=claimed?"✅ Claimed":"⏳ Unclaimed";
+  res.style.color="#00ff99";
+  const updateTimer=()=>{
+   const rem=exp-Date.now();
+   if(rem<=0){clearInterval(tmr);
+    res.innerHTML=`Amount: ${amt} PRIVX<br>Deposited: ${new Date(dep).toLocaleString()}<br>Status: 🔥 Claimable Now`;
+   }else{
+    const dys=Math.floor(rem/(1000*60*60*24)),h=Math.floor((rem/(1000*60*60))%24),
+          m=Math.floor((rem/(1000*60))%60),s=Math.floor((rem/1000)%60);
+    res.innerHTML=`Amount: ${amt} PRIVX<br>Deposited: ${new Date(dep).toLocaleString()}<br>Status: ${status}<br><span class="timer-glow">🕓 Time until claimable: ${dys}d ${h}h ${m}m ${s}s</span>`;
+   }};
+  updateTimer();
+  const tmr=setInterval(updateTimer,1000);
+ }catch(e){res.style.color="#f55";res.textContent="❌ Error: "+e.message;}
+}
+
 document.getElementById("connect").onclick=connect;
 document.getElementById("disconnect").onclick=disconnect;
 document.getElementById("approveBtn").onclick=approve;
