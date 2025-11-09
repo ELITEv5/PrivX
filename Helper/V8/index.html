@@ -308,20 +308,6 @@ async function copyCA(id){
       document.getElementById("vaultBalance").textContent = "Error";
     }
   }
-  async function updateRewardPool(){
-  try {
-    const r = await pubContract.getRewardPool();
-    const rewardNum = ethers.utils.formatUnits(r, 18);
-    document.getElementById("rewardPool").textContent = rewardNum + " PRIVX";
-    document.getElementById("rewardUpdate").textContent =
-      "✅ Updated " + new Date().toLocaleTimeString();
-  } catch (e) {
-    document.getElementById("rewardPool").textContent = "Error";
-    document.getElementById("rewardUpdate").textContent = e.message;
-  }
-}
-setInterval(updateRewardPool, 20000);
-updateRewardPool();
 
   async function updateBurnCounter(){
     try{
@@ -384,12 +370,6 @@ async function updateNetworkActivity() {
 setInterval(updateRewardPool, 15000);
 setInterval(updateNetworkActivity, 20000);
 
-// initial run
-updateRewardPool();
-updateNetworkActivity();
-
-
-
 
   async function ensurePulse(){
     const c = await window.ethereum.request({method:"eth_chainId"});
@@ -408,7 +388,7 @@ updateNetworkActivity();
     signer = provider.getSigner();
     account = await signer.getAddress();
     document.getElementById("status").textContent = "✅ Connected: " + account.slice(0,6) + "…"+ account.slice(-4);
-    document.getElementById("status").style.color = "#0f0";
+    document.getElementById("status").style.textShadow = "0 0 6px #0f0";
     document.getElementById("disconnect").style.display = "inline-block";
     contract = new ethers.Contract(relayAddress, abi, signer);
     privx = new ethers.Contract(tokenAddress, ["function approve(address,uint256) external returns(bool)"], signer);
