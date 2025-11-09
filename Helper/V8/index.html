@@ -151,12 +151,30 @@ T ∝ 1 / (A × W)
 </div>
 
 
-<!-- 💎 Reward Metric -->
+<!-- 📊 NETWORK PARTICIPATION (live metric) -->
 <div class="section" style="background:#121212;">
-  <h3>💎 Network Reward Metric</h3>
-  <h2 id="rewardPool" style="color:#8b5cf6;">Loading...</h2>
-  <small id="rewardUpdate">⏳ Syncing rewards…</small>
+  <h3>📊 Network Participation</h3>
+  <p>
+    Tracks total PRIVX in motion — deposits, burns, and reclaims — 
+    the pulse of the Shield. Updated every 20 seconds.
+  </p>
+  <h2 id="networkActivity" class="glow-pulse">Loading...</h2>
+  <small id="networkUpdate">⏳ Fetching on-chain data…</small>
 </div>
+
+<style>
+  /* 🌌 soft pulse animation for the main number */
+  .glow-pulse {
+    color:#8b5cf6;
+    text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff,0 0 30px #3c00aa;
+    animation:pulseMetric 2s infinite alternate;
+  }
+  @keyframes pulseMetric {
+    from { text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff; }
+    to   { text-shadow:0 0 25px #9d72ff,0 0 45px #8b5cf6; }
+  }
+</style>
+
 
 <p>Status: <span id="status">Disconnected</span></p>
 <button id="connect">🔗 Connect Wallet</button>
@@ -314,39 +332,62 @@ updateRewardPool();
       document.getElementById("burnCounter").textContent = "Error";
     }
   }
-
-  // --- Live On-Chain Data Updates ---
+  
+// ------------------- REWARD POOL UPDATE -------------------
 async function updateRewardPool() {
   try {
-    let value;
-
-    // Try ABI getters first
+    let poolValue;
     try {
-      value = await pubContract.getRewardPool();
+      // Primary getter (new V8)
+      poolValue = await pubContract.getRewardPool();
     } catch {
-      try {
-        value = await pubContract.rewardPool();
-      } catch {
-        // 🚨 fallback to reading raw storage slot #3
-        const raw = await pubProv.getStorageAt(relayAddress, 3);
-        value = ethers.BigNumber.from(raw);
-      }
+      // Fallback for compatibility
+      poolValue = await pubContract.rewardPool();
     }
 
-    const formatted = ethers.utils.formatUnits(value, 18);
-    document.getElementById("rewardPool").textContent =
-      formatted + " PRIVX 🟣";
-    document.getElementById("rewardUpdate").textContent =
-      "✅ Synced " + new Date().toLocaleTimeString();
+    const formatted = ethers.utils.formatUnits(poolValue, 18);
+    document.getElementById("rewardPool").textContent = `${formatted} PRIVX 🟣`;
+    document.getElementById("rewardUpdate").textContent = `✅ Synced ${new Date().toLocaleTimeString()}`;
   } catch (e) {
     document.getElementById("rewardPool").textContent = "Error";
-    document.getElementById("rewardUpdate").textContent =
-      "⚠️ " + e.message;
+    document.getElementById("rewardUpdate").textContent = `⚠️ ${e.message}`;
   }
 }
 
+// ------------------- NETWORK ACTIVITY METRIC -------------------
+async function updateNetworkActivity() {
+  try {
+    const [vault, burned, reclaimed, withdrawals] = await Promise.all([
+      pubContract.totalVaultBalance(),
+      pubContract.totalBurned(),
+      pubContract.totalReclaimed(),
+      pubContract.totalWithdrawals()
+    ]);
+
+    const f = x => parseFloat(ethers.utils.formatUnits(x, 18));
+    const totalMove = f(vault) + f(burned) + f(reclaimed);
+    const summary =
+      `Vault ${f(vault).toFixed(2)} | Burn ${f(burned).toFixed(2)} | ` +
+      `Reclaim ${f(reclaimed).toFixed(2)} | Tx ${withdrawals.toString()}`;
+
+    document.getElementById("networkActivity").textContent =
+      `${totalMove.toFixed(2)} PRIVX Total Movement`;
+    document.getElementById("networkUpdate").textContent =
+      `✅ ${summary} • ${new Date().toLocaleTimeString()}`;
+  } catch (e) {
+    document.getElementById("networkActivity").textContent = "Error";
+    document.getElementById("networkUpdate").textContent = `⚠️ ${e.message}`;
+  }
+}
+
+// auto-refresh
 setInterval(updateRewardPool, 15000);
+setInterval(updateNetworkActivity, 20000);
+
+// initial run
 updateRewardPool();
+updateNetworkActivity();
+
 
 
 
