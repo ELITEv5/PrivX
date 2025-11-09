@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PrivX Shield Relay — Official Helper v8 “Reward Protocol Edition”</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-
 <style>
   body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#eee;text-align:center;padding:2rem;max-width:900px;margin:auto}
   h1{color:#8b5cf6;font-size:2rem;margin-bottom:.3rem}
@@ -107,7 +106,7 @@
   </p>
 </div>
 
-<!-- 💠 TOKENOMICS (unchanged) -->
+<!-- 💠 TOKENOMICS -->
 <div class="section" style="background:#121212;">
   <h3>💠 PrivX Tokenomics</h3>
   <p>The <b>PRIVX</b> token powers the entire Shield ecosystem — fixed at <b>21 million PRIVX</b> total supply with no minting, no owner, and a built-in deflationary burn mechanism.</p>
@@ -115,6 +114,126 @@
   <p>As the network expands, PRIVX also fuels the <b>Reward Pool</b>, letting users earn passive returns for keeping the network alive and private.</p>
   <small>⚙️ Deflationary • Autonomous • Utility-Driven by Design</small>
 </div>
+<!-- 🔥 Burn Counter -->
+<div class="section" style="background:#121212;">
+  <h3>🔥 Total PRIVX Burned</h3>
+  <h2 id="burnCounter" class="glow">Loading...</h2>
+  <small id="burnUpdate">⏳ Fetching on-chain data…</small>
+</div>
+
+<!-- 🔒 Vault Tracker -->
+<div class="section" id="vaultTracker" style="background:#121212;">
+  <h3>🔒 Shield Vault Tracker</h3>
+  <p>Total PRIVX currently locked in the Shield Relay:</p>
+  <h2 id="vaultBalance" style="color:#00ff99;font-weight:bold;">Loading...</h2>
+  <small id="vaultUpdate">⏳ Waiting for data…</small>
+</div>
+
+<!-- 💎 Active Reward Pool -->
+<div class="section" style="background:#121212;">
+  <h3>💎 Active Reward Pool</h3>
+  <h2 id="rewardPool" style="color:#8b5cf6;">Loading...</h2>
+  <small id="rewardUpdate">⏳ Syncing with chain...</small>
+</div>
+
+<!-- Connection + Transaction Feed -->
+<p>Status: <span id="status">Disconnected</span></p>
+<button id="connect">🔗 Connect Wallet</button>
+<button id="disconnect" style="display:none;background:#333;">🔌 Disconnect</button>
+
+<div class="section" style="background:#121212;">
+  <h3>📡 Recent Transactions</h3>
+  <div id="txFeed" class="feed">
+    <p style="color:#777;">No recent transactions yet.</p>
+  </div>
+  <small>Updates live when transactions confirm.</small>
+</div>
+
+<!-- 💰 Step 1: Deposit -->
+<div class="section">
+  <h3>💰 Step 1 — Deposit PRIVX</h3>
+  <p>1️⃣ Generate your <b>Secret & Hash</b> using the <a href="https://elitev5.github.io/PrivX/Hash-Generator/" target="_blank">official Hash Generator ↗</a>.</p>
+  <p>2️⃣ Enter your <b>Secret Hash</b> and amount below:</p>
+  <input id="depositAmount" placeholder="Amount (e.g. 10)" /><br/>
+  <input id="depositHash" placeholder="Secret Hash (0x…)" /><br/>
+  <button id="approveBtn">✅ Approve PRIVX (one-time)</button>
+  <button id="depositBtn">🚀 Deposit</button>
+  <small>Approve once, then deposit anytime with new hashes.</small>
+</div>
+
+<!-- 💎 Step 2: Withdraw -->
+<div class="section">
+  <h3>💎 Step 2 — Withdraw Funds</h3>
+  <p>Use your <b>Secret</b> to withdraw to up to 3 wallet addresses within 7 days.</p>
+  <input id="withdrawSecret" placeholder="Secret (UTF-8 string)" /><br/>
+  <input id="wallet1" placeholder="Wallet 1 (0x…)" /><br/>
+  <input id="wallet2" placeholder="Wallet 2 (optional)" /><br/>
+  <input id="wallet3" placeholder="Wallet 3 (optional)" /><br/>
+  <button id="withdrawBtn">💎 Withdraw</button>
+  <small class="warning">⚠️ Anyone with your Secret can withdraw — keep it safe.</small>
+</div>
+
+<!-- 🔥 Step 3: Reclaim -->
+<div class="section">
+  <h3>🔥 Step 3 — Reclaim Expired Deposits</h3>
+  <p>After 7 days, anyone can reclaim unclaimed deposits using their hash.</p>
+  <input id="reclaimHash" placeholder="Deposit Hash (0x…)" /><br/>
+  <button id="reclaimBtn">🔥 Reclaim</button>
+  <small>💎 Reclaim rewards 5% to the caller • 95% burned forever 🔥</small>
+</div>
+
+<!-- 🧩 Claim Helper -->
+<div class="section" style="background:#161616;">
+  <h3>🧩 Claim Helper — Find Unclaimed Deposits</h3>
+  <p>View all expired deposits ready to reclaim.</p>
+  <button id="loadReclaimable">🔍 Load Reclaimable Hashes</button>
+  <div id="reclaimList" class="hashList">Press the button to view reclaimable deposits…</div>
+  <small>Auto-refreshes every 30 seconds • No wallet needed</small>
+</div>
+
+<!-- 🔍 Deposit Checker -->
+<div class="section" style="background:#101010;">
+  <h3>🔍 Check Your Deposit Status</h3>
+  <p>Enter your <b>Deposit Hash</b> to see amount, date, and status.</p>
+  <input id="checkHash" placeholder="Deposit Hash (0x…)" /><br/>
+  <button id="checkBtn">🔍 Check Status</button>
+  <div id="checkResult" style="margin-top:1rem;color:#00ff99;font-family:monospace;"></div>
+  <small>Works even without wallet connection.</small>
+</div>
+
+<!-- 📘 How It Works -->
+<div class="section" style="background:#131313;">
+  <h3>📘 How It Works — Step by Step</h3>
+  <ol style="text-align:left;line-height:1.6em;">
+    <li>Generate a <b>Secret & Hash</b> using the <a href="https://elitev5.github.io/PrivX/Hash-Generator/" target="_blank">Hash Generator</a>.</li>
+    <li>Deposit PRIVX with your hash — it locks privately under keccak256(secret).</li>
+    <li>Withdraw within 7 days using your Secret to any wallets you control.</li>
+    <li>After 7 days, unclaimed deposits become reclaimable and contribute to the Reward Pool.</li>
+    <li>Every interaction adds entropy and strengthens collective privacy.</li>
+  </ol>
+
+  <h3>🧭 Best Practices</h3>
+  <ul style="text-align:left;line-height:1.6em;">
+    <li>🪙 <b>Backup your Secret</b> — lose it, lose access.</li>
+    <li>🔐 <b>Keep your Secret private</b> — anyone can withdraw with it.</li>
+    <li>🕓 <b>Respect the 7-day window</b> — withdraw before expiry.</li>
+    <li>🔥 <b>Expired deposits burn 95%</b> and 5% goes to active reclaimers.</li>
+    <li>💎 <b>More activity = more rewards</b> through the v8 Reward Pool.</li>
+  </ul>
+
+  <p style="color:#8b5cf6;font-weight:bold;margin-top:1rem;">
+    “The more we walk together, the harder we are to follow.”
+  </p>
+</div>
+
+<footer>
+  <hr>
+  <p>PulseChain Native • MIT License • Open Source</p>
+  <p><a href="https://github.com/elitev5/PrivX" target="_blank">View Source on GitHub</a></p>
+  <p style="margin-top:1rem;color:#8b5cf6;font-weight:bold;">“We don’t hide. We outnumber.”</p>
+</footer>
+
+<!-- ==== MAIN LOGIC ==== -->
 <script>
 async function copyCA(id){
   const text=document.getElementById(id).textContent.trim();
@@ -167,7 +286,7 @@ setInterval(updateVault,15000);updateVault();
 setInterval(updateBurn,20000);updateBurn();
 setInterval(updateReward,15000);updateReward();
 
-// 🛠 Network + Wallet
+// 🛠 Wallet & Network
 async function ensurePulse(){
  const chain=await window.ethereum.request({method:"eth_chainId"});
  if(chain!==PULSECHAIN_ID){alert("⚠️ Please switch to PulseChain.");return false;}
@@ -185,8 +304,7 @@ async function connect(){
  contract=new ethers.Contract(relayAddress,abi,signer);
  privx=new ethers.Contract(tokenAddress,["function approve(address,uint256) external returns(bool)"],signer);
  updateVault();updateBurn();updateReward();
- // 📡 Listen for live RewardDistributed events
- contract.on("RewardDistributed",(receiver,amount,remaining)=>{
+ contract.on("RewardDistributed",(receiver,amount)=>{
    const feed=document.getElementById("txFeed");
    const e=document.createElement("div");
    e.className="feed-entry";
@@ -227,10 +345,6 @@ async function deposit(){
  if(!await ensurePulse())return;
  try{
   const value=ethers.utils.parseUnits(amt,18);
-  const gasLimit=await contract.estimateGas.deposit(value,hash);
-  const gasPrice=await provider.getGasPrice();
-  const cost=parseFloat(ethers.utils.formatEther(gasLimit.mul(gasPrice))).toFixed(4);
-  if(!confirm(`Estimated gas ≈ ${cost} PLS\nProceed?`))return;
   const tx=await contract.deposit(value,hash);
   alert("⏳ Deposit pending:\n"+tx.hash);
   await trackTx("Deposit",tx);updateVault();updateReward();
@@ -313,4 +427,5 @@ document.getElementById("reclaimBtn").onclick=reclaim;
 document.getElementById("checkBtn").onclick=checkDepositStatus;
 })();
 </script>
-
+</body>
+</html>
