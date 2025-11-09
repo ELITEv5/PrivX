@@ -7,34 +7,34 @@
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
-body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#eee;text-align:center;padding:2rem;max-width:900px;margin:auto}
-h1{color:#8b5cf6;font-size:2rem;margin-bottom:.3rem}
-h3{color:#00ffcc}
-a{color:#8b5cf6;text-decoration:none}
-a:hover{text-decoration:underline;color:#a36fff}
-button{background:#5c00ff;color:#fff;padding:.6rem 1rem;border:none;border-radius:8px;font-size:1rem;cursor:pointer;margin:.3rem;transition:.2s}
-button:hover{background:#6f14ff}
-button:disabled{background:#333;cursor:not-allowed}
-input{width:90%;max-width:420px;margin:.3rem 0;padding:.6rem;border-radius:8px;border:none;font-size:1rem;text-align:center;background:#161616;color:#00ffcc}
-.section{border:1px solid #222;border-radius:12px;padding:1.3rem;margin:1.5rem 0;background:#111}
-#status{margin-bottom:1rem;color:#f55;font-weight:bold}
-footer{margin-top:2rem;font-size:.9rem;color:#777}
-small{color:#aaa;display:block;margin-top:.5rem}
-.warning{color:#ffcc00}
-hr{border:none;border-top:1px solid #333;margin:1.5rem 0}
-.ca-box{background:#161616;padding:0.6rem;border-radius:8px;margin:0.3rem 0;word-break:break-all}
-.ca-copy{background:#333;color:#00ffcc;border:none;border-radius:6px;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.85rem;margin-left:0.4rem;}
-.ca-copy:hover{background:#555;}
-.explainer{background:#141414;border-left:5px solid #8b5cf6;padding:1rem;border-radius:8px;text-align:left;line-height:1.5em;margin-bottom:1.5rem;}
-.hashList{background:#0f0f0f;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:220px;overflow-y:auto;}
-.hashItem{margin:0.5rem 0;padding:0.5rem;background:#161616;border-radius:8px;font-size:0.9rem;word-break:break-all;}
-.hashItem button{background:#ff006e;padding:0.3rem 0.8rem;font-size:0.8rem;border-radius:6px;margin-left:0.5rem;}
-.timer-glow{color:#ffcc00;text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;animation:pulseGlow 2s infinite alternate;}
-@keyframes pulseGlow{from{text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;}to{text-shadow:0 0 20px #ffaa00,0 0 40px #ff8800;}}
-.feed{background:#0d0d0d;border:1px solid #222;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:180px;overflow-y:auto;}
-.feed-entry{font-size:0.9rem;margin:0.4rem 0;}
-.feed-entry span{font-weight:bold;}
-.glow{color:#8b5cf6;text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff;}
+  body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#eee;text-align:center;padding:2rem;max-width:900px;margin:auto}
+  h1{color:#8b5cf6;font-size:2rem;margin-bottom:.3rem}
+  h3{color:#00ffcc}
+  a{color:#8b5cf6;text-decoration:none}
+  a:hover{text-decoration:underline;color:#a36fff}
+  button{background:#5c00ff;color:#fff;padding:.6rem 1rem;border:none;border-radius:8px;font-size:1rem;cursor:pointer;margin:.3rem;transition:.2s}
+  button:hover{background:#6f14ff}
+  button:disabled{background:#333;cursor:not-allowed}
+  input{width:90%;max-width:420px;margin:.3rem 0;padding:.6rem;border-radius:8px;border:none;font-size:1rem;text-align:center;background:#161616;color:#00ffcc}
+  .section{border:1px solid #222;border-radius:12px;padding:1.3rem;margin:1.5rem 0;background:#111}
+  #status{margin-bottom:1rem;color:#f55;font-weight:bold}
+  footer{margin-top:2rem;font-size:.9rem;color:#777}
+  small{color:#aaa;display:block;margin-top:.5rem}
+  .warning{color:#ffcc00}
+  hr{border:none;border-top:1px solid #333;margin:1.5rem 0}
+  .ca-box{background:#161616;padding:0.6rem;border-radius:8px;margin:0.3rem 0;word-break:break-all}
+  .ca-copy{background:#333;color:#00ffcc;border:none;border-radius:6px;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.85rem;margin-left:0.4rem;}
+  .ca-copy:hover{background:#555;}
+  .explainer{background:#141414;border-left:5px solid #8b5cf6;padding:1rem;border-radius:8px;text-align:left;line-height:1.5em;margin-bottom:1.5rem;}
+  .hashList{background:#0f0f0f;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:220px;overflow-y:auto;}
+  .hashItem{margin:0.5rem 0;padding:0.5rem;background:#161616;border-radius:8px;font-size:0.9rem;word-break:break-all;}
+  .hashItem button{background:#ff006e;padding:0.3rem 0.8rem;font-size:0.8rem;border-radius:6px;margin-left:0.5rem;}
+  .timer-glow{color:#ffcc00;text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;animation:pulseGlow 2s infinite alternate;}
+  @keyframes pulseGlow{from{text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;}to{text-shadow:0 0 20px #ffaa00,0 0 40px #ff8800;}}
+  .feed{background:#0d0d0d;border:1px solid #222;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:180px;overflow-y:auto;}
+  .feed-entry{font-size:0.9rem;margin:0.4rem 0;}
+  .feed-entry span{font-weight:bold;}
+  .glow{color:#8b5cf6;text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff;}
 </style>
 </head>
 
@@ -42,147 +42,180 @@ hr{border:none;border-top:1px solid #333;margin:1.5rem 0}
 <h1>🛡️ PrivX Shield Relay Helper — v8 “Reward Protocol Edition”</h1>
 <p><b>Built by Elite Team6 • © Elite Labs • 2025</b></p>
 
-<div class="explainer">
-<h3>🌐 Why PrivX Exists — Privacy That Accelerates With Participation</h3>
-<p><b>PrivX isn’t about hiding — it’s about blending in faster.</b> Blockchains are transparent by design; every action is visible forever. PrivX transforms transparency into a collective privacy shield powered by math, not secrecy.</p>
-<hr>
-<h4>🧠 The Core Mechanism</h4>
-<p>Each deposit in the Shield Relay is locked under a <code>keccak256(secret)</code> hash. The secret remains private while the hash becomes your on-chain proof. When revealed, it releases your funds — unlinkable in the crowd.</p>
-<hr>
-<h4>🧮 The Mathematics of Participation</h4>
-<pre style="background:#0d0d0d;padding:0.8rem;border-radius:8px;color:#00ffcc;">T ∝ 1 / (A × W)</pre>
-<ul style="text-align:left;line-height:1.5em;">
-<li><b>A</b> = active deposits</li>
-<li><b>W</b> = withdrawal wallets</li>
-<li><b>T</b> = time to unlinkability</li>
-</ul>
-<p>More users = faster privacy.</p>
-<hr>
-<h4>🕓 Time and Entropy</h4>
-<p>Each deposit lasts 7 days. When it expires, 95 % burns, 5 % rewards reclaimers — a perpetual privacy cycle.</p>
+<!-- 🌐 WHY PRIVX SECTION -->
+<div class="explainer" id="why-privx">
+  <h3 style="color:#00ffcc;">🌐 Why PrivX Exists — Privacy That Accelerates With Participation</h3>
+  <p><b>PrivX isn’t about hiding — it’s about blending in faster.</b></p>
+  <p>Modern blockchains are transparent by design. Every wallet, every transfer, every pattern is visible forever.  
+  <b>PrivX</b> transforms this transparency into a collective privacy shield, powered by mathematics — not secrecy.</p>
+  <hr>
+  <h4 style="color:#00ffcc;">🧠 The Core Mechanism</h4>
+  <p>Each deposit in the Shield Relay is locked under a <code>keccak256(secret)</code> hash.  
+  The <b>secret</b> remains private, while the <b>hash</b> becomes your on-chain proof.  
+  When you or a recipient reveals the secret to withdraw, it matches the stored hash and releases the tokens.</p>
+  <p>As hundreds or thousands of users do this — at different times and with different amounts — it becomes statistically impossible to know which deposit maps to which withdrawal.</p>
+  <hr>
+  <h4 style="color:#00ffcc;">🕓 Time and Entropy</h4>
+  <p>Each deposit lasts 7 days before expiry. Within that window, withdrawals are indistinguishable.  
+  When deposits expire, 95% burns permanently and 5% rewards reclaimers — ensuring the vault is always in motion.</p>
 </div>
 
+<!-- 📜 Official CAs -->
 <div class="section" style="background:#141414;">
-<h3>📜 Official Contract Addresses</h3>
-<div class="ca-box">💠 PRIVX Token:<br>
-<code id="caToken">0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986</code>
-<button class="ca-copy" onclick="copyCA('caToken')">Copy</button><br>
-<a href="https://scan.pulsechain.com/address/0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986" target="_blank">View ↗</a></div>
-<div class="ca-box">🛡️ Shield Relay V8:<br>
-<code id="caRelay">0x9ef6144a2f544A28e030e69a79c5B527c8B48f2e</code>
-<button class="ca-copy" onclick="copyCA('caRelay')">Copy</button><br>
-<a href="https://scan.pulsechain.com/address/0x9ef6144a2f544A28e030e69a79c5B527c8B48f2e" target="_blank">View ↗</a></div>
-<small>✅ Immutable • No Admin • No Upgrades • 100 % On-Chain</small>
+  <h3>📜 Official Contract Addresses</h3>
+  <div class="ca-box">
+    💠 PRIVX Token:<br>
+    <code id="caToken">0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986</code>
+    <button class="ca-copy" onclick="copyCA('caToken')">Copy</button><br>
+    <a href="https://scan.pulsechain.com/address/0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986" target="_blank">View ↗</a>
+  </div>
+  <div class="ca-box">
+    🛡️ Shield Relay V8:<br>
+    <code id="caRelay">0x9ef6144a2f544A28e030e69a79c5B527c8B48f2e</code>
+    <button class="ca-copy" onclick="copyCA('caRelay')">Copy</button><br>
+    <a href="https://scan.pulsechain.com/address/0x9ef6144a2f544A28e030e69a79c5B527c8B48f2e" target="_blank">View ↗</a>
+  </div>
+  <small>✅ Verified Immutable Contracts — No Admin, No Upgrades, 100% On-Chain.</small>
 </div>
 
+<!-- 💎 REWARD PROTOCOL -->
 <div class="section" style="background:#121212;">
-<h3>💎 Reward Protocol — Earning While Strengthening Privacy</h3>
-<ul style="text-align:left;line-height:1.5em;">
-<li>🟣 5 % of expired deposits → active reclaimers.</li>
-<li>💠 Reward Metric = total rewards ever earned on-chain.</li>
-<li>⚡ Rewards auto-distributed via <code>Reclaimed</code> events.</li>
-<li>📈 Participation = shared privacy + shared yield.</li>
-</ul>
-<p style="color:#8b5cf6;font-weight:bold;">“In PrivX v8, privacy pays.”</p>
+  <h3>💎 The Reward Protocol — Earning While Strengthening Privacy</h3>
+  <p>PrivX v8 introduces a <b>reward system</b> that turns participation into passive yield.  
+  Every expired deposit contributes 5% to the reward mechanism — distributed to reclaimers and participants who help sustain the privacy field.</p>
+  <ul style="text-align:left;line-height:1.5em;">
+    <li>🟣 <b>5% of expired deposits</b> go to reclaimers automatically.</li>
+    <li>💠 The <b>Reward Metric</b> shows total PRIVX earned network-wide via reclaims.</li>
+    <li>⚡ Rewards are distributed through <code>Reclaimed</code> events — visible live below.</li>
+    <li>📈 The more you interact, the more privacy and potential yield you generate.</li>
+  </ul>
+  <p style="color:#8b5cf6;font-weight:bold;margin-top:0.8rem;">
+    “In PrivX v8, privacy pays back — participation becomes power.”
+  </p>
 </div>
 
+<!-- 💠 TOKENOMICS -->
 <div class="section" style="background:#121212;">
-<h3>💠 PrivX Tokenomics</h3>
-<p><b>21 million PRIVX</b> total supply • no minting • deflationary burn. Withdraw burn 0.3 %, expired deposits burn 95 %, reward 5 % to reclaimers.</p>
-<small>⚙️ Deflationary • Autonomous • Utility by Design</small>
+  <h3>💠 PrivX Tokenomics</h3>
+  <p>The <b>PRIVX</b> token powers the Shield ecosystem — fixed at <b>21 million PRIVX</b> supply with no minting, no owner, and deflationary burns built in.</p>
+  <p>Each use of the Shield Relay burns 0.3% on withdrawal and up to 95% on expiry — with 5% redistributed to reclaimers as rewards.</p>
+  <small>⚙️ Deflationary • Autonomous • Utility by Design</small>
 </div>
 
+<!-- 🔥 Burn Counter -->
 <div class="section" style="background:#121212;">
-<h3>🔥 Total PRIVX Burned</h3>
-<h2 id="burnCounter" class="glow">Loading...</h2>
-<small id="burnUpdate">⏳ Fetching…</small>
+  <h3>🔥 Total PRIVX Burned</h3>
+  <h2 id="burnCounter" class="glow">Loading...</h2>
+  <small id="burnUpdate">⏳ Fetching…</small>
 </div>
 
+<!-- 🔒 Vault Tracker -->
 <div class="section" style="background:#121212;">
-<h3>🔒 Shield Vault Balance</h3>
-<h2 id="vaultBalance" style="color:#00ff99;">Loading...</h2>
-<small id="vaultUpdate">⏳ Syncing…</small>
+  <h3>🔒 Shield Vault Tracker</h3>
+  <h2 id="vaultBalance" style="color:#00ff99;font-weight:bold;">Loading...</h2>
+  <small id="vaultUpdate">⏳ Syncing…</small>
 </div>
 
+<!-- 💎 Reward Metric -->
 <div class="section" style="background:#121212;">
-<h3>💎 Network Reward Metric</h3>
-<h2 id="rewardPool" style="color:#8b5cf6;">Loading...</h2>
-<small id="rewardUpdate">⏳ Fetching cumulative rewards…</small>
+  <h3>💎 Network Reward Metric</h3>
+  <h2 id="rewardPool" style="color:#8b5cf6;">Loading...</h2>
+  <small id="rewardUpdate">⏳ Syncing rewards…</small>
 </div>
 
 <p>Status: <span id="status">Disconnected</span></p>
 <button id="connect">🔗 Connect Wallet</button>
 <button id="disconnect" style="display:none;background:#333;">🔌 Disconnect</button>
 
+<!-- Transaction Feed -->
 <div class="section" style="background:#121212;">
-<h3>📡 Recent Transactions</h3>
-<div id="txFeed" class="feed"><p style="color:#777;">No transactions yet.</p></div>
+  <h3>📡 Recent Transactions</h3>
+  <div id="txFeed" class="feed"><p style="color:#777;">No recent transactions yet.</p></div>
+</div>
+
+<!-- Deposit / Withdraw / Reclaim / Check -->
+<div class="section">
+  <h3>💰 Step 1 — Deposit PRIVX</h3>
+  <input id="depositAmount" placeholder="Amount (e.g. 10)" /><br/>
+  <input id="depositHash" placeholder="Secret Hash (0x…)" /><br/>
+  <button id="approveBtn">✅ Approve PRIVX</button>
+  <button id="depositBtn">🚀 Deposit</button>
 </div>
 
 <div class="section">
-<h3>💰 Deposit PRIVX</h3>
-<input id="depositAmount" placeholder="Amount (e.g. 10)" /><br/>
-<input id="depositHash" placeholder="Secret Hash (0x…)" /><br/>
-<button id="approveBtn">✅ Approve PRIVX</button>
-<button id="depositBtn">🚀 Deposit</button>
+  <h3>💎 Step 2 — Withdraw Funds</h3>
+  <input id="withdrawSecret" placeholder="Secret" /><br/>
+  <input id="wallet1" placeholder="Wallet 1 (0x…)" /><br/>
+  <input id="wallet2" placeholder="Wallet 2 (optional)" /><br/>
+  <input id="wallet3" placeholder="Wallet 3 (optional)" /><br/>
+  <button id="withdrawBtn">💎 Withdraw</button>
 </div>
 
 <div class="section">
-<h3>💎 Withdraw Funds</h3>
-<input id="withdrawSecret" placeholder="Secret" /><br/>
-<input id="wallet1" placeholder="Wallet 1 (0x…)" /><br/>
-<input id="wallet2" placeholder="Wallet 2 (optional)" /><br/>
-<input id="wallet3" placeholder="Wallet 3 (optional)" /><br/>
-<button id="withdrawBtn">💎 Withdraw</button>
-<small class="warning">⚠️ Anyone with your Secret can withdraw within 7 days.</small>
-</div>
-
-<div class="section">
-<h3>🔥 Reclaim Expired Deposits</h3>
-<input id="reclaimHash" placeholder="Deposit Hash (0x…)" /><br/>
-<button id="reclaimBtn">🔥 Reclaim</button>
+  <h3>🔥 Step 3 — Reclaim Expired Deposits</h3>
+  <input id="reclaimHash" placeholder="Deposit Hash (0x…)" /><br/>
+  <button id="reclaimBtn">🔥 Reclaim</button>
 </div>
 
 <div class="section" style="background:#161616;">
-<h3>🧩 Claim Helper</h3>
-<button id="loadReclaimable">🔍 Load Reclaimable Hashes</button>
-<div id="reclaimList" class="hashList">Press to view…</div>
+  <h3>🧩 Claim Helper</h3>
+  <button id="loadReclaimable">🔍 Load Reclaimable Hashes</button>
+  <div id="reclaimList" class="hashList">Press to view…</div>
 </div>
 
 <div class="section" style="background:#101010;">
-<h3>🔍 Check Deposit Status</h3>
-<input id="checkHash" placeholder="Deposit Hash (0x…)" /><br/>
-<button id="checkBtn">🔍 Check Status</button>
-<div id="checkResult" style="margin-top:1rem;color:#00ff99;font-family:monospace;"></div>
+  <h3>🔍 Check Deposit Status</h3>
+  <input id="checkHash" placeholder="Deposit Hash (0x…)" /><br/>
+  <button id="checkBtn">🔍 Check Status</button>
+  <div id="checkResult" style="margin-top:1rem;color:#00ff99;font-family:monospace;"></div>
 </div>
 
-<footer><hr><p>PulseChain Native • MIT License • Open Source</p></footer>
+<footer>
+  <hr>
+  <p>PulseChain Native • MIT License • Open Source</p>
+  <p style="margin-top:1rem;color:#8b5cf6;font-weight:bold;">“We don’t hide. We outnumber.”</p>
+</footer>
 
+<!-- ==== MAIN LOGIC ==== -->
 <script>
 async function copyCA(id){const t=document.getElementById(id).textContent.trim();await navigator.clipboard.writeText(t);alert("✅ Copied:\n"+t);}
 (async()=>{
-const relay="0x9ef6144a2f544A28e030e69a79c5B527c8B48f2e";
-const token="0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-const CHAIN="0x171";
+const relayAddress="0x9ef6144a2f544A28e030e69a79c5B527c8B48f2e";
+const tokenAddress="0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+const PULSECHAIN_ID="0x171";
 let provider,signer,contract,account,privx;
 const abi=await fetch("./abi.json").then(r=>r.json());
 const pubProv=new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
-const pubContract=new ethers.Contract(relay,abi,pubProv);
+const pubContract=new ethers.Contract(relayAddress,abi,pubProv);
 
-function addFeed(label,hash,status){const f=document.getElementById("txFeed");const e=document.createElement("div");e.className="feed-entry";e.innerHTML=`<span>${label}</span>: <a href="https://scan.pulsechain.com/tx/${hash}" target="_blank">${hash.slice(0,10)}…</a> — ${status}`;f.prepend(e);while(f.childNodes.length>8)f.removeChild(f.lastChild);}
+function addTxFeed(label,hash,status){const f=document.getElementById("txFeed");const e=document.createElement("div");e.className="feed-entry";e.innerHTML=`<span>${label}</span>: <a href="https://scan.pulsechain.com/tx/${hash}" target="_blank">${hash.slice(0,10)}…</a> — ${status}`;f.prepend(e);while(f.childNodes.length>8)f.removeChild(f.lastChild);}
 
-async function updateVault(){try{const b=await pubContract.totalVaultBalance();document.getElementById("vaultBalance").textContent=ethers.utils.formatUnits(b,18)+" PRIVX";document.getElementById("vaultUpdate").textContent="✅ Updated "+new Date().toLocaleTimeString();}catch(e){document.getElementById("vaultBalance").textContent="Error";}}
-async function updateBurn(){try{const b=await pubContract.totalBurned();document.getElementById("burnCounter").textContent=ethers.utils.formatUnits(b,18)+" PRIVX 🔥";document.getElementById("burnUpdate").textContent="✅ Synced "+new Date().toLocaleTimeString();}catch(e){document.getElementById("burnCounter").textContent="Error";}}
-async function updateReward(){try{const r=await pubContract.totalReclaimed();document.getElementById("rewardPool").textContent=ethers.utils.formatUnits(r,18)+" PRIVX (cumulative)";document.getElementById("rewardUpdate").textContent="✅ Updated "+new Date().toLocaleTimeString();}catch(e){document.getElementById("rewardPool").textContent="Error";}}
-setInterval(updateVault,15000);setInterval(updateBurn,20000);setInterval(updateReward,15000);updateVault();updateBurn();updateReward();
+async function updateVaultBalance(){try{const b=await pubContract.totalVaultBalance();document.getElementById("vaultBalance").textContent=ethers.utils.formatUnits(b,18)+" PRIVX";document.getElementById("vaultUpdate").textContent="✅ "+new Date().toLocaleTimeString();}catch(e){document.getElementById("vaultBalance").textContent="Error";}}
+async function updateBurnCounter(){try{const b=await pubContract.totalBurned();document.getElementById("burnCounter").textContent=ethers.utils.formatUnits(b,18)+" PRIVX 🔥";document.getElementById("burnUpdate").textContent="✅ "+new Date().toLocaleTimeString();}catch(e){document.getElementById("burnCounter").textContent="Error";}}
+async function updateRewardPool(){try{const r=await pubContract.totalReclaimed();document.getElementById("rewardPool").textContent=ethers.utils.formatUnits(r,18)+" PRIVX 🟣";document.getElementById("rewardUpdate").textContent="✅ "+new Date().toLocaleTimeString();}catch(e){document.getElementById("rewardPool").textContent="Error";}}
+setInterval(updateVaultBalance,15000);setInterval(updateBurnCounter,20000);setInterval(updateRewardPool,15000);updateVaultBalance();updateBurnCounter();updateRewardPool();
 
-async function ensurePulse(){const id=await window.ethereum.request({method:"eth_chainId"});if(id!==CHAIN){alert("Switch to PulseChain.");return false;}return true;}
-async function connect(){if(!window.ethereum)return alert("No wallet found.");provider=new ethers.providers.Web3Provider(window.ethereum);await provider.send("eth_requestAccounts",[]);if(!await ensurePulse())return;signer=provider.getSigner();account=await signer.getAddress();document.getElementById("status").textContent="✅ Connected: "+account.slice(0,6)+"…"+account.slice(-4);document.getElementById("status").style.color="#0f0";document.getElementById("disconnect").style.display="inline-block";contract=new ethers.Contract(relay,abi,signer);privx=new ethers.Contract(token,["function approve(address,uint256) external returns(bool)"],signer);
-contract.on("Reclaimed",(hash,burned,reward)=>{const f=document.getElementById("txFeed");const e=document.createElement("div");e.className="feed-entry";e.innerHTML=`💎 Reward: +${ethers.utils.formatUnits(reward,18)} PRIVX`;f.prepend(e);while(f.childNodes.length>10)f.removeChild(f.lastChild);updateReward();});
-updateVault();updateBurn();updateReward();}
-function disconnect(){provider=signer=contract=privx=account=null;document.getElementById("status").textContent="Disconnected";document.getElementById("status").style.color="#f55";document.getElementById("disconnect").style.display="none";alert("Wallet disconnected.");}
+async function ensurePulse(){const c=await window.ethereum.request({method:"eth_chainId"});if(c!==PULSECHAIN_ID){alert("⚠️ Please switch to PulseChain.");return false;}return true;}
+async function connect(){if(!window.ethereum)return alert("No wallet found.");provider=new ethers.providers.Web3Provider(window.ethereum);await provider.send("eth_requestAccounts",[]);if(!await ensurePulse())return;signer=provider.getSigner();account=await signer.getAddress();document.getElementById("status").textContent="✅ Connected: "+account.slice(0,6)+"…"+account.slice(-4);document.getElementById("status").style.color="#0f0";document.getElementById("disconnect").style.display="inline-block";contract=new ethers.Contract(relayAddress,abi,signer);privx=new ethers.Contract(tokenAddress,["function approve(address,uint256) external returns(bool)"],signer);
+contract.on("Reclaimed",(hash,burned,reward)=>{const f=document.getElementById("txFeed");const e=document.createElement("div");e.className="feed-entry";e.innerHTML=`💎 Reward: +${ethers.utils.formatUnits(reward,18)} PRIVX`;f.prepend(e);while(f.childNodes.length>10)f.removeChild(f.lastChild);updateRewardPool();});
+updateVaultBalance();updateBurnCounter();updateRewardPool();}
+function disconnect(){provider=signer=contract=privx=account=null;document.getElementById("status").textContent="Disconnected";document.getElementById("status").style.color="#f55";document.getElementById("disconnect").style.display="none";}
 
-async function trackTx(label,tx){try{addFeed(label,tx.hash,"🟡 Pending");const r=await tx.wait();addFeed(label,tx.hash,r.status?"🟢 Confirmed":"🔴 Reverted");}catch(e){addFeed(label,tx.hash,"🔴 Failed");}}
+async function trackTx(label,tx){try{addTxFeed(label,tx.hash,"🟡 Pending");const r=await tx.wait();addTxFeed(label,tx.hash,r.status?"🟢 Confirmed":"🔴 Reverted");}catch(e){addTxFeed(label,tx.hash,"🔴 Failed");}}
 
-async function approve(){try{const tx=await privx.approve(relay,ethers.constants.MaxUint256);alert("✅ Approval sent:\n"+tx.hash);trackTx("Approve",tx);}catch(e){alert("Approval failed:\n"+e.message);}}
-async function deposit(){const amt=document.getElementById("depositAmount").value.trim();const h=document.getElementById("depositHash").value.trim();if(!amt||!h)return alert("Enter amount and hash.");if(!await ensurePulse())return;try{const v=ethers.utils.parseUnits(amt,18);const gasLimit=await contract.estimateGas.deposit(v,h);const gasPrice=await provider.getGasPrice();const cost=parseFloat(ethers.utils.formatEther(gasLimit.mul(gasPrice))).toFixed(4);if(!confirm(`Estimated gas ≈ ${cost} PLS\nProceed?`))return;const tx=await
+async function approve(){try{const tx=await privx.approve(relayAddress,ethers.constants.MaxUint256);alert("✅ Approval sent:\n"+tx.hash);trackTx("Approve",tx);}catch(e){alert("Approval failed:\n"+e.message);}}
+async function deposit(){const amt=document.getElementById("depositAmount").value.trim();const h=document.getElementById("depositHash").value.trim();if(!amt||!h)return alert("Enter amount and hash.");if(!await ensurePulse())return;try{const v=ethers.utils.parseUnits(amt,18);let gasLimit;try{gasLimit=await contract.estimateGas.deposit(v,h);}catch{gasLimit=300000;}const tx=await contract.deposit(v,h,{gasLimit});alert("⏳ Deposit sent:\n"+tx.hash);trackTx("Deposit",tx);updateVaultBalance();}catch(e){alert("Deposit failed:\n"+e.message);}}
+async function withdraw(){const s=document.getElementById("withdrawSecret").value.trim();const addrs=["wallet1","wallet2","wallet3"].map(i=>document.getElementById(i).value.trim()).filter(x=>x&&ethers.utils.isAddress(x));if(!s||addrs.length===0)return alert("Enter your Secret and at least one wallet.");if(!await ensurePulse())return;try{const tx=await contract.withdraw(s,addrs);alert("✅ Withdraw sent:\n"+tx.hash);trackTx("Withdraw",tx);updateVaultBalance();}catch(e){alert("Withdraw failed:\n"+e.message);}}
+async function reclaim(){const h=document.getElementById("reclaimHash").value.trim();if(!h)return alert("Enter deposit hash.");if(!await ensurePulse())return;try{const tx=await contract.reclaim(h);alert("🔥 Reclaim sent:\n"+tx.hash);trackTx("Reclaim",tx);updateVaultBalance();updateRewardPool();}catch(e){alert("Reclaim failed:\n"+e.message);}}
+async function loadReclaimable(){const list=document.getElementById("reclaimList");list.innerHTML="⏳ Loading…";try{const hashes=await pubContract.getReclaimableDeposits();if(!hashes.length){list.innerHTML="✅ No reclaimable deposits now.";}else{list.innerHTML="";hashes.forEach(h=>{const d=document.createElement("div");d.className="hashItem";d.innerHTML=`<code>${h}</code> <button onclick="navigator.clipboard.writeText('${h}')">Copy</button>`;list.appendChild(d);});}}catch(e){list.innerHTML="❌ Error: "+e.message;}}
+document.getElementById("loadReclaimable").onclick=loadReclaimable;
+document.getElementById("connect").onclick=connect;
+document.getElementById("disconnect").onclick=disconnect;
+document.getElementById("approveBtn").onclick=approve;
+document.getElementById("depositBtn").onclick=deposit;
+document.getElementById("withdrawBtn").onclick=withdraw;
+document.getElementById("reclaimBtn").onclick=reclaim;
+document.getElementById("checkBtn").onclick=async()=>{const hash=document.getElementById("checkHash").value.trim();const res=document.getElementById("checkResult");if(!hash)return alert("Enter a deposit hash.");res.innerHTML="⏳ Checking…";try{const d=await pubContract.getDeposit(hash);if(d.amount.isZero()){res.innerHTML="❌ No deposit found.";return;}const amt=ethers.utils.formatUnits(d.amount,18);const dep=d.timestamp*1000;const exp=dep+7*24*60*60*1000;const now=Date.now();const remaining=exp-now;const status=d.claimed?"✅ Claimed":remaining<=0?"🔥 Claimable Now":"⏳ Unclaimed";res.innerHTML=`Amount: ${amt} PRIVX<br>Deposited: ${new Date(dep).toLocaleString()}<br>Status: ${status}`;}catch(e){res.innerHTML="❌ "+e.message;}};})();
+</script>
+</body>
+</html>
