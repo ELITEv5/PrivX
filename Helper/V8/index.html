@@ -173,6 +173,15 @@ T ∝ 1 / (A × W)
     from { text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff; }
     to   { text-shadow:0 0 25px #9d72ff,0 0 45px #8b5cf6; }
   }
+@keyframes shieldPulse {
+  0%   { transform: scale(1); opacity: 0.9; }
+  50%  { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.9; }
+}
+#networkActivity {
+  animation: shieldPulse 3s ease-in-out infinite;
+}
+
 </style>
 
 
@@ -328,7 +337,7 @@ async function updateRewardPool() {
   }
 }
 
-// ------------------- NETWORK ACTIVITY METRIC -------------------
+// ------------------- SHIELD STRENGTH METRIC (dynamic color + glowing background) -------------------
 async function updateNetworkActivity() {
   try {
     const [vault, burned, reclaimed, withdrawals] = await Promise.all([
@@ -339,20 +348,51 @@ async function updateNetworkActivity() {
     ]);
 
     const f = x => parseFloat(ethers.utils.formatUnits(x, 18));
-    const totalMove = f(vault) + f(burned) + f(reclaimed);
-    const summary =
-      `Vault ${f(vault).toFixed(2)} | Burn ${f(burned).toFixed(2)} | ` +
-      `Reclaim ${f(reclaimed).toFixed(2)} | Tx ${withdrawals.toString()}`;
+    const vaultVal = f(vault);
+    const burnVal = f(burned);
+    const reclaimVal = f(reclaimed);
 
-    document.getElementById("networkActivity").textContent =
-      `${totalMove.toFixed(2)} PRIVX Total Movement`;
+    const totalMotion = vaultVal + burnVal + reclaimVal;
+    const shieldStrength = (vaultVal / (vaultVal + burnVal)) * 100;
+
+    // Determine color zones
+    let color, glow, bg;
+    if (shieldStrength < 40) {
+      color = "#ff4444"; // red text
+      glow = "0 0 15px #ff0000, 0 0 30px #990000";
+      bg = "linear-gradient(90deg, rgba(80,0,0,0.3), rgba(150,0,0,0.2))";
+    } else if (shieldStrength < 70) {
+      color = "#ffcc00"; // yellow text
+      glow = "0 0 15px #ffcc00, 0 0 30px #cc9900";
+      bg = "linear-gradient(90deg, rgba(120,100,0,0.25), rgba(255,200,0,0.15))";
+    } else {
+      color = "#00ff99"; // green text
+      glow = "0 0 15px #00ff99, 0 0 30px #009966";
+      bg = "linear-gradient(90deg, rgba(0,80,40,0.3), rgba(0,160,80,0.2))";
+    }
+
+    // Apply text & background glow
+    const el = document.getElementById("networkActivity");
+    const section = el.closest(".section");
+    el.textContent = `🛡️ Shield Strength: ${shieldStrength.toFixed(2)}%`;
+    el.style.color = color;
+    el.style.textShadow = glow;
+    el.style.transition = "all 0.6s ease";
+
+    // Animate background gradient
+    if (section) {
+      section.style.background = bg;
+      section.style.transition = "background 1s ease";
+    }
+
     document.getElementById("networkUpdate").textContent =
-      `✅ ${summary} • ${new Date().toLocaleTimeString()}`;
+      `Field size: ${totalMotion.toFixed(2)} PRIVX • ${new Date().toLocaleTimeString()}`;
   } catch (e) {
     document.getElementById("networkActivity").textContent = "Error";
     document.getElementById("networkUpdate").textContent = `⚠️ ${e.message}`;
   }
 }
+
 
 // auto-refresh
 setInterval(updateRewardPool, 15000);
