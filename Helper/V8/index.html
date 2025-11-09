@@ -318,30 +318,36 @@ updateRewardPool();
   // --- Live On-Chain Data Updates ---
 async function updateRewardPool() {
   try {
-    let r;
-    if (pubContract.getRewardPool) {
-      r = await pubContract.getRewardPool();
-    } else if (pubContract.rewardPool) {
-      r = await pubContract.rewardPool();
-    } else {
-      throw new Error("No rewardPool getter found in ABI");
+    let value;
+
+    // Try ABI getters first
+    try {
+      value = await pubContract.getRewardPool();
+    } catch {
+      try {
+        value = await pubContract.rewardPool();
+      } catch {
+        // 🚨 fallback to reading raw storage slot #3
+        const raw = await pubProv.getStorageAt(relayAddress, 3);
+        value = ethers.BigNumber.from(raw);
+      }
     }
 
-    const formatted = ethers.utils.formatUnits(r, 18);
+    const formatted = ethers.utils.formatUnits(value, 18);
     document.getElementById("rewardPool").textContent =
-      formatted + " PRIVX 💎";
+      formatted + " PRIVX 🟣";
     document.getElementById("rewardUpdate").textContent =
       "✅ Synced " + new Date().toLocaleTimeString();
   } catch (e) {
     document.getElementById("rewardPool").textContent = "Error";
     document.getElementById("rewardUpdate").textContent =
       "⚠️ " + e.message;
-    console.warn("RewardPool fetch error:", e);
   }
 }
 
 setInterval(updateRewardPool, 15000);
 updateRewardPool();
+
 
 
   async function ensurePulse(){
