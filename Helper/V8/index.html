@@ -319,33 +319,28 @@ updateRewardPool();
 async function updateRewardPool() {
   try {
     let r;
-    // ✅ Try main getter first
-    try {
+    if (pubContract.getRewardPool) {
       r = await pubContract.getRewardPool();
-    } catch {
-      // 🔄 Fallback for public variable getter
+    } else if (pubContract.rewardPool) {
       r = await pubContract.rewardPool();
+    } else {
+      throw new Error("No rewardPool getter found in ABI");
     }
 
     const formatted = ethers.utils.formatUnits(r, 18);
     document.getElementById("rewardPool").textContent =
-      formatted + " PRIVX 🟣";
+      formatted + " PRIVX 💎";
     document.getElementById("rewardUpdate").textContent =
       "✅ Synced " + new Date().toLocaleTimeString();
   } catch (e) {
     document.getElementById("rewardPool").textContent = "Error";
-    document.getElementById("rewardUpdate").textContent = e.message;
+    document.getElementById("rewardUpdate").textContent =
+      "⚠️ " + e.message;
+    console.warn("RewardPool fetch error:", e);
   }
 }
 
-// Regular refresh intervals
-setInterval(updateVaultBalance, 15000);
-setInterval(updateBurnCounter, 20000);
 setInterval(updateRewardPool, 15000);
-
-// Initial data pulls on load
-updateVaultBalance();
-updateBurnCounter();
 updateRewardPool();
 
 
