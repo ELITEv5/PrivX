@@ -315,22 +315,39 @@ updateRewardPool();
     }
   }
 
-  async function updateRewardPool(){
-    try{
-      const r = await pubContract.totalReclaimed();
-      document.getElementById("rewardPool").textContent = ethers.utils.formatUnits(r,18) + " PRIVX 🟣";
-      document.getElementById("rewardUpdate").textContent = "✅ Synced " + new Date().toLocaleTimeString();
-    } catch(e){
-      document.getElementById("rewardPool").textContent = "Error";
+  // --- Live On-Chain Data Updates ---
+async function updateRewardPool() {
+  try {
+    let r;
+    // ✅ Try main getter first
+    try {
+      r = await pubContract.getRewardPool();
+    } catch {
+      // 🔄 Fallback for public variable getter
+      r = await pubContract.rewardPool();
     }
-  }
 
-  setInterval(updateVaultBalance,15000);
-  setInterval(updateBurnCounter,20000);
-  setInterval(updateRewardPool,15000);
-  updateVaultBalance();
-  updateBurnCounter();
-  updateRewardPool();
+    const formatted = ethers.utils.formatUnits(r, 18);
+    document.getElementById("rewardPool").textContent =
+      formatted + " PRIVX 🟣";
+    document.getElementById("rewardUpdate").textContent =
+      "✅ Synced " + new Date().toLocaleTimeString();
+  } catch (e) {
+    document.getElementById("rewardPool").textContent = "Error";
+    document.getElementById("rewardUpdate").textContent = e.message;
+  }
+}
+
+// Regular refresh intervals
+setInterval(updateVaultBalance, 15000);
+setInterval(updateBurnCounter, 20000);
+setInterval(updateRewardPool, 15000);
+
+// Initial data pulls on load
+updateVaultBalance();
+updateBurnCounter();
+updateRewardPool();
+
 
   async function ensurePulse(){
     const c = await window.ethereum.request({method:"eth_chainId"});
