@@ -337,7 +337,7 @@ async function updateRewardPool() {
   }
 }
 
-// ------------------- SHIELD STRENGTH METRIC (dynamic color + glowing background) -------------------
+// ------------------- SHIELD STRENGTH METRIC (realistic thresholds tuned for current scale) -------------------
 async function updateNetworkActivity() {
   try {
     const [vault, burned, reclaimed, withdrawals] = await Promise.all([
@@ -351,27 +351,36 @@ async function updateNetworkActivity() {
     const vaultVal = f(vault);
     const burnVal = f(burned);
     const reclaimVal = f(reclaimed);
-
     const totalMotion = vaultVal + burnVal + reclaimVal;
-    const shieldStrength = (vaultVal / (vaultVal + burnVal)) * 100;
 
-    // Determine color zones
+    // --- Shield strength scaling ---
+    // 0–15k = red | 15k–60k = yellow | >60k = green
+    let shieldStrength;
+    if (totalMotion < 15000) {
+      shieldStrength = (totalMotion / 15000) * 40;  // 0–40%
+    } else if (totalMotion < 60000) {
+      shieldStrength = 40 + ((totalMotion - 15000) / 45000) * 30;  // 40–70%
+    } else {
+      shieldStrength = 70 + Math.min((totalMotion - 60000) / 60000 * 30, 30); // cap at 100%
+    }
+
+    // --- Color logic ---
     let color, glow, bg;
     if (shieldStrength < 40) {
-      color = "#ff4444"; // red text
+      color = "#ff4444";
       glow = "0 0 15px #ff0000, 0 0 30px #990000";
       bg = "linear-gradient(90deg, rgba(80,0,0,0.3), rgba(150,0,0,0.2))";
     } else if (shieldStrength < 70) {
-      color = "#ffcc00"; // yellow text
+      color = "#ffcc00";
       glow = "0 0 15px #ffcc00, 0 0 30px #cc9900";
       bg = "linear-gradient(90deg, rgba(120,100,0,0.25), rgba(255,200,0,0.15))";
     } else {
-      color = "#00ff99"; // green text
+      color = "#00ff99";
       glow = "0 0 15px #00ff99, 0 0 30px #009966";
       bg = "linear-gradient(90deg, rgba(0,80,40,0.3), rgba(0,160,80,0.2))";
     }
 
-    // Apply text & background glow
+    // --- Apply visuals ---
     const el = document.getElementById("networkActivity");
     const section = el.closest(".section");
     el.textContent = `🛡️ Shield Strength: ${shieldStrength.toFixed(2)}%`;
@@ -379,20 +388,18 @@ async function updateNetworkActivity() {
     el.style.textShadow = glow;
     el.style.transition = "all 0.6s ease";
 
-    // Animate background gradient
     if (section) {
       section.style.background = bg;
       section.style.transition = "background 1s ease";
     }
 
     document.getElementById("networkUpdate").textContent =
-      `Field size: ${totalMotion.toFixed(2)} PRIVX • ${new Date().toLocaleTimeString()}`;
+      `Network movement: ${totalMotion.toFixed(2)} PRIVX • ${new Date().toLocaleTimeString()}`;
   } catch (e) {
     document.getElementById("networkActivity").textContent = "Error";
     document.getElementById("networkUpdate").textContent = `⚠️ ${e.message}`;
   }
 }
-
 
 // auto-refresh
 setInterval(updateRewardPool, 15000);
