@@ -289,6 +289,10 @@ async function copyCA(id){
   const abi = await fetch("./abi.json").then(r=>r.json());
   const pubProv = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
   const pubContract = new ethers.Contract(relayAddress, abi, pubProv);
+  // disable wallet-only buttons until connected
+["approveBtn","depositBtn","withdrawBtn","reclaimBtn"].forEach(id=>{
+  document.getElementById(id).disabled = true;
+});
 
   function addTxFeed(label, hash, status){
     const f = document.getElementById("txFeed");
@@ -390,6 +394,9 @@ setInterval(updateNetworkActivity, 20000);
     document.getElementById("status").textContent = "✅ Connected: " + account.slice(0,6) + "…"+ account.slice(-4);
     document.getElementById("status").style.textShadow = "0 0 6px #0f0";
     document.getElementById("disconnect").style.display = "inline-block";
+    ["approveBtn","depositBtn","withdrawBtn","reclaimBtn"].forEach(id=>{
+  document.getElementById(id).disabled = false;
+});
     contract = new ethers.Contract(relayAddress, abi, signer);
     privx = new ethers.Contract(tokenAddress, ["function approve(address,uint256) external returns(bool)"], signer);
 
@@ -547,13 +554,29 @@ setInterval(updateNetworkActivity, 20000);
       const secs = Math.floor((remaining/1000)%60);
       res.style.color = "#00ff99";
       res.innerHTML = `Amount: ${amt} PRIVX<br>Deposited: ${new Date(dep).toLocaleString()}<br>Status: ⏳ Unclaimed<br><span class="timer-glow">🕓 Time until claimable: ${dys}d ${hrs}h ${mins}m ${secs}s</span>`;
-    } catch(e){
-      res.style.color = "#f55";
-      res.textContent = "❌ Error: "+e.message;
-    }
-  };
+      } catch(e){
+    res.style.color = "#f55";
+    res.textContent = "❌ Error: "+e.message;
+  }
+};
+
+// ✅ --- PUBLIC DATA AUTO-UPDATER (works without wallet) ---
+updateVaultBalance();
+updateBurnCounter();
+updateRewardPool();
+updateNetworkActivity();
+loadReclaimable();
+
+// Periodic refresh timers for public data
+setInterval(updateVaultBalance, 20000);
+setInterval(updateBurnCounter, 25000);
+setInterval(updateRewardPool, 20000);
+setInterval(updateNetworkActivity, 25000);
+setInterval(loadReclaimable, 60000);
+
 })();
 </script>
 </body>
 </html>
+
 
