@@ -180,13 +180,6 @@ T ∝ 1 / (A × W)
 <button id="connect">🔗 Connect Wallet</button>
 <button id="disconnect" style="display:none;background:#333;">🔌 Disconnect</button>
 
-<!-- Transaction Feed -->
-<div class="section" style="background:#121212;">
-  <h3>📡 Recent Transactions</h3>
-  <div id="txFeed" class="feed">
-    <p style="color:#777;">No recent transactions yet.</p>
-  </div>
-</div>
 
 <!-- DEPOSIT -->
 <div class="section">
@@ -294,15 +287,6 @@ async function copyCA(id){
   document.getElementById(id).disabled = true;
 });
 
-  function addTxFeed(label, hash, status){
-    const f = document.getElementById("txFeed");
-    const e = document.createElement("div");
-    e.className = "feed-entry";
-    e.innerHTML = `<span>${label}</span>: <a href="https://scan.pulsechain.com/tx/${hash}" target="_blank">${hash.slice(0,10)}…</a> — ${status}`;
-    f.prepend(e);
-    while(f.childNodes.length > 8) f.removeChild(f.lastChild);
-  }
-
   async function updateVaultBalance(){
     try{
       const b = await pubContract.totalVaultBalance();
@@ -400,15 +384,11 @@ setInterval(updateNetworkActivity, 20000);
     contract = new ethers.Contract(relayAddress, abi, signer);
     privx = new ethers.Contract(tokenAddress, ["function approve(address,uint256) external returns(bool)"], signer);
 
-    contract.on("Reclaimed", (hash, burned, reward) => {
-      const f = document.getElementById("txFeed");
-      const e = document.createElement("div");
-      e.className = "feed-entry";
-      e.innerHTML = `💎 Reward: +${ethers.utils.formatUnits(reward,18)} PRIVX`;
-      f.prepend(e);
-      while(f.childNodes.length > 10) f.removeChild(f.lastChild);
-      updateRewardPool();
-    });
+    // Auto-refresh reward pool when Reclaim events fire
+contract.on("Reclaimed", () => {
+  updateRewardPool();
+});
+
 
     updateVaultBalance();
     updateBurnCounter();
@@ -423,21 +403,10 @@ setInterval(updateNetworkActivity, 20000);
     alert("Wallet disconnected.");
   }
 
-  async function trackTx(label, txp){
-    try{
-      addTxFeed(label, txp.hash, "🟡 Pending");
-      const r = await txp.wait();
-      addTxFeed(label, txp.hash, r.status ? "🟢 Confirmed":"🔴 Reverted");
-    } catch(e){
-      addTxFeed(label, txp.hash, "🔴 Failed");
-    }
-  }
-
   async function approve(){
     try{
       const tx = await privx.approve(relayAddress, ethers.constants.MaxUint256);
       alert("✅ Approval sent:\n"+tx.hash);
-      trackTx("Approve", tx);
     } catch(e){
       alert("Approval failed:\n"+e.message);
     }
@@ -455,7 +424,6 @@ setInterval(updateNetworkActivity, 20000);
       catch{ gasLimit = 300000; }
       const tx = await contract.deposit(v, h, {gasLimit});
       alert("⏳ Deposit sent:\n"+tx.hash);
-      trackTx("Deposit", tx);
       updateVaultBalance();
       updateRewardPool();
     } catch(e){
@@ -471,7 +439,6 @@ setInterval(updateNetworkActivity, 20000);
     try{
       const tx = await contract.withdraw(s, addrs);
       alert("✅ Withdraw submitted!\nTx: "+tx.hash);
-      trackTx("Withdraw", tx);
       updateVaultBalance();
       updateRewardPool();
     } catch(e){
@@ -486,7 +453,6 @@ setInterval(updateNetworkActivity, 20000);
     try{
       const tx = await contract.reclaim(h);
       alert("🔥 Reclaim submitted!\nTx: "+tx.hash);
-      trackTx("Reclaim", tx);
       updateVaultBalance();
       updateBurnCounter();
       updateRewardPool();
