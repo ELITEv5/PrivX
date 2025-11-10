@@ -159,6 +159,15 @@ T ∝ 1 / (A × W)
     the pulse of the Shield. Privacy increases with % Updated every 20 seconds.
   </p>
   <h2 id="networkActivity" class="glow-pulse">Loading...</h2>
+  <small id="networkStatusMsg" style="display:block;margin-top:.5rem;color:#aaa;">
+  ⏳ Initializing shield field…
+</small>
+
+<!-- Live Feed -->
+<div id="shieldFeed" class="feed" style="margin-top:1rem;text-align:left;">
+  <div class="feed-entry">🧠 System booted — monitoring shield events.</div>
+</div>
+
   <small id="networkUpdate">⏳ Fetching on-chain data…</small>
 </div>
 
@@ -177,6 +186,24 @@ T ∝ 1 / (A × W)
   0%   { transform: scale(1); opacity: 0.9; }
   50%  { transform: scale(1.03); opacity: 1; }
   100% { transform: scale(1); opacity: 0.9; }
+  }
+  @keyframes auraPulse {
+  0%   { box-shadow: 0 0 10px rgba(0,255,100,0.1); }
+  50%  { box-shadow: 0 0 40px rgba(0,255,100,0.25); }
+  100% { box-shadow: 0 0 10px rgba(0,255,100,0.1); }
+}
+.shield-section-active {
+  animation: auraPulse 6s ease-in-out infinite;
+  border: 1px solid rgba(0,255,150,0.25);
+  transition: all .6s ease;
+}
+.feed-entry {
+  font-size:.9rem;
+  margin:.3rem 0;
+  opacity:.9;
+}
+.feed-entry.fade {
+  opacity:.5;
 }
 #networkActivity {
   animation: shieldPulse 3s ease-in-out infinite;
@@ -291,6 +318,7 @@ async function copyCA(id){
   const abi = await fetch("./abi.json").then(r=>r.json());
   const pubProv = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
   const pubContract = new ethers.Contract(relayAddress, abi, pubProv);
+  
   // disable wallet-only buttons until connected
 ["approveBtn","depositBtn","withdrawBtn","reclaimBtn"].forEach(id=>{
   document.getElementById(id).disabled = true;
@@ -338,6 +366,7 @@ async function updateRewardPool() {
 }
 
 // ------------------- SHIELD STRENGTH METRIC (realistic thresholds tuned for current scale) -------------------
+// ------------------- SHIELD STRENGTH METRIC (with aura, status, and live feed) -------------------
 async function updateNetworkActivity() {
   try {
     const [vault, burned, reclaimed, withdrawals] = await Promise.all([
@@ -357,9 +386,9 @@ async function updateNetworkActivity() {
     // 0–15k = red | 15k–60k = yellow | >60k = green
     let shieldStrength;
     if (totalMotion < 15000) {
-      shieldStrength = (totalMotion / 15000) * 40;  // 0–40%
+      shieldStrength = (totalMotion / 15000) * 40; // 0–40%
     } else if (totalMotion < 60000) {
-      shieldStrength = 40 + ((totalMotion - 15000) / 45000) * 30;  // 40–70%
+      shieldStrength = 40 + ((totalMotion - 15000) / 45000) * 30; // 40–70%
     } else {
       shieldStrength = 70 + Math.min((totalMotion - 60000) / 60000 * 30, 30); // cap at 100%
     }
@@ -391,6 +420,21 @@ async function updateNetworkActivity() {
     if (section) {
       section.style.background = bg;
       section.style.transition = "background 1s ease";
+      section.classList.add("shield-section-active");
+      section.style.setProperty("animation-duration", `${8 - (shieldStrength / 20)}s`);
+    }
+
+    // --- Status message update ---
+    const phrase = getShieldPhrase(shieldStrength);
+    document.getElementById("networkStatusMsg").textContent = phrase;
+
+    // --- Live feed update ---
+    if (shieldStrength < 40) {
+      addFeed("🧩 Field weak — more deposits needed.");
+    } else if (shieldStrength < 70) {
+      addFeed("⚡ Field stabilizing — privacy strengthening.");
+    } else {
+      addFeed("🛡️ Shield optimized — full privacy field achieved.");
     }
 
     document.getElementById("networkUpdate").textContent =
@@ -401,19 +445,39 @@ async function updateNetworkActivity() {
   }
 }
 
-// auto-refresh
+
+// ---------- Live Feed helper ----------
+function addFeed(msg) {
+  const feed = document.getElementById("shieldFeed");
+  const div = document.createElement("div");
+  div.className = "feed-entry";
+  div.textContent = `${new Date().toLocaleTimeString()} • ${msg}`;
+  feed.prepend(div);
+  // limit to last 12 entries
+  while (feed.children.length > 12) feed.lastChild.remove();
+}
+
+// ---------- Status phrase helper ----------
+function getShieldPhrase(strength) {
+  if (strength < 30) return "🧩 Field weak — more deposits needed.";
+  if (strength < 70) return "⚡ Field stabilizing — privacy strengthening.";
+  return "🛡️ Full privacy field — shield optimized.";
+}
+
+// ------------------- AUTO-REFRESH TIMERS -------------------
 setInterval(updateRewardPool, 15000);
 setInterval(updateNetworkActivity, 20000);
 
-
-  async function ensurePulse(){
-    const c = await window.ethereum.request({method:"eth_chainId"});
-    if(c !== PULSECHAIN_ID){
-      alert("⚠️ Please switch to PulseChain.");
-      return false;
-    }
-    return true;
+// ------------------- NETWORK & WALLET -------------------
+async function ensurePulse() {
+  const c = await window.ethereum.request({ method: "eth_chainId" });
+  if (c !== PULSECHAIN_ID) {
+    alert("⚠️ Please switch to PulseChain.");
+    return false;
   }
+  return true;
+}
+
 
   async function connect(){
     if(!window.ethereum) return alert("No wallet found.");
