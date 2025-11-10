@@ -198,16 +198,32 @@ T ∝ 1 / (A × W)
   transition: all .6s ease;
 }
 .feed-entry {
-  font-size:.9rem;
-  margin:.3rem 0;
-  opacity:.9;
+  font-size: .9rem;
+  margin: .3rem 0;
+  opacity: .9;
+  animation: entryGlow 1s ease-out;
 }
+
+@keyframes entryGlow {
+  0%   { text-shadow: 0 0 15px rgba(255,255,255,0.6); }
+  100% { text-shadow: none; }
+}
+
 .feed-entry.fade {
-  opacity:.5;
+  opacity: 0.5;
+  transition: opacity 2s ease;
 }
+
+
 #networkActivity {
   animation: shieldPulse 3s ease-in-out infinite;
 }
+
+/* ---- Color-coded live feed entries ---- */
+.feed-entry[data-type="weak"] { color: #ff6666; }
+.feed-entry[data-type="stabilizing"] { color: #ffcc00; }
+.feed-entry[data-type="optimized"] { color: #00ff99; }
+
 
 </style>
 
@@ -365,7 +381,6 @@ async function updateRewardPool() {
   }
 }
 
-// ------------------- SHIELD STRENGTH METRIC (realistic thresholds tuned for current scale) -------------------
 // ------------------- SHIELD STRENGTH METRIC (with aura, status, and live feed) -------------------
 async function updateNetworkActivity() {
   try {
@@ -428,14 +443,14 @@ async function updateNetworkActivity() {
     const phrase = getShieldPhrase(shieldStrength);
     document.getElementById("networkStatusMsg").textContent = phrase;
 
-    // --- Live feed update ---
-    if (shieldStrength < 40) {
-      addFeed("🧩 Field weak — more deposits needed.");
-    } else if (shieldStrength < 70) {
-      addFeed("⚡ Field stabilizing — privacy strengthening.");
-    } else {
-      addFeed("🛡️ Shield optimized — full privacy field achieved.");
-    }
+    // --- Live feed update (with color types) ---
+if (shieldStrength < 40) {
+  addFeed("🧩 Field weak — more deposits needed.", "weak");
+} else if (shieldStrength < 70) {
+  addFeed("⚡ Field stabilizing — privacy strengthening.", "stabilizing");
+} else {
+  addFeed("🛡️ Shield optimized — full privacy field achieved.", "optimized");
+}
 
     document.getElementById("networkUpdate").textContent =
       `Network movement: ${totalMotion.toFixed(2)} PRIVX • ${new Date().toLocaleTimeString()}`;
@@ -446,16 +461,23 @@ async function updateNetworkActivity() {
 }
 
 
-// ---------- Live Feed helper ----------
-function addFeed(msg) {
+// ---------- Live Feed helper (color-coded + fade) ----------
+function addFeed(msg, type) {
   const feed = document.getElementById("shieldFeed");
   const div = document.createElement("div");
   div.className = "feed-entry";
+  if (type) div.dataset.type = type;
   div.textContent = `${new Date().toLocaleTimeString()} • ${msg}`;
   feed.prepend(div);
-  // limit to last 12 entries
+  // limit to last 12
   while (feed.children.length > 12) feed.lastChild.remove();
+
+  // gently fade older entries after a few seconds
+  setTimeout(() => {
+    div.classList.add("fade");
+  }, 45000); // 45s fade timer
 }
+
 
 // ---------- Status phrase helper ----------
 function getShieldPhrase(strength) {
@@ -499,7 +521,6 @@ async function ensurePulse() {
 contract.on("Reclaimed", () => {
   updateRewardPool();
 });
-
 
     updateVaultBalance();
     updateBurnCounter();
