@@ -41,7 +41,7 @@
 </head>
 
 <body>
-<!-- 🔷 PrivX Header (Glowing Logo + Subtitle + Fade-In) -->
+<!-- 🔷 PrivX Header (Glowing Logo + Subtitle + Fade-In, Large Version) -->
 <div class="privx-header">
   <h1>
     <img src="PRIV.png" alt="PrivX Shield Logo">
@@ -54,7 +54,7 @@
 /* --- Header Fade + Glow Animation --- */
 .privx-header {
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.8rem;
   opacity: 0;
   animation: fadeIn 1.6s ease-out forwards;
 }
@@ -63,29 +63,35 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-bottom: 0.4rem;
+  margin: 0;
   animation: glowPulse 4s ease-in-out infinite alternate;
 }
 
 .privx-header img {
-  max-width: 300px;
+  width: 90%;
+  max-width: 540px; /* 🟣 larger logo for desktop */
   height: auto;
-  filter: drop-shadow(0 0 8px rgba(139,92,246,0.7));
+  filter: drop-shadow(0 0 10px rgba(139,92,246,0.8));
+  transition: transform 0.5s ease, filter 0.5s ease;
+}
+
+.privx-header img:hover {
+  transform: scale(1.04);
+  filter: drop-shadow(0 0 20px rgba(139,92,246,1)) drop-shadow(0 0 40px rgba(91,0,255,0.8));
 }
 
 .privx-header .edition {
   color: #8b5cf6;
   font-weight: bold;
-  font-size: 1.2rem;
-  margin: 0;
+  font-size: 1.4rem;
+  margin-top: 0.6rem;
   text-shadow: 0 0 10px rgba(139,92,246,0.8), 0 0 20px rgba(91,0,255,0.6);
 }
 
 .privx-header .credits {
   color: #00ffcc;
-  font-size: 0.95rem;
-  margin-top: 0.3rem;
+  font-size: 1rem;
+  margin-top: 0.4rem;
 }
 
 @keyframes fadeIn {
@@ -95,8 +101,18 @@
 
 @keyframes glowPulse {
   0% { filter: drop-shadow(0 0 6px rgba(139,92,246,0.6)) drop-shadow(0 0 12px rgba(91,0,255,0.4)); }
-  50% { filter: drop-shadow(0 0 14px rgba(139,92,246,0.9)) drop-shadow(0 0 30px rgba(91,0,255,0.7)); }
-  100% { filter: drop-shadow(0 0 8px rgba(139,92,246,0.6)) drop-shadow(0 0 20px rgba(91,0,255,0.5)); }
+  50% { filter: drop-shadow(0 0 18px rgba(139,92,246,0.9)) drop-shadow(0 0 40px rgba(91,0,255,0.8)); }
+  100% { filter: drop-shadow(0 0 10px rgba(139,92,246,0.6)) drop-shadow(0 0 25px rgba(91,0,255,0.5)); }
+}
+
+/* 🧭 Responsive tweak for mobile */
+@media (max-width: 600px) {
+  .privx-header img {
+    max-width: 320px;
+  }
+  .privx-header .edition {
+    font-size: 1.1rem;
+  }
 }
 </style>
 
