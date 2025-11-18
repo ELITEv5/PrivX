@@ -237,7 +237,20 @@
   <small id="networkUpdate">⏳ Fetching on-chain data…</small>
 </div>
 
-<!-- STEP 0 — COMMIT SECRET -->
+<!-- 💰 STEP 1 — DEPOSIT -->
+<div class="section">
+  <h3>💰 Step 1 — Deposit PRIVX</h3>
+  <p>1️⃣ Generate your <b>Commit, Secret, & Deposit Hashes</b> using the <a href="https://elitev5.github.io/PrivX/Hash-Generator/V9" target="_blank">official Hash Generator ↗</a>.</p>
+  <p>2️⃣ Copy your <b>Hash</b> and paste it below.</p>
+  <p>3️⃣ Enter how much PRIVX you want to deposit (e.g. 10).</p>
+  <input id="depositAmount" placeholder="Amount (e.g. 10)" /><br/>
+  <input id="depositHash" placeholder="Secret Hash (0x…)" /><br/>
+  <button id="approveBtn">✅ Approve PRIVX</button>
+  <button id="depositBtn">🚀 Deposit</button>
+  <small>⚙️ Approve once, then deposit anytime with new hashes.</small>
+</div>
+  
+<!-- STEP 2 — COMMIT SECRET -->
 <div class="section" style="background:#161616;">
   <h3>🕵️ Step 0 — Commit Your Secret (Activate Stealth Protection)</h3>
   <p>
@@ -255,22 +268,8 @@
     The system automatically derives it from your Secret for you — just enter the same Secret you generated earlier.
   </small>
 </div>
-
-
-<!-- 💰 STEP 1 — DEPOSIT -->
-<div class="section">
-  <h3>💰 Step 1 — Deposit PRIVX</h3>
-  <p>1️⃣ Generate your <b>Secret & Hash</b> using the <a href="https://elitev5.github.io/PrivX/Hash-Generator/V9" target="_blank">official Hash Generator ↗</a>.</p>
-  <p>2️⃣ Copy your <b>Hash</b> and paste it below.</p>
-  <p>3️⃣ Enter how much PRIVX you want to deposit (e.g. 10).</p>
-  <input id="depositAmount" placeholder="Amount (e.g. 10)" /><br/>
-  <input id="depositHash" placeholder="Secret Hash (0x…)" /><br/>
-  <button id="approveBtn">✅ Approve PRIVX</button>
-  <button id="depositBtn">🚀 Deposit</button>
-  <small>⚙️ Approve once, then deposit anytime with new hashes.</small>
-</div>
-
-<!-- 💎 STEP 2 — WITHDRAW -->
+  
+<!-- 💎 STEP 3 — WITHDRAW -->
 <div class="section">
   <h3>💎 Step 2 — Withdraw Funds (Stealth Mode)</h3>
   <p>After committing your secret, withdraw within 7 days to up to 3 wallets.  
