@@ -49,7 +49,13 @@
   <p class="edition">🛡️ PrivX Shield Relay — V9 “Stealth Withdraw Edition”</p>
   <p class="credits">Built by Elite Team6 • © Elite Labs • 2025</p>
 </div>
-
+<!-- 🔗 WALLET CONNECTION -->
+<div id="walletConnect" style="margin:1.2rem 0;">
+  <button id="connect">🔗 Connect Wallet</button>
+  <button id="disconnect" style="display:none;">❌ Disconnect</button>
+  <div id="status" style="margin-top:0.5rem;color:#aaa;">Not connected</div>
+  <small style="color:#777;">Required for deposits, commits, and withdrawals.</small>
+</div>
 <style>
 /* --- Header Fade + Glow Animation --- */
 .privx-header {
@@ -234,12 +240,22 @@
 <!-- STEP 0 — COMMIT SECRET -->
 <div class="section" style="background:#161616;">
   <h3>🕵️ Step 0 — Commit Your Secret (Activate Stealth Protection)</h3>
-  <p>Before withdrawing, you must commit your secret.  
-     This prevents others from front-running your withdrawal by hiding your intent from the mempool.</p>
-  <input id="commitSecret" placeholder="Enter your Secret (same one used to withdraw)" /><br/>
+  <p>
+    Before withdrawing, you must <b>commit</b> your Secret.  
+    This step quietly registers your intent on-chain without revealing any data in the mempool.
+    It ensures that when you later reveal your Secret to withdraw, no one can copy or front-run your transaction.
+  </p>
+
+  <input id="commitSecret" placeholder="Enter your Secret (same one used in the Hash Generator)" /><br/>
   <button id="commitBtn">🕶️ Commit Secret</button>
-  <small>⏳ Wait ~5 minutes after committing before withdrawing.</small>
+
+  <small>
+    ⏳ Wait about 5 minutes after committing before withdrawing.<br>
+    💡 <b>Tip:</b> You don’t need to calculate any “commit hash.”  
+    The system automatically derives it from your Secret for you — just enter the same Secret you generated earlier.
+  </small>
 </div>
+
 
 <!-- 💰 STEP 1 — DEPOSIT -->
 <div class="section">
