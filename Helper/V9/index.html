@@ -405,30 +405,74 @@ async function copyCA(id){
     return true;
   }
 
-  async function connect(){
-    if(!window.ethereum) return alert("No wallet found.");
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts",[]);
-    if(!await ensurePulse()) return;
+  async function connect() {
+  try {
+    if (typeof window.ethereum === "undefined") {
+      alert("⚠️ No wallet detected. Please install MetaMask, Rabby, or another EVM-compatible wallet.");
+      return;
+    }
+
+    // Detect multiple providers (Rabby, MetaMask, Coinbase, etc.)
+    let provider;
+    if (window.ethereum.providers?.length) {
+      // Prefer Rabby if available
+      const selected = window.ethereum.providers.find(p => p.isRabby) 
+                    || window.ethereum.providers[0];
+      provider = new ethers.providers.Web3Provider(selected, "any");
+    } else {
+      provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+    }
+
+    // Request wallet access
+    await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
     account = await signer.getAddress();
-    document.getElementById("status").textContent = "✅ Connected: "+account.slice(0,6)+"…"+account.slice(-4);
-    document.getElementById("status").style.textShadow = "0 0 6px #0f0";
+
+    // Detect and verify network
+    const chainId = await provider.send("eth_chainId", []);
+    if (chainId !== "0x171") { // PulseChain = 0x171 (369 decimal)
+      alert("⚠️ Please switch your wallet network to PulseChain (Chain ID 369).");
+      return;
+    }
+
+    document.getElementById("status").textContent = "✅ Connected: " + account.slice(0, 6) + "…" + account.slice(-4);
+    document.getElementById("status").style.color = "#00ff99";
     document.getElementById("disconnect").style.display = "inline-block";
-    ["approveBtn","depositBtn","withdrawBtn","reclaimBtn","commitBtn"].forEach(id=>document.getElementById(id).disabled=false);
+    ["approveBtn","depositBtn","withdrawBtn","reclaimBtn","commitBtn"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = false;
+    });
+
+    // Set up provider and contract (safe for later deployment)
     contract = new ethers.Contract(relayAddress, abi, signer);
     privx = new ethers.Contract(tokenAddress, ["function approve(address,uint256) external returns(bool)"], signer);
 
-    contract.on("Reclaimed", ()=>updateRewardPool());
-    updateVaultBalance();updateBurnCounter();updateRewardPool();
-  }
+    provider.on("accountsChanged", () => window.location.reload());
+    provider.on("chainChanged", () => window.location.reload());
 
-  function disconnect(){
-    provider=signer=contract=privx=account=null;
-    document.getElementById("status").textContent="Disconnected";
-    document.getElementById("status").style.color="#f55";
-    document.getElementById("disconnect").style.display="none";
+    console.log("✅ Wallet connected:", account);
+  } catch (err) {
+    console.error("Wallet connection failed:", err);
+    alert("❌ Wallet connection failed.\n" + err.message);
   }
+}
+
+
+  function disconnect() {
+  provider = signer = contract = privx = account = null;
+
+  document.getElementById("status").textContent = "❌ Disconnected";
+  document.getElementById("status").style.color = "#f55";
+  document.getElementById("disconnect").style.display = "none";
+
+  // Disable wallet-only buttons again
+  ["approveBtn", "depositBtn", "withdrawBtn", "reclaimBtn", "commitBtn"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = true;
+  });
+
+  console.log("🔌 Wallet disconnected");
+}
 
   // --- V9 Commit Function ---
   async function commitSecret(){
