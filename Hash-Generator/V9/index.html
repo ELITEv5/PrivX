@@ -21,7 +21,6 @@
     margin-bottom: 0.5rem;
   }
   h3 { color: #00ffcc; }
-  a { color: #8b5cf6; }
   button {
     padding: 0.7rem 1.2rem;
     background: #5c00ff;
@@ -95,22 +94,21 @@
 
 <body>
 <h1>🔐 PrivX Hash Generator — V9 “Commit–Reveal Edition”</h1>
-<p>This tool runs 100 % locally in your browser. Nothing is uploaded — pure client-side privacy.</p>
+<p>This tool runs 100% locally in your browser. No wallet connection required. No data leaves your device.</p>
 
 <div class="instructions">
   <h3>🧭 Step-by-Step Guide</h3>
   <ol>
-    <li>Enter your <b>wallet address</b> (this ensures your commit hash matches your wallet).</li>
-    <li>Click <b>Generate</b> — the tool will create:
+    <li>Enter your <b>wallet address</b> (used for your unique commit hash).</li>
+    <li>Click <b>Generate</b> — this creates:
       <ul>
-        <li><b>Secret</b> — private string for withdrawal.</li>
-        <li><b>Deposit Hash</b> — used to deposit PRIVX into the Shield.</li>
-        <li><b>Commit Hash</b> — used to pre-commit before withdrawing.</li>
+        <li>🧩 <b>Secret</b> — private string used for withdrawal.</li>
+        <li>💠 <b>Deposit Hash</b> — used in the deposit step.</li>
+        <li>🔒 <b>Commit Hash</b> — used before withdrawing.</li>
       </ul>
     </li>
-    <li>Copy or save your results securely. Losing your <b>Secret</b> = lost funds.</li>
+    <li>Copy or save your results securely. <b>Losing your Secret = losing your funds.</b></li>
   </ol>
-  <p style="color:#00ffcc;">💡 You can download this page and run it offline for maximum privacy.</p>
 </div>
 
 <div class="section">
@@ -122,21 +120,21 @@
   <button id="saveTxt" disabled>💾 Save .txt</button>
 
   <pre id="output">Click “Generate” to create your secret, deposit hash, and commit hash.</pre>
-  <small>Keep your <b>Secret</b> private — only the deposit & commit hashes are safe to share.</small>
+  <small>💡 The Secret is private — only Deposit and Commit hashes are safe to share.</small>
 </div>
 
 <p><a href="#" id="toggleAdvanced">📘 Show Advanced Explanation</a></p>
 
 <div id="advanced">
   <h3>🔍 Understanding the Commit–Reveal Process</h3>
-  <p>The Shield Relay V9 protects users from front-running by separating actions into three distinct cryptographic steps:</p>
+  <p>The Shield Relay V9 uses a two-step privacy mechanism to defeat front-running:</p>
   <ol>
-    <li><b>Deposit</b> → Hash of your Secret (<code>keccak256(secret)</code>) locks your funds.</li>
-    <li><b>Commit</b> → Hash of your Secret + Wallet (<code>keccak256(secret + address)</code>) reserves withdrawal rights.</li>
-    <li><b>Withdraw</b> → Reveal the Secret to prove ownership; contract checks your prior commit.</li>
+    <li><b>Deposit</b> — You lock tokens with a hash of your Secret (<code>keccak256(secret)</code>).</li>
+    <li><b>Commit</b> — You pre-register a hash tied to your address (<code>keccak256(secret + address)</code>).</li>
+    <li><b>Withdraw</b> — You reveal your Secret, the contract checks your commit, and releases funds.</li>
   </ol>
-  <p>Because every wallet’s commit hash is unique, even identical secrets from two users cannot be linked.  
-     This ensures privacy across the network while blocking predictive bots.</p>
+  <p>Even if two people choose the same secret, their commit hashes are unique because they depend on wallet addresses.  
+     This makes linking deposits and withdrawals statistically impossible.</p>
 </div>
 
 <script>
@@ -149,32 +147,41 @@ document.getElementById("toggleAdvanced").onclick = (e)=>{
   adv.style.display = adv.style.display === "block" ? "none" : "block";
 };
 
-document.getElementById("generate").onclick = () => {
-  const userAddr = document.getElementById("walletInput").value.trim();
-  if (!ethers.utils.isAddress(userAddr)) return alert("Enter a valid wallet address (0x...)");
+document.getElementById("generate").onclick = async () => {
+  const wallet = document.getElementById("walletInput").value.trim();
+  if (!ethers.utils.isAddress(wallet)) {
+    alert("❌ Please enter a valid wallet address (0x...)");
+    return;
+  }
 
   if (secret && depositHash) {
     if (!confirm("⚠️ You already have an unsaved Secret.\nGenerate a new one?")) return;
   }
 
+  // Generate random secret
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   secret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
 
-  const abi = new ethers.utils.AbiCoder();
-  const encoded = abi.encode(["string"], [secret]);
+  // Compute hashes
+  const abiCoder = new ethers.utils.AbiCoder();
+  const encoded = abiCoder.encode(["string"], [secret]);
   depositHash = ethers.utils.keccak256(encoded);
 
-  const combined = ethers.utils.concat([
-    ethers.utils.toUtf8Bytes(secret),
-    ethers.utils.arrayify(userAddr)
-  ]);
-  commitHash = ethers.utils.keccak256(combined);
+  const packed = ethers.utils.solidityPack(["string", "address"], [secret, wallet]);
+  commitHash = ethers.utils.keccak256(packed);
 
+  // Display
   document.getElementById("output").textContent =
-    `🧩 Secret (for withdrawal):\n${secret}\n\n` +
-    `💠 Deposit Hash (use for deposit):\n${depositHash}\n\n` +
-    `🔒 Commit Hash (use before withdraw):\n${commitHash}\n\n` +
-    `⚠️ Keep your Secret private. Deposit & Commit hashes are safe to share.`;
+`🧩 Secret (for withdrawal):
+${secret}
+
+💠 Deposit Hash (for deposit):
+${depositHash}
+
+🔒 Commit Hash (for commit before withdraw):
+${commitHash}
+
+⚠️ Keep your Secret private. The Deposit and Commit hashes are safe to share when needed.`;
 
   document.getElementById("copyAll").disabled = false;
   document.getElementById("saveTxt").disabled = false;
@@ -184,12 +191,12 @@ document.getElementById("generate").onclick = () => {
 document.getElementById("copyAll").onclick = async ()=>{
   const text = `Secret:\n${secret}\n\nDeposit Hash:\n${depositHash}\n\nCommit Hash:\n${commitHash}`;
   await navigator.clipboard.writeText(text);
-  alert("All values copied ✅");
+  alert("✅ All values copied to clipboard");
   warnBanner.style.display = "none";
 };
 
 document.getElementById("saveTxt").onclick = ()=>{
-  const text =
+  const content =
 `PrivX V9 Commit–Reveal Generator Output
 
 Secret (keep private):
@@ -198,12 +205,13 @@ ${secret}
 Deposit Hash (for deposit):
 ${depositHash}
 
-Commit Hash (for commit):
+Commit Hash (for commit before withdraw):
 ${commitHash}
 
-⚠️ Only share the Secret with trusted recipients within 7 days.
+⚠️ Share only the Secret with trusted recipients within 7 days.
 After 7 days, funds become reclaimable (95% burn / 5% reward).`;
-  const blob = new Blob([text], {type:"text/plain"});
+
+  const blob = new Blob([content], { type: "text/plain" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = "PrivX-V9-secret-commit.txt";
@@ -222,3 +230,4 @@ After 7 days, funds become reclaimable (95% burn / 5% reward).`;
 </footer>
 </body>
 </html>
+
