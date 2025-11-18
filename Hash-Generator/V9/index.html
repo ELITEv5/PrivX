@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PrivX Hash Generator — V9 Commit–Reveal Edition</title>
+<title>PrivX Hash Generator — V9 “Commit–Reveal Edition”</title>
 <script src="./ethers.umd.min.js"></script>
 
 <style>
@@ -81,6 +81,18 @@
     margin-bottom: 1rem;
     font-weight: bold;
   }
+  #successMessage {
+    display: none;
+    color: #00ff99;
+    font-weight: bold;
+    text-shadow: 0 0 10px #00ff99;
+    margin-top: 0.8rem;
+    animation: glowPulse 2s infinite alternate;
+  }
+  @keyframes glowPulse {
+    from { text-shadow: 0 0 10px #00ff99; }
+    to { text-shadow: 0 0 20px #00ffcc; }
+  }
 </style>
 </head>
 
@@ -94,12 +106,12 @@
     <li>Enter your <b>wallet address</b> (for commit hash generation).</li>
     <li>Click <b>Generate</b> to create:
       <ul>
-        <li>🧩 <b>Secret</b> — used for withdrawal (keep private).</li>
-        <li>💠 <b>Deposit Hash</b> — used to deposit PRIVX.</li>
-        <li>🔒 <b>Commit Hash</b> — used before withdrawal.</li>
+        <li>🧩 <b>Secret</b> — used to withdraw your deposit (keep this private).</li>
+        <li>💠 <b>Deposit Hash</b> — used when depositing PRIVX.</li>
+        <li>🔒 <b>Commit Hash</b> — used before withdrawing (anti front-run).</li>
       </ul>
     </li>
-    <li>Copy or save the results. <b>Lose the Secret = lose the funds.</b></li>
+    <li>Copy or save your results securely. <b>Lose the Secret = lose the funds.</b></li>
   </ol>
   <p style="color:#00ffcc;">💡 You can save this file and run it offline for maximum privacy.</p>
 </div>
@@ -112,6 +124,8 @@
   <button id="copyAll" disabled>📋 Copy All</button>
   <button id="saveTxt" disabled>💾 Save .txt</button>
 
+  <div id="successMessage">✅ Hashes generated successfully!</div>
+
   <pre id="output">Click “Generate” to create your Secret, Deposit Hash, and Commit Hash.</pre>
   <small>💡 The Secret is private — only Deposit and Commit hashes are safe to share.</small>
 </div>
@@ -119,8 +133,14 @@
 <script>
 let secret = "", depositHash = "", commitHash = "";
 const warnBanner = document.getElementById("unsavedWarning");
+const successMsg = document.getElementById("successMessage");
 
 document.getElementById("generate").onclick = () => {
+  if (typeof ethers === "undefined") {
+    alert("❌ Ethers.js not loaded. Ensure ethers.umd.min.js is in the same folder.");
+    return;
+  }
+
   const wallet = document.getElementById("walletInput").value.trim();
   if (!ethers.utils.isAddress(wallet)) {
     alert("❌ Please enter a valid wallet address (0x...)");
@@ -131,21 +151,18 @@ document.getElementById("generate").onclick = () => {
     if (!confirm("⚠️ You already have an unsaved Secret.\nGenerate a new one?")) return;
   }
 
-  // Generate random 32-byte hex secret
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   secret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
 
-  // Compute hashes using ethers.js (this matches Solidity)
   const abi = new ethers.utils.AbiCoder();
   const encoded = abi.encode(["string"], [secret]);
   depositHash = ethers.utils.keccak256(encoded);
 
-  // Commit hash includes secret + wallet (matches Solidity keccak256(abi.encodePacked(secret, msg.sender)))
   const packed = ethers.utils.solidityPack(["string", "address"], [secret, wallet]);
   commitHash = ethers.utils.keccak256(packed);
 
   document.getElementById("output").textContent =
-`🧩 Secret (for withdrawal):
+`🧩 Secret (keep private, used for withdrawal):
 ${secret}
 
 💠 Deposit Hash (for deposit):
@@ -159,18 +176,22 @@ ${commitHash}
   document.getElementById("copyAll").disabled = false;
   document.getElementById("saveTxt").disabled = false;
   warnBanner.style.display = "block";
+
+  // show confirmation animation
+  successMsg.style.display = "block";
+  successMsg.textContent = "✅ Hashes generated successfully!";
+  setTimeout(() => successMsg.style.display = "none", 8000);
 };
 
-document.getElementById("copyAll").onclick = async ()=>{
+document.getElementById("copyAll").onclick = async () => {
   const text = `Secret:\n${secret}\n\nDeposit Hash:\n${depositHash}\n\nCommit Hash:\n${commitHash}`;
   await navigator.clipboard.writeText(text);
   alert("✅ All values copied to clipboard");
   warnBanner.style.display = "none";
 };
 
-document.getElementById("saveTxt").onclick = ()=>{
-  const content =
-`PrivX V9 Commit–Reveal Generator Output
+document.getElementById("saveTxt").onclick = () => {
+  const content = `PrivX V9 Commit–Reveal Generator Output
 
 Secret (keep private):
 ${secret}
@@ -203,4 +224,5 @@ After 7 days, funds become reclaimable (95% burn / 5% reward).`;
 </footer>
 </body>
 </html>
+
 
