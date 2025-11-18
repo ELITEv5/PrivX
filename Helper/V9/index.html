@@ -41,8 +41,64 @@
 </head>
 
 <body>
-<h1><img src="https://ibb.co/9mR190P4" alt="PrivX Logo"/>PrivX Shield Relay Helper — V9 “Stealth Withdraw Edition”</h1>
-<p><b>Built by Elite Team6 • © Elite Labs • 2025</b></p>
+<!-- 🔷 PrivX Header (Glowing Logo + Subtitle + Fade-In) -->
+<div class="privx-header">
+  <h1>
+    <img src="PRIV.png" alt="PrivX Shield Logo">
+  </h1>
+  <p class="edition">🛡️ PrivX Shield Relay — V9 “Stealth Withdraw Edition”</p>
+  <p class="credits">Built by Elite Team6 • © Elite Labs • 2025</p>
+</div>
+
+<style>
+/* --- Header Fade + Glow Animation --- */
+.privx-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  animation: fadeIn 1.6s ease-out forwards;
+}
+
+.privx-header h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 0.4rem;
+  animation: glowPulse 4s ease-in-out infinite alternate;
+}
+
+.privx-header img {
+  max-width: 300px;
+  height: auto;
+  filter: drop-shadow(0 0 8px rgba(139,92,246,0.7));
+}
+
+.privx-header .edition {
+  color: #8b5cf6;
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin: 0;
+  text-shadow: 0 0 10px rgba(139,92,246,0.8), 0 0 20px rgba(91,0,255,0.6);
+}
+
+.privx-header .credits {
+  color: #00ffcc;
+  font-size: 0.95rem;
+  margin-top: 0.3rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glowPulse {
+  0% { filter: drop-shadow(0 0 6px rgba(139,92,246,0.6)) drop-shadow(0 0 12px rgba(91,0,255,0.4)); }
+  50% { filter: drop-shadow(0 0 14px rgba(139,92,246,0.9)) drop-shadow(0 0 30px rgba(91,0,255,0.7)); }
+  100% { filter: drop-shadow(0 0 8px rgba(139,92,246,0.6)) drop-shadow(0 0 20px rgba(91,0,255,0.5)); }
+}
+</style>
 
 <!-- 🌐 WHY PRIVX SECTION -->
 <div class="explainer" id="why-privx">
