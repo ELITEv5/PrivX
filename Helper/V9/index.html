@@ -236,17 +236,81 @@
   <h3>🛡️ Shield Strength (Network Privacy Field)</h3>
   <p>
     Tracks total PRIVX in motion — deposits, burns, and reclaims — 
-    the pulse of the Shield. Privacy increases with activity. Updated every 20 seconds.
+    the pulse of the Shield. Privacy increases with % Updated every 20 seconds.
   </p>
   <h2 id="networkActivity" class="glow-pulse">Loading...</h2>
-  <small id="networkStatusMsg" style="display:block;margin-top:.5rem;color:#aaa;">⏳ Initializing shield field…</small>
+  <small id="networkStatusMsg" style="display:block;margin-top:.5rem;color:#aaa;">
+  ⏳ Initializing shield field…
+</small>
 
-  <!-- Live Feed -->
-  <div id="shieldFeed" class="feed" style="margin-top:1rem;text-align:left;">
-    <div class="feed-entry">🧠 System booted — monitoring shield events.</div>
-  </div>
+<!-- Live Feed -->
+<div id="shieldFeed" class="feed" style="margin-top:1rem;text-align:left;">
+  <div class="feed-entry">🧠 System booted — monitoring shield events.</div>
+</div>
+
   <small id="networkUpdate">⏳ Fetching on-chain data…</small>
 </div>
+
+<style>
+  /* 🌌 soft pulse animation for the main number */
+  .glow-pulse {
+    color:#8b5cf6;
+    text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff,0 0 30px #3c00aa;
+    animation:pulseMetric 2s infinite alternate;
+  }
+  @keyframes pulseMetric {
+    from { text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff; }
+    to   { text-shadow:0 0 25px #9d72ff,0 0 45px #8b5cf6; }
+  }
+@keyframes shieldPulse {
+  0%   { transform: scale(1); opacity: 0.9; }
+  50%  { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.9; }
+  }
+  @keyframes auraPulse {
+  0%   { box-shadow: 0 0 10px rgba(0,255,100,0.1); }
+  50%  { box-shadow: 0 0 40px rgba(0,255,100,0.25); }
+  100% { box-shadow: 0 0 10px rgba(0,255,100,0.1); }
+}
+.shield-section-active {
+  animation: auraPulse 6s ease-in-out infinite;
+  border: 1px solid rgba(0,255,150,0.25);
+  transition: all .6s ease;
+}
+.feed-entry {
+  font-size: .9rem;
+  margin: .3rem 0;
+  opacity: .9;
+  animation: entryGlow 1s ease-out;
+}
+
+@keyframes entryGlow {
+  0%   { text-shadow: 0 0 15px rgba(255,255,255,0.6); }
+  100% { text-shadow: none; }
+}
+
+.feed-entry.fade {
+  opacity: 0.5;
+  transition: opacity 2s ease;
+}
+
+
+#networkActivity {
+  animation: shieldPulse 3s ease-in-out infinite;
+}
+
+/* ---- Color-coded live feed entries ---- */
+.feed-entry[data-type="weak"] { color: #ff6666; }
+.feed-entry[data-type="stabilizing"] { color: #ffcc00; }
+.feed-entry[data-type="optimized"] { color: #00ff99; }
+
+
+</style>
+
+
+<p>Status: <span id="status">Disconnected</span></p>
+<button id="connect">🔗 Connect Wallet</button>
+<button id="disconnect" style="display:none;background:#333;">🔌 Disconnect</button>
 
 <!-- 💰 STEP 1 — DEPOSIT -->
 <div class="section">
