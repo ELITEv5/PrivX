@@ -303,14 +303,17 @@
 .feed-entry[data-type="weak"] { color: #ff6666; }
 .feed-entry[data-type="stabilizing"] { color: #ffcc00; }
 .feed-entry[data-type="optimized"] { color: #00ff99; }
-
+.section.shield-section-active[data-zone="optimized"] {
+  box-shadow: 0 0 25px rgba(0,255,150,0.25), inset 0 0 25px rgba(0,255,150,0.15);
+}
+.section.shield-section-active[data-zone="stabilizing"] {
+  box-shadow: 0 0 25px rgba(255,220,0,0.25), inset 0 0 25px rgba(255,220,0,0.15);
+}
+.section.shield-section-active[data-zone="weak"] {
+  box-shadow: 0 0 25px rgba(255,80,80,0.25), inset 0 0 25px rgba(255,80,80,0.15);
+}
 
 </style>
-
-
-<p>Status: <span id="status">Disconnected</span></p>
-<button id="connect">🔗 Connect Wallet</button>
-<button id="disconnect" style="display:none;background:#333;">🔌 Disconnect</button>
 
 <!-- 💰 STEP 1 — DEPOSIT -->
 <div class="section">
@@ -571,7 +574,74 @@ function disconnect() {
     }
     return true;
   }
+// 🛡️ Shield Strength Live Tracker
+async function updateShieldStrength() {
+  try {
+    const vault = await pubContract.totalVaultBalance();
+    const burned = await pubContract.totalBurned();
+    const reclaimed = await pubContract.totalReclaimed?.() ?? ethers.BigNumber.from(0);
 
+    const totalActive = vault.add(reclaimed);
+    const totalActivity = vault.add(burned).add(reclaimed);
+    const pool = await pubContract.rewardPool();
+
+    // --- Calculate "strength" score (simple heuristic) ---
+    const ratio = totalActive.mul(10000).div(totalActivity.add(1)).toNumber() / 100;
+    const poolBoost = Math.min(Number(ethers.utils.formatUnits(pool, 18)) / 1000, 20); // + up to 20%
+
+    let score = ratio + poolBoost;
+    if (score > 100) score = 100;
+
+    // --- Determine color zone ---
+    let color, label;
+    if (score >= 70) {
+      color = "#00ff99"; label = "🟢 Optimized";
+    } else if (score >= 40) {
+      color = "#ffcc00"; label = "🟡 Stabilizing";
+    } else {
+      color = "#ff6666"; label = "🔴 Weak";
+    }
+
+    // --- Update main metric display ---
+    const activityEl = document.getElementById("networkActivity");
+    activityEl.style.color = color;
+    activityEl.innerHTML = `${score.toFixed(1)}% Shield Strength<br><small>${label}</small>`;
+
+    document.getElementById("networkUpdate").textContent = `✅ Updated ${new Date().toLocaleTimeString()}`;
+    document.getElementById("networkStatusMsg").textContent = "Shield status active.";
+
+    // --- Animate background aura color ---
+    const section = activityEl.closest(".section");
+    section.classList.add("shield-section-active");
+    section.dataset.zone = label.includes("Weak")
+  ? "weak"
+  : label.includes("Stabilizing")
+  ? "stabilizing"
+  : "optimized";
+
+    section.style.borderColor = color + "44";
+
+    // --- Live Feed Entry ---
+    const feed = document.getElementById("shieldFeed");
+    const entry = document.createElement("div");
+    entry.className = "feed-entry";
+    entry.dataset.type = label.includes("Weak")
+      ? "weak"
+      : label.includes("Stabilizing")
+      ? "stabilizing"
+      : "optimized";
+    entry.textContent = `${new Date().toLocaleTimeString()} — ${label}: Vault ${ethers.utils.formatUnits(vault, 18)} PRIVX, Pool ${ethers.utils.formatUnits(pool, 18)} PRIVX`;
+    feed.prepend(entry);
+
+    // Fade old entries
+    const allEntries = feed.querySelectorAll(".feed-entry");
+    if (allEntries.length > 10) allEntries[allEntries.length - 1].remove();
+    allEntries.forEach((e, i) => { if (i > 5) e.classList.add("fade"); });
+  } catch (e) {
+    console.warn("Shield strength update failed:", e);
+    document.getElementById("networkStatusMsg").textContent = "⚠️ Error reading shield metrics.";
+  }
+}
   // ====== MAIN ACTIONS ======
   async function commitHashDirect() {
   const commitHash = document.getElementById("commitHashInput").value.trim();
@@ -812,8 +882,20 @@ function disconnect() {
 
 
   // === Auto-refreshes every 30s ===
-  updateVaultBalance(); updateBurnCounter(); updateRewardPool(); loadReclaimable();
-  setInterval(() => { updateVaultBalance(); updateBurnCounter(); updateRewardPool(); loadReclaimable(); }, 30000);
+updateVaultBalance();
+updateBurnCounter();
+updateRewardPool();
+loadReclaimable();
+updateShieldStrength(); // 🛡️ NEW
+
+setInterval(() => {
+  updateVaultBalance();
+  updateBurnCounter();
+  updateRewardPool();
+  loadReclaimable();
+  updateShieldStrength(); // 🛡️ NEW
+}, 30000);
+
 })();
 </script>
 </body>
