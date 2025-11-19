@@ -546,33 +546,119 @@ function disconnect() {
   }
 
   async function deposit() {
-    const amt = document.getElementById("depositAmount").value.trim();
-    const h = document.getElementById("depositHash").value.trim();
-    if (!amt || !h) return alert("Enter amount and hash.");
-    if (!await ensurePulse()) return;
-    try {
-      const v = ethers.utils.parseUnits(amt, 18);
-      const tx = await contract.deposit(v, h);
-      alert("⏳ Deposit sent:\n" + tx.hash);
-      updateVaultBalance(); updateRewardPool();
-    } catch (e) {
-      alert("Deposit failed:\n" + e.message);
-    }
+  const amt = document.getElementById("depositAmount").value.trim();
+  const h = document.getElementById("depositHash").value.trim();
+
+  if (!amt || !h) {
+    alert("⚠️ Please enter both amount and deposit hash.");
+    return;
   }
 
-  async function withdraw() {
-    const s = document.getElementById("withdrawSecret").value.trim();
-    const addrs = ["wallet1", "wallet2", "wallet3"].map(id => document.getElementById(id).value.trim()).filter(a => a && ethers.utils.isAddress(a));
-    if (!s || addrs.length === 0) return alert("Enter your Secret and at least one wallet address.");
-    if (!await ensurePulse()) return;
-    try {
-      const tx = await contract.withdraw(s, addrs);
-      alert("✅ Withdraw submitted (Stealth Mode)\nTx: " + tx.hash);
-      updateVaultBalance(); updateRewardPool();
-    } catch (e) {
-      alert("Withdraw failed:\n" + e.message);
+  if (!await ensurePulse()) return;
+
+  try {
+    console.log("💰 Deposit requested:", amt, "PRIVX");
+    console.log("🔹 Using Deposit Hash:", h);
+    console.log("🔹 From wallet:", account);
+
+    // Parse amount to correct decimals (18)
+    const v = ethers.utils.parseUnits(amt, 18);
+
+    // Confirm token approval before deposit
+    const allowance = await privx.allowance(account, relayAddress);
+    if (allowance.lt(v)) {
+      alert("⚠️ Insufficient allowance. Please approve PRIVX first.");
+      return;
     }
+
+    // Send the deposit transaction
+    const tx = await contract.deposit(v, h);
+    console.log("📡 Deposit TX sent:", tx.hash);
+
+    // Wait for confirmation
+    const receipt = await tx.wait();
+    console.log("✅ Deposit confirmed in block:", receipt.blockNumber);
+
+    // User feedback
+    alert(
+      `✅ Deposit confirmed on-chain!\n\n` +
+      `Amount: ${amt} PRIVX\n` +
+      `Deposit Hash: ${h}\n` +
+      `Tx Hash: ${tx.hash}\n` +
+      `Block: ${receipt.blockNumber}\n\n` +
+      `View on PulseScan:\nhttps://scan.pulsechain.com/tx/${tx.hash}\n\n` +
+      `💡 Tip: Save this hash. It’s required for reclaiming if not withdrawn within 7 days.`
+    );
+
+    // Refresh display
+    updateVaultBalance();
+    updateRewardPool();
+  } catch (e) {
+    console.error("❌ Deposit failed:", e);
+
+    const msg = e.data?.message || e.message || "Unknown error";
+    alert(
+      `❌ Deposit failed:\n\n${msg}\n\n` +
+      `💡 Common causes:\n` +
+      `• Deposit hash already used.\n` +
+      `• Wrong format (should start with 0x).\n` +
+      `• Not enough PRIVX or allowance.\n` +
+      `• Wallet not connected or wrong network.`
+    );
   }
+}
+
+
+  async function withdraw() {
+  const s = document.getElementById("withdrawSecret").value.trim();
+  const addrs = ["wallet1", "wallet2", "wallet3"]
+    .map(id => document.getElementById(id).value.trim())
+    .filter(a => a && ethers.utils.isAddress(a));
+
+  if (!s || addrs.length === 0)
+    return alert("⚠️ Enter your Secret and at least one valid wallet address.");
+
+  if (!await ensurePulse()) return;
+
+  try {
+    console.log("🔹 Withdraw initiated with Secret:", s);
+    console.log("🔹 Recipient wallets:", addrs);
+
+    // Send withdrawal transaction
+    const tx = await contract.withdraw(s, addrs);
+    console.log("📡 Withdraw TX sent:", tx.hash);
+
+    // Wait for confirmation
+    const receipt = await tx.wait();
+    console.log("✅ Withdraw TX confirmed in block:", receipt.blockNumber);
+
+    // Success alert with link
+    alert(
+      `💎 Withdraw successful (Stealth Mode)\n\n` +
+      `Tx Hash: ${tx.hash}\n` +
+      `Block: ${receipt.blockNumber}\n` +
+      `\nView on PulseScan:\nhttps://scan.pulsechain.com/tx/${tx.hash}\n\n` +
+      `⚠️ Reminder: Anyone with your Secret can withdraw during the 7-day window.`
+    );
+
+    // Update displayed metrics
+    updateVaultBalance();
+    updateRewardPool();
+  } catch (e) {
+    console.error("❌ Withdraw failed:", e);
+
+    // Detailed alert for debugging
+    const msg = e.data?.message || e.message || "Unknown error";
+    alert(
+      `❌ Withdraw failed:\n\n${msg}\n\n` +
+      `💡 Common causes:\n` +
+      `• No valid commit found for this secret.\n` +
+      `• Commit expired (waited too long >5min window).\n` +
+      `• Wrong secret (must match deposit).\n` +
+      `• Using a different wallet than the one that committed.`
+    );
+  }
+}
 
   async function reclaim() {
     const h = document.getElementById("reclaimHash").value.trim();
