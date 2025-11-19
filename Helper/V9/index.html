@@ -413,7 +413,17 @@ async function connect() {
 
     // Initialize contracts (safe even if not yet deployed)
     contract = new ethers.Contract(relayAddress, abi, signer);
-    privx = new ethers.Contract(tokenAddress, ["function approve(address,uint256) external returns(bool)"], signer);
+    privx = new ethers.Contract(
+  tokenAddress,
+  [
+    "function approve(address,uint256) external returns (bool)",
+    "function allowance(address owner,address spender) view returns (uint256)",
+    "function balanceOf(address account) view returns (uint256)",
+    "function transfer(address to,uint256 amount) external returns (bool)",
+    "function decimals() view returns (uint8)"
+  ],
+  signer
+);
 
     // Handle network/account changes
     provider.on("accountsChanged", () => window.location.reload());
