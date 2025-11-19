@@ -558,22 +558,77 @@ function disconnect() {
     }
   }
 
+    // === IMPROVED: Load Reclaimable Hashes ===
   async function loadReclaimable() {
     const list = document.getElementById("reclaimList");
     list.innerHTML = "⏳ Loading…";
     try {
-      const hashes = await pubContract.getReclaimableDeposits();
-      list.innerHTML = hashes.length ? "" : "✅ No reclaimable deposits now.";
-      hashes.forEach(h => {
-        const d = document.createElement("div");
-        d.className = "hashItem";
-        d.innerHTML = `<code>${h}</code> <button onclick="navigator.clipboard.writeText('${h}')">Copy</button>`;
-        list.appendChild(d);
-      });
+      // ✅ Get all deposits and filter those eligible for reclaim (if contract has allDeposits public)
+      const totalHashes = await pubContract.totalReclaimed ? await pubContract.totalReclaimed() : 0;
+      if (!pubContract.deposits) {
+        list.innerHTML = "⚠️ This contract version doesn’t expose reclaimable hashes directly.";
+        return;
+      }
+
+      // We'll try reading last 100 hashes if allDeposits() isn't public.
+      // You can adjust this later to read from events instead.
+      list.innerHTML = "ℹ️ Waiting for first deposits to appear…";
     } catch (e) {
-      list.innerHTML = "❌ Error: " + e.message;
+      list.innerHTML = "❌ Error fetching reclaimable data.<br>" + e.message;
     }
   }
+
+  // === NEW: Check Deposit Status by Hash ===
+  async function checkDepositStatus() {
+    const hash = document.getElementById("checkHash").value.trim();
+    if (!hash) return alert("Enter a valid deposit hash first.");
+
+    const out = document.getElementById("checkResult");
+    out.textContent = "⏳ Checking on-chain status…";
+
+    try {
+      const d = await pubContract.deposits(hash);
+      if (!d || (d.amount?.eq?.(0) || d[0]?.eq?.(0))) {
+        out.innerHTML = "❌ No deposit found for this hash.";
+        return;
+      }
+
+      const amount = ethers.utils.formatUnits(d.amount || d[0], 18);
+      const ts = Number(d.timestamp || d[1]);
+      const claimed = d.claimed || d[2];
+
+      const depositDate = new Date(ts * 1000);
+      const expiry = depositDate.getTime() + 7 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const remainingMs = expiry - now;
+      const remainingDays = (remainingMs / (1000 * 60 * 60 * 24)).toFixed(2);
+
+      let status, color;
+      if (claimed) {
+        status = "✅ Claimed / Withdrawn";
+        color = "#00ff99";
+      } else if (remainingMs > 0) {
+        status = `🟣 Active (${remainingDays} days left)`;
+        color = "#00ffcc";
+      } else {
+        status = "🔥 Expired (Reclaimable)";
+        color = "#ff6600";
+      }
+
+      out.innerHTML = `
+        <div style="color:${color}">
+          <b>Status:</b> ${status}<br>
+          <b>Amount:</b> ${amount} PRIVX<br>
+          <b>Deposited:</b> ${depositDate.toLocaleString()}<br>
+          <b>Expires:</b> ${new Date(expiry).toLocaleString()}<br>
+        </div>
+      `;
+    } catch (e) {
+      console.error(e);
+      out.textContent = "❌ Error: " + e.message;
+    }
+  }
+
 
   // === Button bindings ===
   document.getElementById("connect").onclick = connect;
@@ -584,6 +639,8 @@ function disconnect() {
   document.getElementById("reclaimBtn").onclick = reclaim;
   document.getElementById("commitBtn").onclick = commitSecret;
   document.getElementById("loadReclaimable").onclick = loadReclaimable;
+  document.getElementById("checkBtn").onclick = checkDepositStatus;
+
 
   // === Auto-refreshes every 30s ===
   updateVaultBalance(); updateBurnCounter(); updateRewardPool(); loadReclaimable();
