@@ -496,32 +496,45 @@ function disconnect() {
   // ====== MAIN ACTIONS ======
   async function commitSecret() {
   const secret = document.getElementById("commitSecret").value.trim();
-  if (!secret) return alert("Enter your secret first.");
+  if (!secret) return alert("⚠️ Enter your secret first.");
   if (!await ensurePulse()) return;
 
   try {
-    // detect if the secret is hex (like 64 chars of 0–9a–f)
+    // Detect whether secret is a raw hex (32-byte) or UTF-8 string
     const isHex = /^[0-9a-fA-F]{64}$/.test(secret);
     const packed = isHex
-      ? ethers.utils.solidityPack(
-          ["bytes32", "address"],
-          ["0x" + secret, account]
-        )
-      : ethers.utils.solidityPack(
-          ["string", "address"],
-          [secret, account]
-        );
+      ? ethers.utils.solidityPack(["bytes32", "address"], ["0x" + secret, account])
+      : ethers.utils.solidityPack(["string", "address"], [secret, account]);
 
+    // Calculate the on-chain commit hash exactly how the contract does
     const commitHash = ethers.utils.keccak256(packed);
+
+    console.log("🧩 Commit hash prepared:", commitHash);
+    console.log("🔹 Account:", account);
+    console.log("🔹 Secret Type:", isHex ? "hex (bytes32)" : "string (utf8)");
+
+    // Send commit transaction
     const tx = await contract.commit(commitHash);
+    console.log("📡 Commit TX sent:", tx.hash);
+
+    // Wait for on-chain confirmation before alerting success
+    const receipt = await tx.wait();
+    console.log("✅ Commit TX confirmed in block:", receipt.blockNumber);
 
     alert(
-      `🕶️ Commit submitted!\nHash: ${commitHash}\nTx: ${tx.hash}\n✅ Wait ~5 minutes, then withdraw with your SAME Secret.`
+      `🕶️ Commit confirmed on-chain!\n\n` +
+      `Commit Hash: ${commitHash}\n` +
+      `Tx Hash: ${tx.hash}\n` +
+      `⏳ Wait ~5 minutes before withdrawing.\n\n` +
+      `View on PulseScan:\nhttps://scan.pulsechain.com/tx/${tx.hash}`
     );
+
   } catch (e) {
-    alert("Commit failed:\n" + e.message);
+    console.error("❌ Commit failed:", e);
+    alert("❌ Commit failed:\n" + e.message);
   }
 }
+
 
   async function approve() {
     try {
