@@ -500,17 +500,19 @@ function disconnect() {
   if (!await ensurePulse()) return;
 
   try {
-    const commitHash = ethers.utils.keccak256(
-      ethers.utils.solidityPack(["string", "address"], [secret, account])
-    );
+    // detect hex vs. string
+    const isHex = secret.startsWith("0x") || /^[0-9a-fA-F]+$/.test(secret);
+    const packed = isHex
+      ? ethers.utils.solidityPack(["bytes32", "address"], [ethers.utils.keccak256("0x" + secret.replace(/^0x/, "")), account])
+      : ethers.utils.solidityPack(["string", "address"], [secret, account]);
 
+    const commitHash = ethers.utils.keccak256(packed);
     const tx = await contract.commit(commitHash);
-    alert(`🕶️ Commit submitted!\n\nHash: ${commitHash}\n\nTx: ${tx.hash}\n\n✅ Wait ~5 minutes, then withdraw using the SAME Secret.`);
+    alert(`🕶️ Commit submitted!\nHash: ${commitHash}\nTx: ${tx.hash}\n✅ Wait ~5 minutes, then withdraw with your SAME Secret.`);
   } catch (e) {
-    alert("❌ Commit failed:\n" + e.message);
+    alert("Commit failed:\n" + e.message);
   }
 }
-
 
   async function approve() {
     try {
