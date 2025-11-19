@@ -499,8 +499,11 @@ function disconnect() {
     if (!secret) return alert("Enter your secret first.");
     if (!await ensurePulse()) return;
     try {
-      const hash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(secret));
-      const tx = await contract.commit(hash);
+      const commitHash = ethers.utils.keccak256(
+  ethers.utils.solidityPack(["string", "address"], [secret, account])
+);
+const tx = await contract.commit(commitHash);
+
       alert("🕶️ Commit submitted:\n" + tx.hash + "\nWait ~5 minutes before withdrawing.");
     } catch (e) {
       alert("Commit failed:\n" + e.message);
