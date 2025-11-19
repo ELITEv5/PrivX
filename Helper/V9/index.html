@@ -495,20 +495,22 @@ function disconnect() {
 
   // ====== MAIN ACTIONS ======
   async function commitSecret() {
-    const secret = document.getElementById("commitSecret").value.trim();
-    if (!secret) return alert("Enter your secret first.");
-    if (!await ensurePulse()) return;
-    try {
-      const commitHash = ethers.utils.keccak256(
-  ethers.utils.solidityPack(["string", "address"], [secret, account])
-);
-const tx = await contract.commit(commitHash);
+  const secret = document.getElementById("commitSecret").value.trim();
+  if (!secret) return alert("Enter your secret first.");
+  if (!await ensurePulse()) return;
 
-      alert("🕶️ Commit submitted:\n" + tx.hash + "\nWait ~5 minutes before withdrawing.");
-    } catch (e) {
-      alert("Commit failed:\n" + e.message);
-    }
+  try {
+    const commitHash = ethers.utils.keccak256(
+      ethers.utils.solidityPack(["string", "address"], [secret, account])
+    );
+
+    const tx = await contract.commit(commitHash);
+    alert(`🕶️ Commit submitted!\n\nHash: ${commitHash}\n\nTx: ${tx.hash}\n\n✅ Wait ~5 minutes, then withdraw using the SAME Secret.`);
+  } catch (e) {
+    alert("❌ Commit failed:\n" + e.message);
   }
+}
+
 
   async function approve() {
     try {
