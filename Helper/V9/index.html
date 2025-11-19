@@ -153,20 +153,31 @@
 <!-- 📜 Official CAs -->
 <div class="section" style="background:#141414;">
   <h3>📜 Official Contract Addresses</h3>
+
   <div class="ca-box">
-    💠 PRIVX Token:<br>
+    💠 <b>PRIVX Token</b><br>
     <code id="caToken">0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986</code>
     <button class="ca-copy" onclick="copyCA('caToken')">Copy</button><br>
-    <a href="https://scan.pulsechain.com/address/0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986" target="_blank">View on PulseChainScan ↗</a>
+    <a href="https://scan.pulsechain.com/address/0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986" target="_blank">
+      View on PulseChainScan ↗
+    </a>
   </div>
+
   <div class="ca-box">
-    🛡️ Shield Relay V9 (Stealth Edition):<br>
-    <code id="caRelay">0x0000000000000000000000000000000000000000</code>
+    🛡️ <b>PrivX Shield Relay V9 — Stealth Edition</b><br>
+    <code id="caRelay">0x264cD72e4c7F0Df7f02117b1A82C5dc8650308bf</code>
     <button class="ca-copy" onclick="copyCA('caRelay')">Copy</button><br>
-    <small>⚙️ Placeholder — update once deployed live on PulseChain.</small>
+    <a href="https://scan.pulsechain.com/address/0x264cD72e4c7F0Df7f02117b1A82C5dc8650308bf" target="_blank">
+      View on PulseChainScan ↗
+    </a><br>
+    <small style="color:#00ff99;">✅ Live & Immutable — Deployed on PulseChain Mainnet</small>
   </div>
-  <small>✅ Verified Immutable Contracts — No Admin • No Upgrades • 100 % On-Chain.</small>
+
+  <small style="display:block;margin-top:.8rem;color:#aaa;">
+    🧩 Verified Contracts • No Admin • No Upgrades • 100% On-Chain Autonomy
+  </small>
 </div>
+
 
 <!-- 💎 REWARD PROTOCOL -->
 <div class="section" style="background:#121212;">
@@ -313,7 +324,7 @@
 <div class="section" style="background:#131313;">
   <h3>📘 How It Works — Step by Step</h3>
   <ol style="text-align:left;line-height:1.6em;">
-    <li><b>Generate Secret & Hash</b> — Use the <a href="https://elitev5.github.io/PrivX/Hash-Generator/" target="_blank">Hash Generator</a> to create a unique pair.</li>
+    <li><b>Generate Secret & Hash</b> — Use the <a href="https://elitev5.github.io/PrivX/Hash-Generator/V9" target="_blank">Hash Generator</a> to create a unique pair.</li>
     <li><b>Deposit PRIVX</b> — Enter hash and amount, approve once, then deposit.</li>
     <li><b>Commit</b> — When ready to withdraw, first commit your secret hash (this activates stealth mode).</li>
     <li><b>Withdraw</b> — Wait a few minutes after commit, then reveal your secret to withdraw (0.3 % burn).</li>
@@ -352,7 +363,7 @@
 <!-- ==== MAIN LOGIC (V9 with Commit–Reveal) ==== -->
 <script>
 // === GLOBAL VARIABLES ===
-const relayAddress = "0x0000000000000000000000000000000000000000"; // 🔧 update when deployed
+const relayAddress = "0x264cD72e4c7F0Df7f02117b1A82C5dc8650308bf"; // 🔧 update when deployed
 const tokenAddress = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 const PULSECHAIN_ID = "0x171"; // PulseChain (chainId 369)
 let provider, signer, contract, account, privx;
