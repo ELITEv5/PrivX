@@ -470,14 +470,17 @@ function disconnect() {
   }
 
   async function updateRewardPool() {
-    try {
-      let poolValue = await pubContract.getRewardPool();
-      const formatted = ethers.utils.formatUnits(poolValue, 18);
-      document.getElementById("rewardPool").textContent = `${formatted} PRIVX 🟣`;
-      document.getElementById("rewardUpdate").textContent = `✅ Synced ${new Date().toLocaleTimeString()}`;
-    } catch (e) {
-      document.getElementById("rewardPool").textContent = "Error";
-      document.getElementById("rewardUpdate").textContent = `⚠️ ${e.message}`;
+  try {
+    // ✅ Your contract exposes rewardPool() automatically
+    const poolValue = await pubContract.rewardPool();
+    const formatted = ethers.utils.formatUnits(poolValue, 18);
+    document.getElementById("rewardPool").textContent = `${formatted} PRIVX 🟣`;
+    document.getElementById("rewardUpdate").textContent = `✅ Synced ${new Date().toLocaleTimeString()}`;
+  } catch (e) {
+    // Graceful error handling if ABI mismatch or read failure
+    document.getElementById("rewardPool").textContent = "Error";
+    document.getElementById("rewardUpdate").textContent = `⚠️ ${e.message}`;
+    console.warn("⚠️ updateRewardPool failed:", e);
     }
   }
 
