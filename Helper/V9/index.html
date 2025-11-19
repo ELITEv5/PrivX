@@ -270,8 +270,13 @@
     It ensures that when you later reveal your Secret to withdraw, no one can copy or front-run your transaction.
   </p>
 
-  <input id="commitSecret" placeholder="Enter your Secret (same one used in the Hash Generator)" /><br/>
-  <button id="commitBtn">🕶️ Commit Secret</button>
+  <input id="commitHashInput" placeholder="Paste your Commit Hash (from Hash Generator)" /><br/>
+<button id="commitBtn">🕶️ Commit Hash</button>
+<small>
+  💡 Paste the exact <b>Commit Hash</b> generated with your Secret and Wallet.<br>
+  You no longer need to type your Secret into this app. The hash flows directly to the chain.
+</small>
+
 
   <small>
     ⏳ Wait about 5 minutes after committing before withdrawing.<br>
@@ -494,23 +499,21 @@ function disconnect() {
   }
 
   // ====== MAIN ACTIONS ======
-  async function commitSecret() {
-  const secret = document.getElementById("commitSecret").value.trim();
-  if (!secret) return alert("Enter your secret first.");
+  async function commitHashDirect() {
+  const commitHash = document.getElementById("commitHashInput").value.trim();
+  if (!commitHash) return alert("⚠️ Enter your Commit Hash first (from generator).");
+  if (!/^0x([A-Fa-f0-9]{64})$/.test(commitHash)) {
+    return alert("❌ Invalid Commit Hash format. It should start with 0x and be 66 characters total.");
+  }
   if (!await ensurePulse()) return;
 
   try {
-    // Always encode as string to match generator and contract expectations
-    const packed = ethers.utils.solidityPack(["string", "address"], [secret, account]);
-    const commitHash = ethers.utils.keccak256(packed);
-
     const tx = await contract.commit(commitHash);
-    alert(`🕶️ Commit submitted!\nHash: ${commitHash}\nTx: ${tx.hash}\n✅ Wait ~5 minutes, then withdraw with your SAME Secret.`);
+    alert(`🕶️ Commit Hash submitted directly!\nHash: ${commitHash}\nTx: ${tx.hash}\n✅ Wait ~5 minutes, then withdraw using your Secret.`);
   } catch (e) {
     alert("Commit failed:\n" + e.message);
   }
 }
-
 
 
   async function approve() {
@@ -729,7 +732,7 @@ function disconnect() {
   document.getElementById("depositBtn").onclick = deposit;
   document.getElementById("withdrawBtn").onclick = withdraw;
   document.getElementById("reclaimBtn").onclick = reclaim;
-  document.getElementById("commitBtn").onclick = commitSecret;
+  document.getElementById("commitBtn").onclick = commitHashDirect;
   document.getElementById("loadReclaimable").onclick = loadReclaimable;
   document.getElementById("checkBtn").onclick = checkDepositStatus;
 
