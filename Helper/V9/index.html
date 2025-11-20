@@ -434,6 +434,37 @@
 
 <!-- ==== MAIN LOGIC (V9 with Commit–Reveal) ==== -->
 <script>
+// === Inline Copy Function with Animated Feedback ===
+function copyCA(id) {
+  const el = document.getElementById(id);
+  if (!el) return console.warn("Element not found:", id);
+  const text = el.textContent.trim();
+
+  // Basic validation
+  if (!text.startsWith("0x")) {
+    console.warn("Invalid address:", text);
+    return;
+  }
+
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = el.nextElementSibling;
+    if (btn && btn.classList.contains("ca-copy")) {
+      const original = btn.textContent;
+      btn.textContent = "✅ Copied!";
+      btn.style.background = "#00ff99";
+      btn.style.color = "#000";
+      btn.style.boxShadow = "0 0 10px #00ff99";
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.style.background = "#333";
+        btn.style.color = "#00ffcc";
+        btn.style.boxShadow = "none";
+      }, 1200);
+    }
+  }).catch(err => {
+    console.error("Copy failed:", err);
+  });
+}
 // === GLOBAL VARIABLES ===
 const relayAddress = "0x264cD72e4c7F0Df7f02117b1A82C5dc8650308bf"; // 🔧 update when deployed
 const tokenAddress = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
