@@ -6,92 +6,19 @@
 <title>PrivX Hash Generator — V9 “Commit–Reveal Edition”</title>
 <script src="./ethers.umd.min.js"></script>
 <style>
-  body {
-    font-family: system-ui, sans-serif;
-    background: #0a0a0a;
-    color: #eee;
-    text-align: center;
-    padding: 2rem;
-    max-width: 820px;
-    margin: 0 auto;
-  }
-  h1 {
-    color: #8b5cf6;
-    text-shadow: 0 0 12px #5c00ff;
-    margin-bottom: 0.5rem;
-  }
-  h3 { color: #00ffcc; }
-  button {
-    padding: 0.7rem 1.2rem;
-    background: #5c00ff;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1rem;
-    margin: 0.3rem;
-    transition: 0.2s;
-  }
-  button:hover { background: #6f14ff; }
-  input {
-    width: 90%;
-    max-width: 420px;
-    margin: 0.4rem 0;
-    padding: 0.6rem;
-    border-radius: 8px;
-    border: none;
-    background: #161616;
-    color: #00ffcc;
-    text-align: center;
-  }
-  pre {
-    background: #111;
-    color: #00ff99;
-    padding: 1rem;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    text-align: left;
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
-  small { color: #aaa; display: block; margin-top: 1rem; }
-  .instructions {
-    background: #141414;
-    padding: 1rem;
-    border-radius: 10px;
-    text-align: left;
-    margin-bottom: 1.5rem;
-    line-height: 1.6em;
-    border-left: 5px solid #8b5cf6;
-  }
-  .section {
-    background: #121212;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin: 1.5rem 0;
-    border: 1px solid #222;
-  }
-  #unsavedWarning {
-    display: none;
-    background: #ffcc00;
-    color: #000;
-    padding: 0.8rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-    font-weight: bold;
-  }
-  #successMessage {
-    display: none;
-    color: #00ff99;
-    font-weight: bold;
-    text-shadow: 0 0 10px #00ff99;
-    margin-top: 0.8rem;
-    animation: glowPulse 2s infinite alternate;
-  }
-  @keyframes glowPulse {
-    from { text-shadow: 0 0 10px #00ff99; }
-    to { text-shadow: 0 0 20px #00ffcc; }
-  }
+  body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#eee;text-align:center;padding:2rem;max-width:820px;margin:auto}
+  h1{color:#8b5cf6;text-shadow:0 0 12px #5c00ff;margin-bottom:.5rem}
+  h3{color:#00ffcc}
+  button{padding:.7rem 1.2rem;background:#5c00ff;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:1rem;margin:.3rem;transition:.2s}
+  button:hover{background:#6f14ff}
+  input{width:90%;max-width:420px;margin:.4rem 0;padding:.6rem;border-radius:8px;border:none;background:#161616;color:#00ffcc;text-align:center}
+  pre{background:#111;color:#00ff99;padding:1rem;border-radius:8px;font-size:.9rem;text-align:left;white-space:pre-wrap;word-break:break-all}
+  small{color:#aaa;display:block;margin-top:1rem}
+  .instructions{background:#141414;padding:1rem;border-radius:10px;text-align:left;margin-bottom:1.5rem;line-height:1.6em;border-left:5px solid #8b5cf6}
+  .section{background:#121212;border-radius:12px;padding:1.5rem;margin:1.5rem 0;border:1px solid #222}
+  #unsavedWarning{display:none;background:#ffcc00;color:#000;padding:.8rem;border-radius:8px;margin-bottom:1rem;font-weight:bold}
+  #successMessage{display:none;color:#00ff99;font-weight:bold;text-shadow:0 0 10px #00ff99;margin-top:.8rem;animation:glowPulse 2s infinite alternate}
+  @keyframes glowPulse{from{text-shadow:0 0 10px #00ff99}to{text-shadow:0 0 20px #00ffcc}}
 </style>
 </head>
 
@@ -100,12 +27,28 @@
 <p>This tool runs 100 % locally in your browser. Nothing ever leaves your device.</p>
 
 <div class="instructions">
-  <h3>🧭 How to Use</h3>
-  <ul>
-    <li>Use <b>Deposit Mode</b> to create a new <b>Secret</b> and <b>Deposit Hash</b> for sending PRIVX.</li>
-    <li>Send the <b>Secret</b> securely (off-chain) to your receiver. Never post it publicly.</li>
-    <li>The receiver will use <b>Withdraw Mode</b> to generate a <b>Commit Hash</b> for their wallet, then use it in the official UI to withdraw.</li>
-  </ul>
+  <h3>🧭 Step-by-Step Guide</h3>
+  <ol>
+    <li><b>Select your role:</b> Depositor (sender) or Withdrawer (receiver).</li>
+    <li>
+      <b>Depositor Mode</b> — generates a random Secret and Deposit Hash.
+      <ul>
+        <li>🧩 <b>Secret</b> — keep this private. It’s the key that unlocks your deposit.</li>
+        <li>💠 <b>Deposit Hash</b> — used in the main PrivX UI during <b>Deposit</b>.</li>
+      </ul>
+      The depositor should securely send the <b>Secret</b> to the intended receiver.
+    </li>
+    <li>
+      <b>Withdrawer Mode</b> — for the receiver. Enter the shared Secret and your wallet address.
+      <ul>
+        <li>🔒 <b>Commit Hash</b> — used in the PrivX UI during <b>Commit</b> (Step 2 before withdraw).</li>
+      </ul>
+      This binds the Secret to your wallet so only you can withdraw.
+    </li>
+  </ol>
+  ⚠️ <b>ONE-TIME USE ONLY!</b><br>
+  Each Secret and its hashes are valid for a single deposit → withdraw cycle.<br>
+  Reusing an old Secret or Deposit Hash could let anyone who knows the old Secret steal new funds.
   <p style="color:#00ffcc;">💡 You can save this file and run it offline for maximum privacy.</p>
 </div>
 
@@ -118,44 +61,45 @@
 
 <div class="section" id="depositSection" style="display:none;">
   <h3>💠 Deposit Mode</h3>
-  <p>Generates a <b>Secret</b> and <b>Deposit Hash</b> for the depositor.<br>Use the Deposit Hash in the main PrivX UI when calling <code>deposit()</code>.</p>
+  <p>Creates a <b>Secret</b> and <b>Deposit Hash</b> for use when locking PRIVX.</p>
+  <p>💡 Use the <b>Deposit Hash</b> in the PrivX UI → <b>Step 1: Deposit</b>.</p>
   <button id="generateDeposit">🧩 Generate Secret + Deposit Hash</button>
   <button id="copyDeposit" disabled>📋 Copy All</button>
   <button id="saveDeposit" disabled>💾 Save .txt</button>
   <div id="successMessageDeposit" class="success">✅ Deposit hashes generated!</div>
   <pre id="outputDeposit">Click “Generate” to create your Secret and Deposit Hash.</pre>
-  <small>⚠️ Keep your Secret private. Only share the Deposit Hash with the receiver.</small>
+  <small>⚠️ Keep your Secret private. Only share it securely with the receiver. Losing it = losing access to funds.</small>
 </div>
 
 <div class="section" id="withdrawSection" style="display:none;">
   <h3>🔒 Withdraw Mode</h3>
-  <p>Enter your <b>Secret</b> (from the depositor) and your <b>wallet address</b>.<br>This creates a <b>Commit Hash</b> to use in the UI’s <code>commit()</code> step before withdrawing.</p>
-  <input id="withdrawSecret" placeholder="Enter the secret (from depositor)" />
-  <input id="walletInput" placeholder="Enter your withdraw wallet (0x…)" />
+  <p>For receivers who were sent a Secret by a depositor.</p>
+  <p>Enter that Secret and your wallet to generate a <b>Commit Hash</b>.</p>
+  <input id="withdrawSecret" placeholder="Enter Secret (received from depositor)" />
+  <input id="walletInput" placeholder="Enter your wallet address (0x…)" />
   <button id="generateWithdraw">🕶️ Generate Commit Hash</button>
   <button id="copyWithdraw" disabled>📋 Copy Hash</button>
   <button id="saveWithdraw" disabled>💾 Save .txt</button>
   <div id="successMessageWithdraw" class="success">✅ Commit Hash generated!</div>
-  <pre id="outputWithdraw">Enter your Secret and Wallet, then click “Generate Commit Hash”.</pre>
-  <small>💡 Use this Commit Hash in the PrivX UI → Step 2: Commit before withdrawing.</small>
+  <pre id="outputWithdraw">Enter your Secret and wallet address, then click “Generate Commit Hash”.</pre>
+  <small>💡 Use this Commit Hash in the PrivX UI → Step 2: Commit (before withdrawing).</small>
 </div>
 
 <script>
 let secret="",depositHash="",commitHash="";
 const warnBanner=document.getElementById("unsavedWarning");
-
 function showSection(id){
   document.getElementById("depositSection").style.display="none";
   document.getElementById("withdrawSection").style.display="none";
   document.getElementById(id).style.display="block";
 }
-
 document.getElementById("btnDeposit").onclick=()=>showSection("depositSection");
 document.getElementById("btnWithdraw").onclick=()=>showSection("withdrawSection");
 
 // === Deposit Mode ===
 document.getElementById("generateDeposit").onclick=()=>{
   if(typeof ethers==="undefined"){alert("❌ Ethers.js not loaded.");return;}
+  if(secret&&depositHash){if(!confirm("⚠️ You already have an unsaved Secret.\nGenerate a new one?"))return;}
   const bytes=crypto.getRandomValues(new Uint8Array(32));
   secret=Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
   const abi=new ethers.utils.AbiCoder();
@@ -169,19 +113,17 @@ ${secret}
 ${depositHash}
 
 ⚠️ Save this Secret securely and send it privately to the receiver.
-Use the Deposit Hash in the main PrivX UI during the deposit step.`;
+Use the Deposit Hash in the main PrivX UI → Step 1 “Deposit”.`;
   document.getElementById("copyDeposit").disabled=false;
   document.getElementById("saveDeposit").disabled=false;
   warnBanner.style.display="block";
 };
-
 document.getElementById("copyDeposit").onclick=async()=>{
   const text=`Secret:\n${secret}\n\nDeposit Hash:\n${depositHash}`;
   await navigator.clipboard.writeText(text);
   alert("✅ Deposit values copied to clipboard");
   warnBanner.style.display="none";
 };
-
 document.getElementById("saveDeposit").onclick=()=>{
   const content=`PrivX V9 — Deposit Mode Output
 
@@ -191,8 +133,8 @@ ${secret}
 Deposit Hash (for deposit):
 ${depositHash}
 
-⚠️ Share only the Secret with the intended receiver.
-Deposit Hash is used on-chain in the PrivX UI when calling deposit().`;
+⚠️ Share only the Secret with the receiver.
+Deposit Hash is used on-chain in PrivX UI Step 1 (Deposit).`;
   const blob=new Blob([content],{type:"text/plain"});
   const link=document.createElement("a");
   link.href=URL.createObjectURL(blob);
@@ -204,38 +146,36 @@ Deposit Hash is used on-chain in the PrivX UI when calling deposit().`;
 // === Withdraw Mode ===
 document.getElementById("generateWithdraw").onclick=()=>{
   if(typeof ethers==="undefined"){alert("❌ Ethers.js not loaded.");return;}
-  const secret=document.getElementById("withdrawSecret").value.trim();
-  const wallet=document.getElementById("walletInput").value.trim();
-  if(!secret){alert("⚠️ Enter the Secret you received from the depositor.");return;}
-  if(!ethers.utils.isAddress(wallet)){alert("⚠️ Enter a valid wallet address (0x…).");return;}
-  const packed=ethers.utils.solidityPack(["string","address"],[secret,wallet]);
+  const s=document.getElementById("withdrawSecret").value.trim();
+  const w=document.getElementById("walletInput").value.trim();
+  if(!s){alert("⚠️ Enter the Secret you received from the depositor.");return;}
+  if(!ethers.utils.isAddress(w)){alert("⚠️ Enter a valid wallet address (0x…).");return;}
+  const packed=ethers.utils.solidityPack(["string","address"],[s,w]);
   commitHash=ethers.utils.keccak256(packed);
   document.getElementById("outputWithdraw").textContent=
 `🔒 Commit Hash (for commit before withdraw):
 ${commitHash}
 
-💡 Use this hash in the main PrivX UI (Step 2: Commit) with your wallet connected.
-This binds the secret to your wallet and activates stealth protection.`;
+💡 Use this hash in the PrivX UI → Step 2 “Commit” with your wallet connected.
+This binds the Secret to your wallet and enables stealth withdrawal.`;
   document.getElementById("copyWithdraw").disabled=false;
   document.getElementById("saveWithdraw").disabled=false;
   warnBanner.style.display="block";
 };
-
 document.getElementById("copyWithdraw").onclick=async()=>{
   const text=`Commit Hash (for commit before withdraw):\n${commitHash}`;
   await navigator.clipboard.writeText(text);
   alert("✅ Commit hash copied to clipboard");
   warnBanner.style.display="none";
 };
-
 document.getElementById("saveWithdraw").onclick=()=>{
   const content=`PrivX V9 — Withdraw Mode Output
 
 Commit Hash (for commit before withdraw):
 ${commitHash}
 
-⚙️ Use this hash in the PrivX UI → Step 2: Commit, from your connected wallet.
-This binds the secret to your wallet address for secure withdrawal.`;
+⚙️ Use this hash in PrivX UI → Step 2 (Commit) from your wallet.
+It binds the Secret to your address and activates stealth protection.`;
   const blob=new Blob([content],{type:"text/plain"});
   const link=document.createElement("a");
   link.href=URL.createObjectURL(blob);
@@ -245,13 +185,14 @@ This binds the secret to your wallet address for secure withdrawal.`;
 };
 </script>
 
-<footer style="margin-top:2rem;font-size:0.85rem;color:#777;text-align:center;">
+<footer style="margin-top:2rem;font-size:.85rem;color:#777;text-align:center;">
   <hr style="border:none;border-top:1px solid #333;margin:1.5rem 0;">
   <p>V9 Commit–Reveal Edition • Built by <b>Elite Team6</b> • © Elite Labs 2025<br>
   <a href="https://github.com/elitev5/PrivX" target="_blank" style="color:#8b5cf6;">View on GitHub</a></p>
 </footer>
 </body>
 </html>
+
 
 
 
