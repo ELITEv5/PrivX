@@ -77,6 +77,11 @@
   <p>Enter that Secret and your wallet to generate a <b>Commit Hash</b>.</p>
   <input id="withdrawSecret" placeholder="Enter Secret (received from depositor)" />
   <input id="walletInput" placeholder="Enter your wallet address (0x…)" />
+  <small style="color:#ffcc00;display:block;margin-top:.5rem;">
+🔒 Using a wallet address seen before on-chain may reduce privacy.
+Use a fresh wallet to keep deposits and withdrawals unlinkable.
+</small>
+
   <button id="generateWithdraw">🕶️ Generate Commit Hash</button>
   <button id="copyWithdraw" disabled>📋 Copy Hash</button>
   <button id="saveWithdraw" disabled>💾 Save .txt</button>
