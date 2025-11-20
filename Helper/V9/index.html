@@ -6,172 +6,37 @@
 <title>PrivX Shield Relay — Official Helper V9 “Stealth Withdraw Edition”</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 <style>
-/* === GLOBAL === */
-body {
-  font-family: "Inter", system-ui, sans-serif;
-  background: #0a0a0a;
-  color: #eee;
-  text-align: center;
-  margin: 0;
-  padding: 2rem 1rem;
-  line-height: 1.6;
-  letter-spacing: 0.2px;
-}
-
-/* === SECTIONS — sharper outlines, subtle glow === */
-.section {
-  background: #0c0c0c;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 14px;
-  padding: 1.5rem 1.3rem;
-  margin: 1.8rem 0;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.04),
-    0 0 8px rgba(0,0,0,0.8),
-    0 0 20px rgba(91,0,255,0.05);
-  transition: border 0.25s ease, box-shadow 0.25s ease;
-}
-.section:hover {
-  border-color: rgba(139,92,246,0.3);
-  box-shadow:
-    inset 0 0 0 1px rgba(139,92,246,0.2),
-    0 0 25px rgba(91,0,255,0.1);
-}
-
-/* === HEADINGS — clean all-caps techno style === */
-h1, h2, h3 {
-  text-transform: uppercase;
-  font-family: "Oswald", "Inter", sans-serif;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-}
-h1 {
-  color: #8b5cf6;
-  text-shadow: 0 0 12px rgba(139,92,246,0.7);
-}
-h3 {
-  color: #00ffcc;
-  margin-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  padding-bottom: 0.25rem;
-  display: inline-block;
-}
-
-/* === BUTTONS (keep same look, slightly crisper edge) === */
-button {
-  background: #5c00ff;
-  color: #fff;
-  padding: 0.7rem 1.2rem;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-  margin: 0.3rem;
-  transition: all 0.25s ease;
-  box-shadow: 0 0 10px rgba(91,0,255,0.2);
-}
-button:hover {
-  background: #6f14ff;
-  box-shadow: 0 0 14px rgba(139,92,246,0.3);
-}
-button:disabled {
-  background: #333;
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
-/* === INPUTS — subtle bevel and focus ring === */
-input {
-  width: 90%;
-  max-width: 420px;
-  margin: 0.4rem 0;
-  padding: 0.7rem;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: #161616;
-  color: #00ffcc;
-  text-align: center;
-  transition: all 0.25s ease;
-}
-input:focus {
-  outline: none;
-  border-color: #8b5cf6;
-  box-shadow: 0 0 10px rgba(91,0,255,0.4);
-}
-
-/* === COPY BUTTONS === */
-.ca-box {
-  background: #161616;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 8px;
-  padding: 0.6rem;
-  margin: 0.4rem 0;
-}
-.ca-copy {
-  background: #333;
-  color: #00ffcc;
-  border: none;
-  border-radius: 6px;
-  padding: 0.3rem 0.7rem;
-  cursor: pointer;
-  font-size: 0.85rem;
-  margin-left: 0.4rem;
-  transition: background 0.25s ease, color 0.25s ease;
-}
-.ca-copy:hover {
-  background: #555;
-  color: #00ffee;
-}
-
-/* === SMALL TEXT & ACCENTS === */
-p, li { color: #ccc; }
-small { color: #aaa; }
-.warning { color: #ffcc00; }
-
-/* === HEADER (minimal, no sticky blur) === */
-.privx-header {
-  text-align: center;
-  margin-bottom: 1.8rem;
-}
-.privx-header img {
-  width: 90%;
-  max-width: 540px;
-  height: auto;
-  filter: drop-shadow(0 0 12px rgba(139,92,246,0.8));
-}
-.privx-header .edition {
-  color: #8b5cf6;
-  font-weight: 600;
-  font-size: 1.3rem;
-  margin-top: 0.5rem;
-  text-shadow: 0 0 10px rgba(139,92,246,0.6);
-}
-.privx-header .credits {
-  color: #00ffcc;
-  font-size: 1rem;
-  margin-top: 0.3rem;
-}
-
-/* === MISC === */
-hr {
-  border: none;
-  border-top: 1px solid rgba(255,255,255,0.08);
-  margin: 1.5rem 0;
-}
-.glow {
-  color: #8b5cf6;
-  text-shadow: 0 0 10px #8b5cf6, 0 0 20px #5c00ff;
-}
-
-/* === RESPONSIVE === */
-@media (max-width: 600px) {
-  button { width: 90%; }
-  h1 { font-size: 1.6rem; }
-  h3 { font-size: 1rem; }
-}
+  body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#eee;text-align:center;padding:2rem;max-width:900px;margin:auto}
+  h1{color:#8b5cf6;font-size:2rem;margin-bottom:.3rem;display:flex;align-items:center;justify-content:center;gap:.5rem}
+  h1 img{width:48px;filter:drop-shadow(0 0 10px #8b5cf6);animation:logoGlow 3s infinite alternate;}
+  @keyframes logoGlow{from{filter:drop-shadow(0 0 6px #8b5cf6);}to{filter:drop-shadow(0 0 20px #8b5cf6);}}
+  h3{color:#00ffcc}
+  a{color:#8b5cf6;text-decoration:none}
+  a:hover{text-decoration:underline;color:#a36fff}
+  button{background:#5c00ff;color:#fff;padding:.6rem 1rem;border:none;border-radius:8px;font-size:1rem;cursor:pointer;margin:.3rem;transition:.2s}
+  button:hover{background:#6f14ff}
+  button:disabled{background:#333;cursor:not-allowed}
+  input{width:90%;max-width:420px;margin:.3rem 0;padding:.6rem;border-radius:8px;border:none;font-size:1rem;text-align:center;background:#161616;color:#00ffcc}
+  .section{border:1px solid #222;border-radius:12px;padding:1.3rem;margin:1.5rem 0;background:#111}
+  #status{margin-bottom:1rem;color:#f55;font-weight:bold}
+  footer{margin-top:2rem;font-size:.9rem;color:#777}
+  small{color:#aaa;display:block;margin-top:.5rem}
+  .warning{color:#ffcc00}
+  hr{border:none;border-top:1px solid #333;margin:1.5rem 0}
+  .ca-box{background:#161616;padding:0.6rem;border-radius:8px;margin:0.3rem 0;word-break:break-all}
+  .ca-copy{background:#333;color:#00ffcc;border:none;border-radius:6px;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.85rem;margin-left:0.4rem;}
+  .ca-copy:hover{background:#555;}
+  .explainer{background:#141414;border-left:5px solid #8b5cf6;padding:1rem;border-radius:8px;text-align:left;line-height:1.5em;margin-bottom:1.5rem;}
+  .hashList{background:#0f0f0f;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:220px;overflow-y:auto;}
+  .hashItem{margin:0.5rem 0;padding:0.5rem;background:#161616;border-radius:8px;font-size:0.9rem;word-break:break-all;}
+  .hashItem button{background:#ff006e;padding:0.3rem 0.8rem;font-size:0.8rem;border-radius:6px;margin-left:0.5rem;}
+  .timer-glow{color:#ffcc00;text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;animation:pulseGlow 2s infinite alternate;}
+  @keyframes pulseGlow{from{text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;}to{text-shadow:0 0 20px #ffaa00,0 0 40px #ff8800;}}
+  .feed{background:#0d0d0d;border:1px solid #222;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:180px;overflow-y:auto;}
+  .feed-entry{font-size:0.9rem;margin:0.4rem 0;}
+  .feed-entry span{font-weight:bold;}
+  .glow{color:#8b5cf6;text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff;}
 </style>
-
 
 </head>
 
