@@ -5,262 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PrivX Shield Relay — Official Helper V9 “Stealth Withdraw Edition”</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-
 <style>
-/* === GLOBAL LAYOUT === */
-body {
-  font-family: "Inter", system-ui, sans-serif;
-  background: #0a0a0a;
-  color: #eee;
-  text-align: center;
-  margin: 0;
-  padding: 2rem 1rem;
-  line-height: 1.6;
-  letter-spacing: 0.2px;
-}
-
-.page-container {
-  display: grid;
-  gap: 1.5rem;
-  justify-content: center;
-  align-items: start;
-  max-width: 960px;
-  margin: 0 auto;
-  padding-bottom: 3rem;
-}
-
-/* === HEADINGS & LINKS === */
-h1 {
-  color: #8b5cf6;
-  font-size: 2rem;
-  margin-bottom: 0.3rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-h1 img {
-  width: 48px;
-  filter: drop-shadow(0 0 10px #8b5cf6);
-  animation: logoGlow 3s infinite alternate;
-}
-@keyframes logoGlow {
-  from { filter: drop-shadow(0 0 6px #8b5cf6); }
-  to { filter: drop-shadow(0 0 20px #8b5cf6); }
-}
-h3 {
-  color: #00ffcc;
-  margin-bottom: 0.6rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  position: relative;
-  display: inline-block;
-  padding-bottom: 4px;
-}
-h3::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 60%;
-  height: 2px;
-  background: linear-gradient(90deg, #8b5cf6, #00ffcc);
-  border-radius: 2px;
-}
-
-a {
-  color: #8b5cf6;
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-a:hover {
-  text-decoration: underline;
-  color: #a36fff;
-}
-
-/* === SECTION STYLE === */
-.section {
-  background: linear-gradient(145deg, #101010, #0b0b0b);
-  border: 1px solid #1f1f1f;
-  border-radius: 16px;
-  padding: 1.5rem;
-  margin: 1.8rem 0;
-  box-shadow: 0 0 18px rgba(91, 0, 255, 0.08), inset 0 0 20px rgba(20, 20, 20, 0.6);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-.section:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 24px rgba(139, 92, 246, 0.15);
-}
-
-/* === BUTTONS === */
-button {
-  position: relative;
-  background: linear-gradient(90deg, #5c00ff, #8b5cf6);
-  color: #fff;
-  padding: 0.7rem 1.3rem;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 1rem;
-  margin: 0.4rem;
-  font-weight: 500;
-  box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
-  transition: all 0.3s ease;
-}
-button:hover {
-  box-shadow: 0 0 18px rgba(139, 92, 246, 0.5);
-  transform: translateY(-1px);
-}
-button:active {
-  transform: scale(0.97);
-}
-button:disabled {
-  background: #333;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-/* === INPUTS === */
-input {
-  width: 90%;
-  max-width: 420px;
-  margin: 0.4rem 0;
-  padding: 0.7rem;
-  border-radius: 8px;
-  border: 1px solid #222;
-  background: #161616;
-  color: #00ffcc;
-  text-align: center;
-  transition: all 0.25s ease;
-  font-size: 1rem;
-}
-input:focus {
-  outline: none;
-  border-color: #8b5cf6;
-  box-shadow: 0 0 10px rgba(91, 0, 255, 0.4);
-  background: #121212;
-}
-
-/* === COPY BUTTONS === */
-.ca-box {
-  background: #161616;
-  padding: 0.6rem;
-  border-radius: 8px;
-  margin: 0.3rem 0;
-  word-break: break-all;
-}
-.ca-copy {
-  background: #333;
-  color: #00ffcc;
-  border: none;
-  border-radius: 6px;
-  padding: 0.3rem 0.7rem;
-  cursor: pointer;
-  font-size: 0.85rem;
-  margin-left: 0.4rem;
-  transition: all 0.3s ease, box-shadow 0.4s ease;
-}
-.ca-copy:hover {
-  background: #555;
-  color: #00ffee;
-}
-.ca-copy:active {
-  transform: scale(0.95);
-}
-
-/* === TEXT ELEMENTS === */
-p, li {
-  color: #ccc;
-}
-small {
-  color: #aaa;
-  display: block;
-  margin-top: 0.5rem;
-}
-.warning {
-  color: #ffcc00;
-}
-hr {
-  border: none;
-  border-top: 1px solid #333;
-  margin: 1.5rem 0;
-}
-.glow {
-  color: #8b5cf6;
-  text-shadow: 0 0 10px #8b5cf6, 0 0 20px #5c00ff;
-}
-
-/* === SPECIAL ELEMENTS === */
-.feed {
-  background: #0d0d0d;
-  border: 1px solid #222;
-  border-radius: 10px;
-  padding: 1rem;
-  margin-top: 1rem;
-  text-align: left;
-  max-height: 180px;
-  overflow-y: auto;
-}
-.feed-entry {
-  font-size: 0.9rem;
-  margin: 0.4rem 0;
-  opacity: 0.9;
-  animation: entryGlow 1s ease-out;
-}
-@keyframes entryGlow {
-  0% { text-shadow: 0 0 15px rgba(255,255,255,0.6); }
-  100% { text-shadow: none; }
-}
-
-/* === HEADER STYLING === */
-.privx-header {
-  position: sticky;
-  top: 0;
-  background: rgba(10,10,10,0.85);
-  backdrop-filter: blur(10px);
-  z-index: 10;
-  padding: 1rem 0;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
-  animation: fadeIn 1.6s ease-out forwards;
-  text-align: center;
-}
-.privx-header img {
-  width: 90%;
-  max-width: 540px;
-  height: auto;
-  filter: drop-shadow(0 0 10px rgba(139,92,246,0.8));
-  transition: transform 0.5s ease, filter 0.5s ease;
-}
-.privx-header img:hover {
-  transform: scale(1.04);
-  filter: drop-shadow(0 0 20px rgba(139,92,246,1)) drop-shadow(0 0 40px rgba(91,0,255,0.8));
-}
-.privx-header .edition {
-  color: #8b5cf6;
-  font-weight: bold;
-  font-size: 1.4rem;
-  margin-top: 0.6rem;
-  text-shadow: 0 0 10px rgba(139,92,246,0.8), 0 0 20px rgba(91,0,255,0.6);
-}
-.privx-header .credits {
-  color: #00ffcc;
-  font-size: 1rem;
-  margin-top: 0.4rem;
-}
-
-/* === RESPONSIVE === */
-@media (max-width: 600px) {
-  .privx-header img {
-    max-width: 320px;
-  }
-  .privx-header .edition {
-    font-size: 1.1rem;
-  }
-  button {
-    width: 90%;
-  }
-}
+  body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#eee;text-align:center;padding:2rem;max-width:900px;margin:auto}
+  h1{color:#8b5cf6;font-size:2rem;margin-bottom:.3rem;display:flex;align-items:center;justify-content:center;gap:.5rem}
+  h1 img{width:48px;filter:drop-shadow(0 0 10px #8b5cf6);animation:logoGlow 3s infinite alternate;}
+  @keyframes logoGlow{from{filter:drop-shadow(0 0 6px #8b5cf6);}to{filter:drop-shadow(0 0 20px #8b5cf6);}}
+  h3{color:#00ffcc}
+  a{color:#8b5cf6;text-decoration:none}
+  a:hover{text-decoration:underline;color:#a36fff}
+  button{background:#5c00ff;color:#fff;padding:.6rem 1rem;border:none;border-radius:8px;font-size:1rem;cursor:pointer;margin:.3rem;transition:.2s}
+  button:hover{background:#6f14ff}
+  button:disabled{background:#333;cursor:not-allowed}
+  input{width:90%;max-width:420px;margin:.3rem 0;padding:.6rem;border-radius:8px;border:none;font-size:1rem;text-align:center;background:#161616;color:#00ffcc}
+  .section{border:1px solid #222;border-radius:12px;padding:1.3rem;margin:1.5rem 0;background:#111}
+  #status{margin-bottom:1rem;color:#f55;font-weight:bold}
+  footer{margin-top:2rem;font-size:.9rem;color:#777}
+  small{color:#aaa;display:block;margin-top:.5rem}
+  .warning{color:#ffcc00}
+  hr{border:none;border-top:1px solid #333;margin:1.5rem 0}
+  .ca-box{background:#161616;padding:0.6rem;border-radius:8px;margin:0.3rem 0;word-break:break-all}
+  .ca-copy{background:#333;color:#00ffcc;border:none;border-radius:6px;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.85rem;margin-left:0.4rem;}
+  .ca-copy:hover{background:#555;}
+  .explainer{background:#141414;border-left:5px solid #8b5cf6;padding:1rem;border-radius:8px;text-align:left;line-height:1.5em;margin-bottom:1.5rem;}
+  .hashList{background:#0f0f0f;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:220px;overflow-y:auto;}
+  .hashItem{margin:0.5rem 0;padding:0.5rem;background:#161616;border-radius:8px;font-size:0.9rem;word-break:break-all;}
+  .hashItem button{background:#ff006e;padding:0.3rem 0.8rem;font-size:0.8rem;border-radius:6px;margin-left:0.5rem;}
+  .timer-glow{color:#ffcc00;text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;animation:pulseGlow 2s infinite alternate;}
+  @keyframes pulseGlow{from{text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;}to{text-shadow:0 0 20px #ffaa00,0 0 40px #ff8800;}}
+  .feed{background:#0d0d0d;border:1px solid #222;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:180px;overflow-y:auto;}
+  .feed-entry{font-size:0.9rem;margin:0.4rem 0;}
+  .feed-entry span{font-weight:bold;}
+  .glow{color:#8b5cf6;text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff;}
 </style>
 
 </head>
