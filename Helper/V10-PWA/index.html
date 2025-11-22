@@ -678,14 +678,10 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
-    <!-- QR CODE + FINAL GENERATOR SCRIPT — MOVED TO END OF BODY (FIXED!) -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <script>
-    // THIS RUNS AFTER ALL HTML IS LOADED → BUTTONS & WARNING WORK 100%
-    <script>
-  <script>
-  // THIS RUNS AFTER ALL HTML IS LOADED → BUTTONS & WARNING WORK 100%
-  window.addEventListener('DOMContentLoaded', () => {
+    <!-- QR CODE + FINAL GENERATOR SCRIPT — FIXED FINAL VERSION -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+window.addEventListener('load', () => {
   let currentSecret = '';
   let currentDepositHash = '';
 
@@ -796,6 +792,6 @@ async function updateMiningVault() {
     notify('🕶️ Commit Hash ready! Wait 5 mins before withdrawing.');
   };
 });
-  </script>
+</script>
 </body>
 </html>
