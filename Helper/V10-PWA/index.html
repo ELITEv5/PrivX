@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PrivX Shield Relay — Official Helper V10 “Proof of Privacy Edition”</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-
 <!-- PWA Manifest Link -->
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
@@ -14,7 +13,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PrivX">
-
 <!-- PWA Service Worker -->
 <script>
   if ('serviceWorker' in navigator) {
@@ -23,12 +21,10 @@
       .catch(err => console.warn('SW failed', err));
   }
 </script>
-
 <!-- PWA Install Button + Smart Trigger -->
 <button id="installButton" style="display:none;background:#0ff1c0;color:black;padding:14px 24px;border:none;border-radius:12px;font-weight:bold;margin:20px auto;font-size:1.1rem;" onclick="installPWA()">
   Install PrivX Shield App
 </button>
-
 <script>
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -50,13 +46,11 @@ function installPWA() {
   deferredPrompt.userChoice.then(() => deferredPrompt = null);
 }
 </script>
-
 <style>
-  /* ←←← CRITICAL: .neon-btn MUST come first → fixes invisible buttons */
+  /* ←←← THIS MUST BE FIRST — fixes invisible button bug is now dead */
   .neon-btn{background:#5c00ff;color:#fff;border:none;border-radius:8px;padding:0.7rem 1.2rem;margin:0.4rem;cursor:pointer;font-size:1rem;transition:0.2s;box-shadow:0 0 12px rgba(91,0,255,0.5);}
   .neon-btn:hover{background:#6f14ff;box-shadow:0 0 28px rgba(91,0,255,0.8);}
   .neon-btn:disabled{background:#333;opacity:0.6;cursor:not-allowed;box-shadow:none;}
-
   body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#eee;text-align:center;padding:2rem;max-width:900px;margin:auto}
   h1{color:#8b5cf6;font-size:2rem;margin-bottom:.3rem;display:flex;align-items:center;justify-content:center;gap:.5rem}
   h1 img{width:48px;filter:drop-shadow(0 0 10px #8b5cf6);animation:logoGlow 3s infinite alternate;}
@@ -95,17 +89,15 @@ function installPWA() {
   </h1>
   <p style="color:#00ffcc;font-size:1.1rem;margin:0.3rem 0;">Built by Elite Team6 • 2025</p>
 </div>
-
 <style>
 @keyframes logoGlow {
   from { filter: drop-shadow(0 0 10px #8b5cf6); }
-  to   { filter: drop-shadow(0 0 30px #8b5cf6) drop-shadow(0 0 50px #5c00ff);27
+  to { filter: drop-shadow(0 0 30px #8b5cf6) drop-shadow(0 0 50px #5c00ff);27
 }
 @media (max-width: 600px) {
   div[style*="text-align:center"] img { max-width: 340px; }
 }
 </style>
-
 <!-- 🔗 WALLET CONNECTION -->
 <div id="walletConnect" style="margin:1.2rem 0;">
   <button id="connect">🔗 Connect Wallet</button>
@@ -113,7 +105,6 @@ function installPWA() {
   <div id="status" style="margin-top:0.5rem;color:#aaa;">Not connected</div>
   <small style="color:#777;">Required for deposits, commits, and withdrawals.</small>
 </div>
-
 <!-- 🌐 WHY PRIVX SECTION -->
 <div class="explainer" id="why-privx">
   <h3 style="color:#00ffcc;">🌐 Why PrivX Exists — Privacy That Accelerates With Participation</h3>
@@ -142,7 +133,6 @@ function installPWA() {
      As hundreds of users deposit and withdraw at varying times within this rolling window,
      the transactional entropy increases, and linkability collapses into statistical noise.</p>
 </div>
-
 <!-- 💎 PROOF OF PRIVACY MINING VAULT -->
 <div class="section" style="background:#121212;">
   <h3>💎 Proof-of-Privacy Mining Vault — Earn While Shielding</h3>
@@ -159,7 +149,6 @@ function installPWA() {
     “Every deposit mines privacy itself — the more you shield, the rarer PRIVX becomes.”
   </p>
 </div>
-
 <!-- 📜 OFFICIAL CONTRACT ADDRESSES -->
 <div class="section" style="background:#141414;">
   <h3>📜 Official Contract Addresses</h3>
@@ -191,14 +180,12 @@ function installPWA() {
     🧩 Verified Contracts • No Admin • No Upgrades • 100% On-Chain Autonomy
   </small>
 </div>
-
 <!-- 🔥 TOTAL PRIVX BURNED -->
 <div class="section" style="background:#121212;">
   <h3>🔥 Total PRIVX Burned</h3>
   <h2 id="burnCounter" class="glow">Loading...</h2>
   <small id="burnUpdate">⏳ Fetching on-chain data…</small>
 </div>
-
 <!-- 🔒 VAULT TRACKER -->
 <div class="section" style="background:#121212;">
   <h3>🔒 Shield Vault Tracker</h3>
@@ -206,7 +193,6 @@ function installPWA() {
   <h2 id="vaultBalance" style="color:#00ff99;font-weight:bold;">Loading...</h2>
   <small id="vaultUpdate">⏳ Waiting for data…</small>
 </div>
-
 <!-- 🏆 MOST COMMON DEPOSIT AMOUNTS -->
 <div class="section" style="background:#121212;">
   <h3>🏆 Most Common Deposit Amounts</h3>
@@ -214,7 +200,6 @@ function installPWA() {
   <div id="topDeposits">⏳ Loading data…</div>
   <small style="color:#777;">Privacy Tip: Use popular amounts for better blending.</small>
 </div>
-
 <!-- 🪙 MINE VAULT LIVE STATS -->
 <div class="section" style="background:#121212;">
   <h3>🏦 Proof-of-Privacy Mine Vault Status</h3>
@@ -226,7 +211,6 @@ function installPWA() {
   </ul>
   <small style="color:#777;">Auto-updates every 30 s from chain.</small>
 </div>
-
 <!-- 🛡️ NETWORK PRIVACY FIELD -->
 <div class="section" style="background:#121212;">
   <h3>🛡️ Shield Strength (Network Privacy Field)</h3>
@@ -238,53 +222,22 @@ function installPWA() {
   </div>
   <small id="networkUpdate">⏳ Fetching on-chain data…</small>
 </div>
-
-<!-- ELITE ONE-TAP PRIVACY FLOW + FULL EXPLAINERS (V10.1 Final) -->
-<div class="section">
-  <h3>Shield Your PRIVX — One-Tap Privacy Engine</h3>
-  <p style="color:#00ffcc;font-weight:bold;">New users: just tap the green button once → everything auto-fills → follow 3 steps.</p>
-
-  <div style="background:#121212;border-radius:12px;padding:1.5rem;margin:1.5rem 0;border:1px solid #222;">
-    
-    <!-- ONE-TAP MAGIC BUTTON -->
-    <button id="autoGenerate" class="neon-btn" style="background:#00ff88;color:#000;font-weight:bold;padding:1rem 2rem;font-size:1.2rem;">
-      Generate Everything (Secret + Hashes + Fresh Wallet)
-    </button>
-
-    <!-- Live Results with Explainers -->
-    <div style="margin-top:1.5rem;background:#111;padding:1.2rem;border-radius:10px;font-size:0.95rem;line-height:1.6;">
-      <div><b>1. Your Secret (keep private):</b><br>
-        <input id="masterSecret" readonly style="width:100%;margin-top:0.4rem;background:#222;color:#ffcc00;" placeholder="Auto-generated when you tap above"/></div>
-      
-      <div style="margin-top:1rem;"><b>2. Deposit Hash → use this to deposit:</b><br>
-        <span id="liveDepositHash" style="color:#00ffcc;word-break:break-all;">—</span></div>
-      
-      <div style="margin-top:1rem;"><b>3. Fresh Wallet (auto-created for max privacy):</b><br>
-        <span id="freshWallet" style="color:#ffcc00;word-break:break-all;">—</span></div>
-      
-      <div style="margin-top:1rem;"><b>4. Commit Hash → use this for stealth commit:</b><br>
-        <span id="liveCommitHash" style="color:#8b5cf6;word-break:break-all;">—</span></div>
-    </div>
-
-   <!-- CORRECT ONE-TAP FLOW — REAL PRIVX LOGIC (Depositor vs Withdrawer) -->
+<!-- CORRECT ONE-TAP FLOW — REAL PRIVX LOGIC (Depositor vs Withdrawer) -->
 <div class="section">
   <h3>Shield Your PRIVX — Correct & Ultra-Smooth Flow</h3>
   <p style="color:#00ffcc;font-weight:bold;">Tap once → everything you need appears instantly</p>
-
   <div style="background:#121212;border-radius:12px;padding:1.5rem;margin:1.5rem 0;border:1px solid #222;">
-    
+   
     <button id="autoGenerate" class="neon-btn" style="background:#00ff88;color:#000;font-weight:bold;padding:1rem 2rem;font-size:1.2rem;">
       Generate Secret + Deposit Hash
     </button>
-
     <div style="margin-top:1.5rem;background:#111;padding:1.2rem;border-radius:10px;line-height:1.7;">
       <div><b>Your Secret (keep 100% private):</b><br>
         <input id="masterSecret" readonly style="width:100%;margin-top:0.5rem;background:#222;color:#ffcc00;" /></div>
-      
+     
       <div style="margin-top:1rem;"><b>Deposit Hash (use this to deposit):</b><br>
         <span id="liveDepositHash" style="color:#00ffcc;word-break:break-all;">—</span></div>
     </div>
-
     <div style="margin-top:1.5rem;padding:1.2rem;background:#141414;border-left:4px solid #8b5cf6;border-radius:8px;text-align:left;font-size:0.94rem;">
       <b>Next steps:</b><br>
       1. Deposit using the hash above<br>
@@ -292,7 +245,6 @@ function installPWA() {
       3. Withdrawer pastes Secret + their own fresh wallet → generates Commit Hash → commits → withdraws
     </div>
   </div>
-
   <!-- Deposit inputs (auto-filled) -->
   <input id="depositAmount" placeholder="Amount to deposit (e.g. 100)" style="margin:1rem 0;"/>
   <div style="position:relative;">
@@ -300,25 +252,21 @@ function installPWA() {
     <button onclick="navigator.clipboard.writeText(document.getElementById('depositHash').value);alert('Copied!')" 
             style="position:absolute;right:5px;top:50%;transform:translateY(-50%);background:#333;padding:0.4rem 0.6rem;font-size:0.8rem;">Copy</button>
   </div>
-
   <div style="margin:1.5rem 0;">
     <button id="approveBtn">Approve PRIVX</button>
     <button id="depositBtn">Deposit to Shield</button>
   </div>
 </div>
-
 <!-- WITHDRAWER SECTION — Correct Logic -->
 <div class="section" style="background:#161616;">
   <h3>Withdrawer: Generate Your Commit Hash</h3>
   <p>Paste the Secret you received + your fresh wallet address</p>
-
   <input id="withdrawSecret" placeholder="Secret (received from depositor)" style="margin:0.5rem 0;"/>
   <input id="withdrawWallet" placeholder="Your fresh wallet address (0x...)" style="margin:0.5rem 0;"/>
-  
+ 
   <button id="generateCommit" class="neon-btn" style="background:#ff006e;">
     Generate Commit Hash
   </button>
-
   <div style="margin-top:1rem;">
     <div style="position:relative;">
       <input id="commitHashInput" readonly placeholder="Commit Hash (auto-filled)" style="background:#222;color:#8b5cf6;width:100%;padding-right:70px;"/>
@@ -326,11 +274,21 @@ function installPWA() {
               style="position:absolute;right:5px;top:50%;transform:translateY(-50%);background:#333;padding:0.4rem 0.6rem;font-size:0.8rem;">Copy</button>
     </div>
   </div>
-
   <button id="commitBtn" style="margin-top:1rem;">Commit Stealth</button>
   <small style="color:#ffcc00;">After committing → wait ~5 mins → withdraw to this wallet</small>
 </div>
-
+<!-- 💎 STEP 3 — WITHDRAW -->
+<div class="section">
+  <h3>💎 Withdraw Funds (Stealth Mode)</h3>
+  <p>After committing, withdraw to up to 3 wallets.</p>
+  <input id="withdrawSecret" placeholder="Secret (UTF-8 string)" /><br/>
+  <input id="wallet1" placeholder="Wallet 1 (0x…)" /><br/>
+  <input id="wallet2" placeholder="Wallet 2 (optional)" /><br/>
+  <input id="wallet3" placeholder="Wallet 3 (optional)" /><br/>
+  <button id="withdrawBtn">💎 Withdraw (Stealth Mode)</button>
+  <small class="warning">🔒 Use fresh wallets for max privacy.</small>
+  <small class="warning">⚠️ Anyone with your Secret can withdraw within 7 days — keep it safe.</small>
+</div>
 <!-- 🔥 RECLAIM -->
 <div class="section">
   <h3>🔥 Reclaim Expired Deposits</h3>
@@ -339,7 +297,6 @@ function installPWA() {
   <button id="reclaimBtn">🔥 Reclaim</button>
   <small>💎 Reclaim rewards 5 % to the caller • 95 % burned forever 🔥</small>
 </div>
-
 <!-- 🧩 CLAIM HELPER -->
 <div class="section" style="background:#161616;">
   <h3>🧩 Claim Helper — Find Unclaimed Deposits</h3>
@@ -348,7 +305,6 @@ function installPWA() {
   <div id="reclaimList" class="hashList">Press to view…</div>
   <small>Auto-refreshes every 30 seconds • View-only • No wallet needed.</small>
 </div>
-
 <!-- 🔍 DEPOSIT CHECKER -->
 <div class="section" style="background:#101010;">
   <h3>🔍 Check Your Deposit Status</h3>
@@ -358,14 +314,13 @@ function installPWA() {
   <div id="checkResult" style="margin-top:1rem;color:#00ff99;font-family:monospace;"></div>
   <small>Works even without wallet connection.</small>
 </div>
-
 <!-- 📘 HOW IT WORKS -->
 <div class="section" style="background:#131313;">
   <h3>📘 How It Works — Step by Step</h3>
   <ol style="text-align:left;line-height:1.6em;">
-    <li><b>Generate Secret & Hash</b> — Use the built-in generator in Step 1.</li>
+    <li><b>Generate Secret & Hash</b> — Tap the green button in the Shield section.</li>
     <li><b>Deposit PRIVX</b> — Enter amount, approve once, then deposit.</li>
-    <li><b>Commit</b> — Generate Commit Hash in Withdraw Mode (Step 1) — auto-fills in Step 2.</li>
+    <li><b>Commit</b> — Paste Secret + fresh wallet in Withdrawer section → generate Commit Hash → commit.</li>
     <li><b>Withdraw</b> — Wait a few minutes after commit, then reveal your secret.</li>
     <li><b>Reclaim</b> — After 7 days anyone can reclaim if forgotten (95 % burn / 5 % reward).</li>
     <li><b>Check</b> — Verify any deposit on-chain by its hash.</li>
@@ -387,14 +342,12 @@ function installPWA() {
   <p style="color:#8b5cf6;font-weight:bold;margin-top:1rem;">“The more we walk together, the harder we are to follow.”</p>
   <p style="color:#00ffcc;">PrivX — Privacy by participation. Strength in numbers.</p>
 </div>
-
 <footer>
   <hr>
   <p>PulseChain Native • MIT License • Open Source</p>
   <p><a href="https://github.com/elitev5/PrivX" target="_blank" rel="noopener noreferrer">View Source on GitHub</a></p>
   <p style="margin-top:1rem;color:#8b5cf6;font-weight:bold;">“We don’t hide. We outnumber.”</p>
 </footer>
-
 <script>
 /* ---------- COPY ADDRESS BUTTON ---------- */
 function copyCA(id) {
@@ -416,14 +369,12 @@ function copyCA(id) {
     }, 1000);
   });
 }
-
 /* ---------- CONTRACT CONSTANTS ---------- */
 const relayAddress = "0x2F7fc6d09A9A3a5766CF06386c92a099351c64B6";
 const mintVaultAddr = "0x8Cfd5090fab215Fb4aE5ef01EDD5D64baCd4B5fB";
 const tokenAddress = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 const PULSECHAIN_ID = "0x171"; // chainId 369
 let provider, signer, account, contract, privx;
-
 /* ---------- CONNECT WALLET ---------- */
 async function connect() {
   if (!window.ethereum) return alert("No wallet found.");
@@ -465,7 +416,6 @@ function disconnect() {
     const el = document.getElementById(id); if (el) el.disabled = true;
   });
 }
-
 /* ---------- PUBLIC PROVIDERS ---------- */
 const pubProv = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
 const mintVaultAbi = [
@@ -475,7 +425,6 @@ const mintVaultAbi = [
   "function isSealed() view returns(bool)"
 ];
 const mintVault = new ethers.Contract(mintVaultAddr, mintVaultAbi, pubProv);
-
 /* ---------- UPDATE MINING VAULT ---------- */
 async function updateMiningVault() {
   try {
@@ -491,7 +440,6 @@ async function updateMiningVault() {
     document.getElementById("vaultSealed").textContent = sealed ? "🔒 Sealed" : "🟢 Active";
   } catch (e) { console.warn("Vault update err:", e); }
 }
-
 /* ---------- RELAY DASHBOARD ---------- */
 (async () => {
   const abi = await fetch("./abi.json").then(r => r.json());
@@ -499,7 +447,6 @@ async function updateMiningVault() {
   ["approveBtn","depositBtn","withdrawBtn","reclaimBtn","commitBtn"].forEach(id => {
     const el = document.getElementById(id); if (el) el.disabled = true;
   });
-
   async function updateVaultBalance() {
     try {
       const b = await pubContract.totalVaultBalance();
@@ -511,7 +458,6 @@ async function updateMiningVault() {
       document.getElementById("vaultBalance").textContent = "Error";
     }
   }
-
   async function updateBurnCounter() {
     try {
       const [relayBurned, vaultTotalDist] = await Promise.all([
@@ -529,7 +475,6 @@ async function updateMiningVault() {
       document.getElementById("burnCounter").textContent = "Error";
     }
   }
-
   async function updateShieldStrength() {
     try {
       const [vaultBal, burned, reclaimed, withdrawals, totalDist, remainingRewards] = await Promise.all([
@@ -569,7 +514,6 @@ async function updateMiningVault() {
       document.getElementById("networkActivity").textContent = "⚠️ Error reading shield metrics";
     }
   }
-
   async function updateTopDeposits() {
     const el = document.getElementById("topDeposits");
     el.textContent = "⏳ Loading recent deposit data...";
@@ -587,7 +531,7 @@ async function updateMiningVault() {
         counts[exact] = (counts[exact] || 0) + 1;
       }
       const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
-      el.innerHTML = sorted.map(([amt, count], idx) => 
+      el.innerHTML = sorted.map(([amt, count], idx) =>
         `<div>🏅 <b>#${idx + 1}</b> — <span style="color:#00ffcc;">${amt}</span> PRIVX &nbsp;(${count} deposits)</div>`
       ).join("<br>");
       el.insertAdjacentHTML("beforeend", `<br><small style="color:#777;">✅ Updated ${new Date().toLocaleTimeString()}</small>`);
@@ -596,13 +540,11 @@ async function updateMiningVault() {
       el.textContent = "⚠️ Unable to load data.";
     }
   }
-
   async function ensurePulse() {
     const c = await window.ethereum.request({method:"eth_chainId"});
     if (c !== PULSECHAIN_ID) { alert("Switch to PulseChain"); return false; }
     return true;
   }
-
   /* ---------- BUTTON ACTIONS ---------- */
   document.getElementById("connect").onclick = connect;
   document.getElementById("disconnect").onclick = disconnect;
@@ -694,7 +636,7 @@ async function updateMiningVault() {
           const mins = Math.floor((remaining / (1000 * 60)) % 60);
           const secs = Math.floor((remaining / 1000) % 60);
           countdownEl.innerHTML = `<b>⏱ Time remaining:</b> ${days}d ${hrs}h ${mins}m ${secs}s`;
-          setTimeout(tick, 1000);
+          setInterval(tick, 1000);
         };
         tick();
       }
@@ -702,8 +644,6 @@ async function updateMiningVault() {
       out.textContent = "❌ Error: " + e.message;
     }
   };
-
-  /* ---------- AUTO REFRESH ---------- */
   async function refreshAll() {
     try {
       await updateVaultBalance();
@@ -724,32 +664,27 @@ async function updateMiningVault() {
   document.getElementById("autoGenerate").onclick = () => {
     const bytes = crypto.getRandomValues(new Uint8Array(32));
     const secret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-    
+   
     document.getElementById("masterSecret").value = secret;
-    
+   
     const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [secret]);
     const depHash = ethers.utils.keccak256(encoded);
-    
+   
     document.getElementById("liveDepositHash").textContent = depHash;
     document.getElementById("depositHash").value = depHash;
-
     alert("Generated!\n\n→ Deposit using the hash below\n→ Send the Secret securely to the withdrawer");
   };
-
   document.getElementById("generateCommit").onclick = () => {
     const secret = document.getElementById("withdrawSecret").value.trim();
     const wallet = document.getElementById("withdrawWallet").value.trim();
-
     if (!secret) return alert("Paste the Secret first");
     if (!ethers.utils.isAddress(wallet)) return alert("Invalid wallet address");
-
     const packed = ethers.utils.solidityPack(["string", "address"], [secret, wallet]);
     const commitHash = ethers.utils.keccak256(packed);
-
     document.getElementById("commitHashInput").value = commitHash;
     document.getElementById("wallet1").value = wallet; // auto-fill withdraw field
-
     alert("Commit Hash generated!\n\n→ Click 'Commit Stealth' now\n→ Wait 5 mins → Withdraw");
   };
+</script>
 </body>
 </html>
