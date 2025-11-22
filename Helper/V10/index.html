@@ -567,36 +567,51 @@ async function updateShieldStrength() {
     document.getElementById("networkActivity").textContent = "⚠️ Error reading shield metrics";
   }
 }
-/* ---------- MOST COMMON DEPOSITS ---------- */
+/* ---------- MOST COMMON DEPOSITS (V10-COMPATIBLE) ---------- */
 async function updateTopDeposits() {
+  const el = document.getElementById("topDeposits");
+  el.textContent = "⏳ Loading recent deposit data...";
   try {
-    const filter = pubContract.filters.Deposit();
-    const events = await pubContract.queryFilter(filter, -100000); // last ~100k blocks
+    // Correct event name from your ABI
+    const filter = pubContract.filters.Deposited();
+    const events = await pubContract.queryFilter(filter, -100000); // last ~100k blocks (~1–2 days of activity)
 
+    if (!events || events.length === 0) {
+      el.textContent = "No recent deposits found.";
+      return;
+    }
+
+    // Count exact deposit amounts
     const counts = {};
     for (const e of events) {
       const amt = Number(ethers.utils.formatUnits(e.args.amount, 18));
-      const exact = amt.toFixed(2); // track exact amount
+      const exact = amt.toFixed(2);
       counts[exact] = (counts[exact] || 0) + 1;
     }
 
+    // Sort and extract top 3 most common deposit sizes
     const sorted = Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
 
-    const el = document.getElementById("topDeposits");
-    if (sorted.length === 0) {
-      el.textContent = "No recent deposits found.";
-    } else {
-      el.innerHTML = sorted
-        .map(([amt, count]) => `💰 <b>${amt}</b> PRIVX — ${count} deposits`)
-        .join("<br>");
-    }
+    el.innerHTML = sorted
+      .map(
+        ([amt, count], idx) =>
+          `<div>🏅 <b>#${idx + 1}</b> — <span style="color:#00ffcc;">${amt}</span> PRIVX &nbsp;(${count} deposits)</div>`
+      )
+      .join("<br>");
+
+    // Small UX touch — show last update time
+    el.insertAdjacentHTML(
+      "beforeend",
+      `<br><small style="color:#777;">✅ Updated ${new Date().toLocaleTimeString()}</small>`
+    );
   } catch (err) {
     console.warn("Top deposits error:", err);
-    document.getElementById("topDeposits").textContent = "⚠️ Unable to load data.";
+    el.textContent = "⚠️ Unable to load data (check provider or event name).";
   }
 }
+
   async function ensurePulse(){
     const c=await window.ethereum.request({method:"eth_chainId"});
     if(c!==PULSECHAIN_ID){alert("Switch to PulseChain");return false;}
