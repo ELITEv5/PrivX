@@ -625,14 +625,24 @@ async function updateShieldStrength() {
 };
 
   /* ---------- AUTO REFRESH ---------- */
-  async function refreshAll(){
-    updateVaultBalance();
-    updateBurnCounter();
-    updateMiningVault();
+  async function refreshAll() {
+  try {
+    await updateVaultBalance();
+    await updateBurnCounter();
+    await updateMiningVault(); // your Mining Vault tracker
+    await updateShieldStrength(); // 🛡️ NEW
+  } catch (e) {
+    console.warn("refreshAll error:", e);
   }
-  refreshAll();
-  setInterval(refreshAll,30000);
+}
+
+// run immediately once on load
+refreshAll();
+
+// refresh every 30 seconds
+setInterval(refreshAll, 30000);
 })();
+
 </script>
 </body>
 </html>
