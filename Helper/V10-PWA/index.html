@@ -266,58 +266,69 @@ function installPWA() {
         <span id="liveCommitHash" style="color:#8b5cf6;word-break:break-all;">—</span></div>
     </div>
 
-    <!-- Mini Explainer -->
-    <div style="margin-top:1rem;padding:1rem;background:#141414;border-left:4px solid #8b5cf6;border-radius:8px;text-align:left;font-size:0.9rem;">
-      <b>How it works:</b><br>
-      1. Tap green button → everything auto-generated<br>
-      2. Deposit using amount + Deposit Hash below<br>
-      3. Click “Commit Stealth” immediately<br>
-      4. Wait ~5 mins → Withdraw to the fresh wallet (already filled in Step 3)
+   <!-- CORRECT ONE-TAP FLOW — REAL PRIVX LOGIC (Depositor vs Withdrawer) -->
+<div class="section">
+  <h3>Shield Your PRIVX — Correct & Ultra-Smooth Flow</h3>
+  <p style="color:#00ffcc;font-weight:bold;">Tap once → everything you need appears instantly</p>
+
+  <div style="background:#121212;border-radius:12px;padding:1.5rem;margin:1.5rem 0;border:1px solid #222;">
+    
+    <button id="autoGenerate" class="neon-btn" style="background:#00ff88;color:#000;font-weight:bold;padding:1rem 2rem;font-size:1.2rem;">
+      Generate Secret + Deposit Hash
+    </button>
+
+    <div style="margin-top:1.5rem;background:#111;padding:1.2rem;border-radius:10px;line-height:1.7;">
+      <div><b>Your Secret (keep 100% private):</b><br>
+        <input id="masterSecret" readonly style="width:100%;margin-top:0.5rem;background:#222;color:#ffcc00;" /></div>
+      
+      <div style="margin-top:1rem;"><b>Deposit Hash (use this to deposit):</b><br>
+        <span id="liveDepositHash" style="color:#00ffcc;word-break:break-all;">—</span></div>
+    </div>
+
+    <div style="margin-top:1.5rem;padding:1.2rem;background:#141414;border-left:4px solid #8b5cf6;border-radius:8px;text-align:left;font-size:0.94rem;">
+      <b>Next steps:</b><br>
+      1. Deposit using the hash above<br>
+      2. Send the <b>Secret</b> securely to the withdrawer<br>
+      3. Withdrawer pastes Secret + their own fresh wallet → generates Commit Hash → commits → withdraws
     </div>
   </div>
 
-  <!-- Deposit Inputs (auto-filled) -->
-  <div style="margin-top:1rem;">
-    <input id="depositAmount" placeholder="Amount to shield (e.g. 100)" style="margin-bottom:0.8rem;"/>
-    <div style="position:relative;">
-      <input id="depositHash" readonly placeholder="Deposit Hash (auto-filled above)" style="background:#222;color:#00ffcc;width:100%;padding-right:70.5px;"/>
-      <button onclick="document.getElementById('depositHash').select();document.execCommand('copy');alert('Copied!')" 
-              style="position:absolute;right:5px;top:50%;transform:translateY(-50%);background:#333;padding:0.4rem 0.6rem;font-size:0.8rem;">Copy</button>
-    </div>
+  <!-- Deposit inputs (auto-filled) -->
+  <input id="depositAmount" placeholder="Amount to deposit (e.g. 100)" style="margin:1rem 0;"/>
+  <div style="position:relative;">
+    <input id="depositHash" readonly placeholder="Deposit Hash (auto-filled)" style="background:#222;color:#00ffcc;width:100%;padding-right:70px;"/>
+    <button onclick="navigator.clipboard.writeText(document.getElementById('depositHash').value);alert('Copied!')" 
+            style="position:absolute;right:5px;top:50%;transform:translateY(-50%);background:#333;padding:0.4rem 0.6rem;font-size:0.8rem;">Copy</button>
   </div>
 
-  <!-- Commit Input (auto-filled) -->
-  <div style="margin-top:1rem;">
-    <div style="position:relative;">
-      <input id="commitHashInput" readonly placeholder="Commit Hash (auto-filled above)" style="background:#222;color:#8b5cf6;width:100%;padding-right:70px;"/>
-      <button onclick="document.getElementById('commitHashInput').select();document.execCommand('copy');alert('Copied!')" 
-              style="position:absolute;right:5px;top:50%;transform:translateY(-50%);background:#333;padding:0.4rem 0.6rem;font-size:0.8rem;">Copy</button>
-    </div>
-  </div>
-
-  <!-- Action Buttons -->
   <div style="margin:1.5rem 0;">
-    <button id="approveBtn" style="padding:0.8rem 1.5rem;">Approve PRIVX</button>
-    <button id="depositBtn" style="padding:0.8rem 1.5rem;">1. Shield (Deposit)</button>
-    <button id="commitBtn" style="padding:0.8rem 1.5rem;">2. Commit Stealth</button>
+    <button id="approveBtn">Approve PRIVX</button>
+    <button id="depositBtn">Deposit to Shield</button>
   </div>
-
-  <small style="color:#ffcc00;">
-    After committing → wait 5 mins → go to Step 3 Withdraw (wallet already filled!)
-  </small>
 </div>
 
-<!-- 💎 STEP 3 — WITHDRAW -->
-<div class="section">
-  <h3>💎 Step 3 — Withdraw Funds (Stealth Mode)</h3>
-  <p>After committing your secret, withdraw within 7 days to up to 3 wallets.</p>
-  <input id="withdrawSecret" placeholder="Secret (UTF-8 string)" /><br/>
-  <input id="wallet1" placeholder="Wallet 1 (0x…)" /><br/>
-  <input id="wallet2" placeholder="Wallet 2 (optional)" /><br/>
-  <input id="wallet3" placeholder="Wallet 3 (optional)" /><br/>
-  <button id="withdrawBtn">💎 Withdraw (Stealth Mode)</button>
-  <small class="warning">🔒 Using previously used wallets (including your connected one) can link your deposits and withdrawals. Use fresh wallets for maximum privacy.</small>
-  <small class="warning">⚠️ Anyone with your Secret can withdraw within 7 days — keep it safe.</small>
+<!-- WITHDRAWER SECTION — Correct Logic -->
+<div class="section" style="background:#161616;">
+  <h3>Withdrawer: Generate Your Commit Hash</h3>
+  <p>Paste the Secret you received + your fresh wallet address</p>
+
+  <input id="withdrawSecret" placeholder="Secret (received from depositor)" style="margin:0.5rem 0;"/>
+  <input id="withdrawWallet" placeholder="Your fresh wallet address (0x...)" style="margin:0.5rem 0;"/>
+  
+  <button id="generateCommit" class="neon-btn" style="background:#ff006e;">
+    Generate Commit Hash
+  </button>
+
+  <div style="margin-top:1rem;">
+    <div style="position:relative;">
+      <input id="commitHashInput" readonly placeholder="Commit Hash (auto-filled)" style="background:#222;color:#8b5cf6;width:100%;padding-right:70px;"/>
+      <button onclick="navigator.clipboard.writeText(document.getElementById('commitHashInput').value);alert('Copied!')" 
+              style="position:absolute;right:5px;top:50%;transform:translateY(-50%);background:#333;padding:0.4rem 0.6rem;font-size:0.8rem;">Copy</button>
+    </div>
+  </div>
+
+  <button id="commitBtn" style="margin-top:1rem;">Commit Stealth</button>
+  <small style="color:#ffcc00;">After committing → wait ~5 mins → withdraw to this wallet</small>
 </div>
 
 <!-- 🔥 RECLAIM -->
@@ -709,37 +720,36 @@ async function updateMiningVault() {
 })();
 </script>
  <script>
-// FINAL ONE-TAP PRIVACY ENGINE — V10.1 (100% WORKING)
-document.getElementById("autoGenerate").onclick = () => {
-  try {
-    // 1. Generate random 32-byte secret
+  // ——— CORRECT PRIVX LOGIC — ONE-TAP + WITHDRAWER FLOW ———
+  document.getElementById("autoGenerate").onclick = () => {
     const bytes = crypto.getRandomValues(new Uint8Array(32));
     const secret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+    
     document.getElementById("masterSecret").value = secret;
-
-    // 2. Deposit hash = keccak256(abi.encode(secret))
+    
     const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [secret]);
     const depHash = ethers.utils.keccak256(encoded);
+    
     document.getElementById("liveDepositHash").textContent = depHash;
     document.getElementById("depositHash").value = depHash;
 
-    // 3. Generate fresh wallet + commit hash
-    const newWallet = ethers.Wallet.createRandom().address;
-    document.getElementById("freshWallet").textContent = newWallet;
-    document.getElementById("wallet1").value = newWallet; // auto-fill Step 3
+    alert("Generated!\n\n→ Deposit using the hash below\n→ Send the Secret securely to the withdrawer");
+  };
 
-    const packed = ethers.utils.solidityPack(["string", "address"], [secret, newWallet]);
-    const comHash = ethers.utils.keccak256(packed);
-    document.getElementById("liveCommitHash").textContent = comHash;
-    document.getElementById("commitHashInput").value = comHash;
+  document.getElementById("generateCommit").onclick = () => {
+    const secret = document.getElementById("withdrawSecret").value.trim();
+    const wallet = document.getElementById("withdrawWallet").value.trim();
 
-    // Success!
-    alert("Everything generated & auto-filled!\n\n→ Deposit now\n→ Commit now\n→ Wait 5 mins → Withdraw to fresh wallet (already filled)");
-  } catch (err) {
-    alert("Error: " + err.message);
-    console.error(err);
-  }
-};
-</script>
+    if (!secret) return alert("Paste the Secret first");
+    if (!ethers.utils.isAddress(wallet)) return alert("Invalid wallet address");
+
+    const packed = ethers.utils.solidityPack(["string", "address"], [secret, wallet]);
+    const commitHash = ethers.utils.keccak256(packed);
+
+    document.getElementById("commitHashInput").value = commitHash;
+    document.getElementById("wallet1").value = wallet; // auto-fill withdraw field
+
+    alert("Commit Hash generated!\n\n→ Click 'Commit Stealth' now\n→ Wait 5 mins → Withdraw");
+  };
 </body>
 </html>
