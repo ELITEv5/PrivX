@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>🛡️ PrivX Shield Relay V10 — Proof of Privacy “Mine Edition” (2025)</title>
+<title>PrivX Shield Relay — Official Helper V9 “Stealth Withdraw Edition”</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 <style>
   body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#eee;text-align:center;padding:2rem;max-width:900px;margin:auto}
@@ -27,21 +27,28 @@
   .ca-copy{background:#333;color:#00ffcc;border:none;border-radius:6px;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.85rem;margin-left:0.4rem;}
   .ca-copy:hover{background:#555;}
   .explainer{background:#141414;border-left:5px solid #8b5cf6;padding:1rem;border-radius:8px;text-align:left;line-height:1.5em;margin-bottom:1.5rem;}
+  .hashList{background:#0f0f0f;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:220px;overflow-y:auto;}
+  .hashItem{margin:0.5rem 0;padding:0.5rem;background:#161616;border-radius:8px;font-size:0.9rem;word-break:break-all;}
+  .hashItem button{background:#ff006e;padding:0.3rem 0.8rem;font-size:0.8rem;border-radius:6px;margin-left:0.5rem;}
+  .timer-glow{color:#ffcc00;text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;animation:pulseGlow 2s infinite alternate;}
+  @keyframes pulseGlow{from{text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;}to{text-shadow:0 0 20px #ffaa00,0 0 40px #ff8800;}}
   .feed{background:#0d0d0d;border:1px solid #222;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:180px;overflow-y:auto;}
   .feed-entry{font-size:0.9rem;margin:0.4rem 0;}
   .feed-entry span{font-weight:bold;}
   .glow{color:#8b5cf6;text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff;}
 </style>
-</head>
-<body>
 
-<!-- 🛡️ HEADER -->
+</head>
+
+<body>
+<!-- 🔷 PrivX Header (Glowing Logo + Subtitle + Fade-In, Large Version) -->
 <div class="privx-header">
-  <h1><img src="PRIV.png" alt="PrivX Shield Logo"></h1>
-  <p class="edition">🛡️ PrivX Shield Relay — V10 “Mine Edition”</p>
+  <h1>
+    <img src="PRIV.png" alt="PrivX Shield Logo">
+  </h1>
+  <p class="edition">🛡️ PrivX Shield Relay — V9 “Stealth Withdraw Edition”</p>
   <p class="credits">Built by Elite Team6 • © Elite Labs • 2025</p>
 </div>
-
 <!-- 🔗 WALLET CONNECTION -->
 <div id="walletConnect" style="margin:1.2rem 0;">
   <button id="connect">🔗 Connect Wallet</button>
@@ -49,6 +56,71 @@
   <div id="status" style="margin-top:0.5rem;color:#aaa;">Not connected</div>
   <small style="color:#777;">Required for deposits, commits, and withdrawals.</small>
 </div>
+<style>
+/* --- Header Fade + Glow Animation --- */
+.privx-header {
+  text-align: center;
+  margin-bottom: 1.8rem;
+  opacity: 0;
+  animation: fadeIn 1.6s ease-out forwards;
+}
+
+.privx-header h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  animation: glowPulse 4s ease-in-out infinite alternate;
+}
+
+.privx-header img {
+  width: 90%;
+  max-width: 540px; /* 🟣 larger logo for desktop */
+  height: auto;
+  filter: drop-shadow(0 0 10px rgba(139,92,246,0.8));
+  transition: transform 0.5s ease, filter 0.5s ease;
+}
+
+.privx-header img:hover {
+  transform: scale(1.04);
+  filter: drop-shadow(0 0 20px rgba(139,92,246,1)) drop-shadow(0 0 40px rgba(91,0,255,0.8));
+}
+
+.privx-header .edition {
+  color: #8b5cf6;
+  font-weight: bold;
+  font-size: 1.4rem;
+  margin-top: 0.6rem;
+  text-shadow: 0 0 10px rgba(139,92,246,0.8), 0 0 20px rgba(91,0,255,0.6);
+}
+
+.privx-header .credits {
+  color: #00ffcc;
+  font-size: 1rem;
+  margin-top: 0.4rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glowPulse {
+  0% { filter: drop-shadow(0 0 6px rgba(139,92,246,0.6)) drop-shadow(0 0 12px rgba(91,0,255,0.4)); }
+  50% { filter: drop-shadow(0 0 18px rgba(139,92,246,0.9)) drop-shadow(0 0 40px rgba(91,0,255,0.8)); }
+  100% { filter: drop-shadow(0 0 10px rgba(139,92,246,0.6)) drop-shadow(0 0 25px rgba(91,0,255,0.5)); }
+}
+
+/* 🧭 Responsive tweak for mobile */
+@media (max-width: 600px) {
+  .privx-header img {
+    max-width: 320px;
+  }
+  .privx-header .edition {
+    font-size: 1.1rem;
+  }
+}
+</style>
 
 <!-- 🌐 WHY PRIVX SECTION -->
 <div class="explainer" id="why-privx">
@@ -64,18 +136,19 @@
   <p>As hundreds or thousands of users do this — at different times and with different amounts —  
      it becomes statistically impossible to know which deposit maps to which withdrawal.</p>
   <hr>
-  <h4 style="color:#00ffcc;">🕶️ Stealth Withdraw Layer (Commit–Reveal)</h4>
-  <p>Before withdrawing, users first <b>commit</b> a hash derived from their secret.  
-     This shields the withdrawal intent within the mempool.  
-     After a short window (~5 minutes), they <b>reveal</b> the secret to finalize the withdrawal.  
-     This two-step dance ensures privacy even against front-running or mempool snooping.</p>
+  <h4 style="color:#00ffcc;">🕶️ Stealth Withdraw Layer (New in V9)</h4>
+  <p>V9 introduces a <b>Commit–Reveal stealth layer</b> that protects your withdrawal from mempool front-running.  
+     Before you withdraw, you must first <b>commit</b> your withdrawal secret hash — this quietly signals intent without revealing any data.  
+     After a short window (~5 minutes), you can <b>reveal</b> your secret to finalize the withdrawal.  
+     This ensures your action cannot be copied, traced, or intercepted while pending in the mempool.</p>
   <blockquote style="border-left:3px solid #8b5cf6;padding-left:1rem;margin:1rem 0;color:#ccc;">
     “Your withdrawal vanishes before it appears — stealth by design.”
   </blockquote>
-  <h4 style="color:#00ffcc;">🕓 The 7-Day Obfuscation Horizon</h4>
+  <h4 style="color:#00ffcc;">🕓 The 7-Day Obfuscation Window</h4>
   <p>Every deposit remains locked for up to 7 days.  
-     This rolling window forms a temporal privacy field — no one can tell <i>when</i> a deposit and withdrawal are linked.  
-     As usage grows, transaction entropy compounds — privacy becomes collective.</p>
+     This period forms a temporal privacy field — no one can tell <i>when</i> a deposit and withdrawal are linked.  
+     As hundreds of users deposit and withdraw at varying times within this rolling window,  
+     the transactional entropy increases, and linkability collapses into statistical noise.</p>
 </div>
 
 <!-- 💎 PROOF OF PRIVACY MINING VAULT -->
