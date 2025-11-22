@@ -445,7 +445,7 @@ async function updateMiningVault() {
       ethers.utils.formatUnits(d, 18) + " PRIVX";
     document.getElementById("vaultRemaining").textContent =
       ethers.utils.formatUnits(r, 18) + " PRIVX";
-    document.getElementById("vaultDecay").textContent = dec + "%";
+    document.getElementById("vaultDecay").textContent = dec.toString();
     document.getElementById("vaultSealed").textContent = sealed ? "🔒 Sealed" : "🟢 Active";
   } catch (e) { console.warn("Vault update err:", e); }
 }
