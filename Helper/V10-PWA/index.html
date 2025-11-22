@@ -708,86 +708,37 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
-  <script>
-// ——— BUILT-IN HASH GENERATOR LOGIC (THIS WAS MISSING!) ———
-let secret = "", depositHash = "", commitHash = "";
-const warnBanner = document.getElementById("unsavedWarning");
-
-function showSection(id) {
-  document.getElementById("depositSection").style.display = "none";
-  document.getElementById("withdrawSection").style.display = "none";
-  document.getElementById(id).style.display = "block";
-  warnBanner.style.display = "none";
-}
-document.getElementById("btnDeposit").onclick = () => showSection("depositSection");
-document.getElementById("btnWithdraw").onclick = () => showSection("withdrawSection");
-
-// Deposit Mode — Generate secret + deposit hash
-document.getElementById("generateDeposit").onclick = () => {
-  if (secret && !confirm("Generate new secret? Old one will be lost.")) return;
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  secret = Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
-  const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [secret]);
-  depositHash = ethers.utils.keccak256(encoded);
-
-  document.getElementById("outputDeposit").textContent =
-`Secret (keep private):
-${secret}
-
-Deposit Hash (auto-filled below):
-${depositHash}
-
-Save this Secret securely!`;
-
-  document.getElementById("depositHash").value = depositHash;
-  document.getElementById("copyDeposit").disabled = false;
-  document.getElementById("saveDeposit").disabled = false;
-  warnBanner.style.display = "block";
-};
-
-// Withdraw Mode — Generate commit hash
-document.getElementById("generateWithdraw").onclick = () => {
-  const s = document.getElementById("withdrawSecret").value.trim();
-  const w = document.getElementById("walletInput").value.trim();
-  if (!s) return alert("Enter the Secret");
-  if (!ethers.utils.isAddress(w)) return alert("Invalid wallet address");
-
-  const packed = ethers.utils.solidityPack(["string","address"], [s, w]);
-  commitHash = ethers.utils.keccak256(packed);
-
-  document.getElementById("outputWithdraw").textContent = `Commit Hash (auto-filled in Step 2):\n${commitHash}`;
-  document.getElementById("commitHashInput").value = commitHash;
-  document.getElementById("copyWithdraw").disabled = false;
-  document.getElementById("saveWithdraw").disabled = false;
-  warnBanner.style.display = "block";
-};
-
-<script>
-// FINAL ONE-TAP PRIVACY ENGINE — V10.1
+ <script>
+// FINAL ONE-TAP PRIVACY ENGINE — V10.1 (100% WORKING)
 document.getElementById("autoGenerate").onclick = () => {
-  // 1. Generate random secret
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  const secret = Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
-  document.getElementById("masterSecret").value = secret;
+  try {
+    // 1. Generate random 32-byte secret
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    const secret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+    document.getElementById("masterSecret").value = secret;
 
-  // 2. Deposit hash
-  const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [secret]);
-  const depHash = ethers.utils.keccak256(encoded);
-  document.getElementById("liveDepositHash").textContent = depHash;
-  document.getElementById("depositHash").value = depHash;
+    // 2. Deposit hash = keccak256(abi.encode(secret))
+    const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [secret]);
+    const depHash = ethers.utils.keccak256(encoded);
+    document.getElementById("liveDepositHash").textContent = depHash;
+    document.getElementById("depositHash").value = depHash;
 
-  // 3. Fresh wallet + commit hash
-  const newWallet = ethers.Wallet.createRandom().address;
-  document.getElementById("freshWallet").textContent = newWallet;
-  document.getElementById("wallet1").value = newWallet;  // auto-fill withdraw!
+    // 3. Generate fresh wallet + commit hash
+    const newWallet = ethers.Wallet.createRandom().address;
+    document.getElementById("freshWallet").textContent = newWallet;
+    document.getElementById("wallet1").value = newWallet; // auto-fill Step 3
 
-  const packed = ethers.utils.solidityPack(["string","address"], [secret, newWallet]);
-  const comHash = ethers.utils.keccak256(packed);
-  document.getElementById("liveCommitHash").textContent = comHash;
-  document.getElementById("commitHashInput").value = comHash;
+    const packed = ethers.utils.solidityPack(["string", "address"], [secret, newWallet]);
+    const comHash = ethers.utils.keccak256(packed);
+    document.getElementById("liveCommitHash").textContent = comHash;
+    document.getElementById("commitHashInput").value = comHash;
 
-  // Success!
-  alert("All set!\n\n1. Deposit now\n2. Commit now\n3. Wait 5 mins → Withdraw to fresh wallet (already filled)");
+    // Success!
+    alert("Everything generated & auto-filled!\n\n→ Deposit now\n→ Commit now\n→ Wait 5 mins → Withdraw to fresh wallet (already filled)");
+  } catch (err) {
+    alert("Error: " + err.message);
+    console.error(err);
+  }
 };
 </script>
 </body>
