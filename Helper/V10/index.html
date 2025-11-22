@@ -474,9 +474,18 @@ async function updateMiningVault() {
 }
   async function updateBurnCounter() {
   try {
-    const burned = await pubContract.totalBurned();
-    const val = Number(ethers.utils.formatUnits(burned, 18));
-    const display = val < 1 ? 0 : val.toFixed(2); // hide dust under 1 PRIVX
+    const [relayBurned, vaultTotalDist] = await Promise.all([
+      pubContract.totalBurned(),
+      mintVault.totalDistributed()
+    ]);
+
+    // Vault burns 30% of distributed rewards
+    const vaultBurned = vaultTotalDist.mul(30).div(100);
+
+    const total = relayBurned.add(vaultBurned);
+    const val = Number(ethers.utils.formatUnits(total, 18));
+    const display = val < 1 ? 0 : val.toFixed(2);
+
     document.getElementById("burnCounter").textContent = `${display} PRIVX 🔥`;
     document.getElementById("burnUpdate").textContent =
       "✅ Updated " + new Date().toLocaleTimeString();
