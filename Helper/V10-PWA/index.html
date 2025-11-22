@@ -30,26 +30,44 @@
   }
 </script>
 
-<!-- PWA Install Prompt Script -->
-<script>
-  let deferredPrompt;
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    // Optionally show install button
-    const installBtn = document.getElementById('installButton');
-    if (installBtn) installBtn.style.display = 'block';
-  });
+<!-- PWA Install Button + Smart Trigger -->
+<button id="installButton" style="display:none;background:#0ff1c0;color:black;padding:14px 24px;border:none;border-radius:12px;font-weight:bold;margin:20px auto;font-size:1.1rem;" onclick="installPWA()">
+  Install PrivX Shield App
+</button>
 
-  function installPWA() {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then((choice) => {
-        console.log('User choice:', choice.outcome);
-        deferredPrompt = null;
-      });
-    }
+<script>
+// Smart PWA install handler — works on phone AND desktop
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show button immediately on mobile & desktop
+  const btn = document.getElementById('installButton');
+  if (btn) btn.style.display = 'block';
+});
+
+// Also force-show the button after first real user action (wallet connect = perfect trigger)
+document.getElementById('connect')?.addEventListener('click', () => {
+  setTimeout(() => {
+    const btn = document.getElementById('installButton');
+    if (btn && deferredPrompt) btn.style.display = 'block';
+  }, 1000);
+});
+
+function installPWA() {
+  if (!deferredPrompt) {
+    alert("Install via Chrome menu → Add to Home screen");
+    return;
   }
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then((choice) => {
+    if (choice.outcome === 'accepted') {
+      console.log('PrivX Shield installed');
+    }
+    deferredPrompt = null;
+  });
+}
 </script>
 
 <style>
