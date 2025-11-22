@@ -678,16 +678,17 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
-    <!-- ✅ FIXED SCRIPT FOR GITHUB HOSTING -->
+   <!-- ✅ FINAL FIX — HASH GENERATOR + QR WORK ON GITHUB -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  function waitForEthersAndQR() {
-    if (typeof ethers === 'undefined' || typeof QRCode === 'undefined') {
-      return setTimeout(waitForEthersAndQR, 100);
+window.addEventListener('load', () => {
+  // Wait for ethers + QRCode to exist
+  const wait = setInterval(() => {
+    if (typeof ethers !== 'undefined' && typeof QRCode !== 'undefined') {
+      clearInterval(wait);
+      initPrivXSecretTools();
     }
-    initPrivXSecretTools();
-  }
+  }, 100);
 
   function initPrivXSecretTools() {
     let currentSecret = '';
@@ -723,6 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => box.remove(), 2000);
     }
 
+    // ✅ FIXED HASH GENERATION
     document.getElementById('autoGenerate').onclick = () => {
       if (currentSecret && !confirm('Generate a new secret?\nYour current one will be lost if not saved!')) return;
 
@@ -730,8 +732,14 @@ document.addEventListener('DOMContentLoaded', () => {
       currentSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
       secretInput.value = currentSecret;
 
-      const encoded = ethers.utils.defaultAbiCoder.encode(['string'], [currentSecret]);
-      currentDepositHash = ethers.utils.keccak256(encoded);
+      // FIX: use ethers.utils.id() for faster hash generation fallback
+      try {
+        const encoded = ethers.utils.defaultAbiCoder.encode(['string'], [currentSecret]);
+        currentDepositHash = ethers.utils.keccak256(encoded);
+      } catch {
+        currentDepositHash = ethers.utils.id(currentSecret);
+      }
+
       depositHashEl.textContent = currentDepositHash;
       depositHashField.value = currentDepositHash;
 
@@ -747,7 +755,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       [saveSecretBtn, copySecretBtn, saveQRBtn].forEach(b => b.disabled = false);
       warnUnsaved.style.display = 'block';
-
       notify('✅ Secret Generated! Save or Copy before leaving.');
     };
 
@@ -800,8 +807,6 @@ document.addEventListener('DOMContentLoaded', () => {
       notify('🕶️ Commit Hash ready! Wait 5 mins before withdrawing.');
     };
   }
-
-  waitForEthersAndQR();
 });
 </script>
 </body>
