@@ -222,36 +222,57 @@ function installPWA() {
   </div>
   <small id="networkUpdate">⏳ Fetching on-chain data…</small>
 </div>
-<!-- CORRECT ONE-TAP FLOW — REAL PRIVX LOGIC (Depositor vs Withdrawer) -->
+<!-- CORRECT ONE-TAP FLOW — WITH SAVE + WARNING -->
 <div class="section">
-  <h3>Shield Your PRIVX — Correct & Ultra-Smooth Flow</h3>
-  <p style="color:#00ffcc;font-weight:bold;">Tap once → everything you need appears instantly</p>
+  <h3>Shield Your PRIVX — Deposit Flow</h3>
+  <p style="color:#00ffcc;font-weight:bold;">Tap once → generate → SAVE before doing anything else!</p>
+
+  <!-- Unsaved Warning Banner -->
+  <div id="unsavedWarning" style="display:none;background:#ff3300;color:#fff;padding:1rem;border-radius:10px;margin:1rem 0;font-weight:bold;text-align:center;">
+    ⚠️ You have an unsaved Secret! Save or copy it now — generating a new one will delete it forever!
+    <button onclick="document.getElementById('unsavedWarning').style.display='none'" style="margin-left:10px;background:#fff;color:#000;padding:0.4rem 0.8rem;border:none;border-radius:6px;">Dismiss</button>
+  </div>
+
   <div style="background:#121212;border-radius:12px;padding:1.5rem;margin:1.5rem 0;border:1px solid #222;">
-   
+    
     <button id="autoGenerate" class="neon-btn" style="background:#00ff88;color:#000;font-weight:bold;padding:1rem 2rem;font-size:1.2rem;">
       Generate Secret + Deposit Hash
     </button>
+
     <div style="margin-top:1.5rem;background:#111;padding:1.2rem;border-radius:10px;line-height:1.7;">
-      <div><b>Your Secret (keep 100% private):</b><br>
+      <div><b>Your Secret (SAVE THIS NOW):</b><br>
         <input id="masterSecret" readonly style="width:100%;margin-top:0.5rem;background:#222;color:#ffcc00;" /></div>
-     
-      <div style="margin-top:1rem;"><b>Deposit Hash (use this to deposit):</b><br>
+      
+      <div style="margin-top:1rem;"><b>Deposit Hash (use to deposit):</b><br>
         <span id="liveDepositHash" style="color:#00ffcc;word-break:break-all;">—</span></div>
     </div>
-    <div style="margin-top:1.5rem;padding:1.2rem;background:#141414;border-left:4px solid #8b5cf6;border-radius:8px;text-align:left;font-size:0.94rem;">
+
+    <!-- Save & Copy Buttons -->
+    <div style="margin-top:1rem;display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+      <button id="saveSecretBtn" disabled class="neon-btn" style="background:#00ff99;color:#000;font-weight:bold;">
+        Save as .txt (Recommended)
+      </button>
+      <button id="copySecretBtn" disabled class="neon-btn" style="background:#3366ff;">
+        Copy Secret + Hash
+      </button>
+    </div>
+
+    <div style="margin-top:1rem;padding:1rem;background:#141414;border-left:4px solid #8b5cf6;border-radius:8px;text-align:left;font-size:0.94rem;">
       <b>Next steps:</b><br>
-      1. Deposit using the hash above<br>
-      2. Send the <b>Secret</b> securely to the withdrawer<br>
-      3. Withdrawer pastes Secret + their own fresh wallet → generates Commit Hash → commits → withdraws
+      1. Save your Secret (click button above)<br>
+      2. Deposit using the hash below<br>
+      3. Send Secret securely to withdrawer
     </div>
   </div>
-  <!-- Deposit inputs (auto-filled) -->
+
+  <!-- Deposit inputs -->
   <input id="depositAmount" placeholder="Amount to deposit (e.g. 100)" style="margin:1rem 0;"/>
   <div style="position:relative;">
     <input id="depositHash" readonly placeholder="Deposit Hash (auto-filled)" style="background:#222;color:#00ffcc;width:100%;padding-right:70px;"/>
     <button onclick="navigator.clipboard.writeText(document.getElementById('depositHash').value);alert('Copied!')" 
             style="position:absolute;right:5px;top:50%;transform:translateY(-50%);background:#333;padding:0.4rem 0.6rem;font-size:0.8rem;">Copy</button>
   </div>
+
   <div style="margin:1.5rem 0;">
     <button id="approveBtn">Approve PRIVX</button>
     <button id="depositBtn">Deposit to Shield</button>
@@ -659,32 +680,72 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
- <script>
-  // ——— CORRECT PRIVX LOGIC — ONE-TAP + WITHDRAWER FLOW ———
-  document.getElementById("autoGenerate").onclick = () => {
-    const bytes = crypto.getRandomValues(new Uint8Array(32));
-    const secret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-   
-    document.getElementById("masterSecret").value = secret;
-   
-    const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [secret]);
-    const depHash = ethers.utils.keccak256(encoded);
-   
-    document.getElementById("liveDepositHash").textContent = depHash;
-    document.getElementById("depositHash").value = depHash;
-    alert("Generated!\n\n→ Deposit using the hash below\n→ Send the Secret securely to the withdrawer");
-  };
-  document.getElementById("generateCommit").onclick = () => {
-    const secret = document.getElementById("withdrawSecret").value.trim();
-    const wallet = document.getElementById("withdrawWallet").value.trim();
-    if (!secret) return alert("Paste the Secret first");
-    if (!ethers.utils.isAddress(wallet)) return alert("Invalid wallet address");
-    const packed = ethers.utils.solidityPack(["string", "address"], [secret, wallet]);
-    const commitHash = ethers.utils.keccak256(packed);
-    document.getElementById("commitHashInput").value = commitHash;
-    document.getElementById("wallet1").value = wallet; // auto-fill withdraw field
-    alert("Commit Hash generated!\n\n→ Click 'Commit Stealth' now\n→ Wait 5 mins → Withdraw");
-  };
+<script>
+// ——— FINAL: SAVE + UNSAVED WARNING + COPY ———
+let currentSecret = "";
+let currentDepositHash = "";
+
+document.getElementById("autoGenerate").onclick = () => {
+  if (currentSecret && !confirm("⚠️ Generate new secret?\nYour current one will be lost forever if not saved!")) {
+    return;
+  }
+
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  currentSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+  document.getElementById("masterSecret").value = currentSecret;
+
+  const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]);
+  currentDepositHash = ethers.utils.keccak256(encoded);
+  document.getElementById("liveDepositHash").textContent = currentDepositHash;
+  document.getElementById("depositHash").value = currentDepositHash;
+
+  // Enable save/copy + show warning
+  document.getElementById("saveSecretBtn").disabled = false;
+  document.getElementById("copySecretBtn").disabled = false;
+  document.getElementById("unsavedWarning").style.display = "block";
+
+  alert("Generated! → SAVE YOUR SECRET NOW using the buttons below!");
+};
+
+// Save as .txt
+document.getElementById("saveSecretBtn").onclick = () => {
+  const text = `PRIVX SHIELD DEPOSIT - SAVE THIS FILE!\n\n` +
+               `Secret (keep private): ${currentSecret}\n\n` +
+               `Deposit Hash: ${currentDepositHash}\n\n` +
+               `Amount: ${document.getElementById("depositAmount").value || "Not set yet"}\n\n` +
+               `Generated: ${new Date().toLocaleString()}\n` +
+               `Contract: 0x2F7fc6d09A9A3a5766CF06386c92a099351c64B6`;
+
+  const blob = new Blob([text], {type: "text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `PrivX-Deposit-${currentDepositHash.slice(0,10)}.txt`;
+  a.click();
+
+  document.getElementById("unsavedWarning").style.display = "none";
+  alert("Saved! Your secret is now safe.");
+};
+
+// Copy to clipboard
+document.getElementById("copySecretBtn").onclick = async () => {
+  const text = `Secret: ${currentSecret}\nDeposit Hash: ${currentDepositHash}`;
+  await navigator.clipboard.writeText(text);
+  alert("Copied to clipboard!");
+  document.getElementById("unsavedWarning").style.display = "none";
+};
+
+// Withdrawer part (unchanged)
+document.getElementById("generateCommit").onclick = () => {
+  const secret = document.getElementById("withdrawSecret").value.trim();
+  const wallet = document.getElementById("withdrawWallet").value.trim();
+  if (!secret) return alert("Paste the Secret first");
+  if (!ethers.utils.isAddress(wallet)) return alert("Invalid wallet address");
+  const packed = ethers.utils.solidityPack(["string", "address"], [secret, wallet]);
+  const commitHash = ethers.utils.keccak256(packed);
+  document.getElementById("commitHashInput").value = commitHash;
+  document.getElementById("wallet1").value = wallet;
+  alert("Commit Hash generated!\n→ Click 'Commit Stealth' now\n→ Wait 5 mins → Withdraw");
+};
 </script>
 </body>
 </html>
