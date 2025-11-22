@@ -52,7 +52,7 @@ function installPWA() {
 </script>
 
 <style>
-  /* ←←← THIS MUST BE FIRST — fixes invisible button bug is now dead */
+  /* ←←← CRITICAL: .neon-btn MUST come first → fixes invisible buttons */
   .neon-btn{background:#5c00ff;color:#fff;border:none;border-radius:8px;padding:0.7rem 1.2rem;margin:0.4rem;cursor:pointer;font-size:1rem;transition:0.2s;box-shadow:0 0 12px rgba(91,0,255,0.5);}
   .neon-btn:hover{background:#6f14ff;box-shadow:0 0 28px rgba(91,0,255,0.8);}
   .neon-btn:disabled{background:#333;opacity:0.6;cursor:not-allowed;box-shadow:none;}
