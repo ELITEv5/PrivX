@@ -540,24 +540,57 @@ async function updateMiningVault() {
       "⏳ Reading on-chain events (not available in static mode)";
   };
 
-  document.getElementById("checkBtn").onclick = async()=>{
-    const h=document.getElementById("checkHash").value.trim();
-    const out=document.getElementById("checkResult");
-    if(!h)return alert("Enter deposit hash");
-    try{
-      const d=await pubContract.deposits(h);
-      const amt=ethers.utils.formatUnits(d.amount||d[0],18);
-      const ts=Number(d.timestamp||d[1]);
-      const claimed=d.claimed||d[2];
-      const expiry=ts*1000+7*864e5;
-      const remaining=expiry-Date.now();
-      let status,color;
-      if(claimed){status="✅ Claimed";color="#00ff99";}
-      else if(remaining>0){status="🟣 Active";color="#00ffcc";}
-      else{status="🔥 Reclaimable";color="#ff6600";}
-      out.innerHTML=`<div style="color:${color}"><b>Status:</b> ${status}<br><b>Amount:</b> ${amt} PRIVX</div>`;
-    }catch(e){out.textContent="Error: "+e.message;}
-  };
+  document.getElementById("checkBtn").onclick = async function checkDepositStatus() {
+  const hash = document.getElementById("checkHash").value.trim();
+  if (!hash) return alert("Enter a valid deposit hash first.");
+  const out = document.getElementById("checkResult");
+  out.textContent = "⏳ Checking on-chain status…";
+
+  try {
+    const d = await pubContract.deposits(hash);
+    if (!d || d.amount.eq(0)) {
+      out.innerHTML = "❌ No deposit found for this hash.";
+      return;
+    }
+
+    const amount = ethers.utils.formatUnits(d.amount, 18);
+    const ts = Number(d.timestamp);
+    const claimed = d.claimed;
+    const depositDate = new Date(ts * 1000);
+    const expiry = depositDate.getTime() + 7 * 24 * 60 * 60 * 1000;
+
+    const countdownEl = document.createElement("div");
+    countdownEl.style.color = "#ffcc00";
+
+    out.innerHTML = `
+      <div style="color:${claimed ? "#00ff99" : "#00ffcc"}">
+        <b>Status:</b> ${claimed ? "✅ Claimed / Withdrawn" : "🟣 Active"}<br>
+        <b>Amount:</b> ${amount} PRIVX<br>
+        <b>Deposited:</b> ${depositDate.toLocaleString()}<br>
+        <b>Expires:</b> ${new Date(expiry).toLocaleString()}<br>
+      </div>`;
+    out.appendChild(countdownEl);
+
+    if (!claimed) {
+      const tick = () => {
+        const remaining = expiry - Date.now();
+        if (remaining <= 0) {
+          countdownEl.innerHTML = "<b>🔥 Expired — Reclaimable</b>";
+          countdownEl.style.color = "#ff6600";
+          return;
+        }
+        const hrs = Math.floor((remaining / (1000 * 60 * 60)) % 24);
+        const mins = Math.floor((remaining / (1000 * 60)) % 60);
+        const secs = Math.floor((remaining / 1000) % 60);
+        countdownEl.innerHTML = `<b>⏱ Time remaining:</b> ${hrs}h ${mins}m ${secs}s`;
+        setTimeout(tick, 1000);
+      };
+      tick();
+    }
+  } catch (e) {
+    out.textContent = "❌ Error: " + e.message;
+  }
+};
 
   /* ---------- AUTO REFRESH ---------- */
   async function refreshAll(){
