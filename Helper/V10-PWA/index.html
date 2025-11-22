@@ -682,7 +682,8 @@ async function updateMiningVault() {
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script>
     // THIS RUNS AFTER ALL HTML IS LOADED → BUTTONS & WARNING WORK 100%
-    window.addEventListener('DOMContentLoaded', () => {
+    <script>
+  window.addEventListener('load', () => {
   let currentSecret = '';
   let currentDepositHash = '';
 
