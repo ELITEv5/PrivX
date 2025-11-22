@@ -682,84 +682,117 @@ async function updateMiningVault() {
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script>
     // THIS RUNS AFTER ALL HTML IS LOADED → BUTTONS & WARNING WORK 100%
-    document.addEventListener("DOMContentLoaded", () => {
-      let currentSecret = "";
-      let currentDepositHash = "";
+    window.addEventListener('DOMContentLoaded', () => {
+  let currentSecret = '';
+  let currentDepositHash = '';
 
-      document.getElementById("autoGenerate").onclick = () => {
-        if (currentSecret && !confirm("Generate new secret?\nYour current one will be lost forever if not saved!")) return;
+  const warnUnsaved = document.getElementById('unsavedWarning');
+  const secretInput = document.getElementById('masterSecret');
+  const depositHashEl = document.getElementById('liveDepositHash');
+  const depositHashField = document.getElementById('depositHash');
+  const qrContainer = document.getElementById('qrContainer');
+  const qrHint = document.getElementById('qrHint');
+  const saveSecretBtn = document.getElementById('saveSecretBtn');
+  const copySecretBtn = document.getElementById('copySecretBtn');
+  const saveQRBtn = document.getElementById('saveQRBtn');
 
-        const bytes = crypto.getRandomValues(new Uint8Array(32));
-        currentSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-        document.getElementById("masterSecret").value = currentSecret;
-
-        const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]);
-        currentDepositHash = ethers.utils.keccak256(encoded);
-        document.getElementById("liveDepositHash").textContent = currentDepositHash;
-        document.getElementById("depositHash").value = currentDepositHash;
-
-        QRCode.toCanvas(document.getElementById("qrCanvas"),
-          `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash: ${currentDepositHash}`,
-          { width: 280, margin: 2 }, () => {
-            document.getElementById("qrContainer").style.display = "block";
-            document.getElementById("qrHint").style.display = "block";
-        });
-
-        // ENABLE BUTTONS + SHOW RED WARNING
-        document.getElementById("saveSecretBtn").disabled = false;
-        document.getElementById("copySecretBtn").disabled = false;
-        document.getElementById("saveQRBtn").disabled = false;
-        document.getElementById("unsavedWarning").style.display = "block";
-
-        alert("Generated! SAVE your secret now!");
-      };
-
-      document.getElementById("saveSecretBtn").onclick = () => {
-        const blob = new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`], {type:"text/plain"});
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `PrivX-Secret-${currentSecret.slice(0,10)}.txt`;
-        a.click();
-        document.getElementById("unsavedWarning").style.display = "none";
-      };
-
-      document.getElementById("copySecretBtn").onclick = async () => {
-        await navigator.clipboard.writeText(currentSecret);
-        alert("Secret copied!");
-        document.getElementById("unsavedWarning").style.display = "none";
-      };
-
-      document.getElementById("saveQRBtn").onclick = () => {
-        const canvas = document.getElementById("qrCanvas");
-        const logoCanvas = document.createElement("canvas");
-        logoCanvas.width = canvas.width;
-        logoCanvas.height = canvas.height;
-        const ctx = logoCanvas.getContext("2d");
-        ctx.drawImage(canvas, 0, 0);
-        ctx.drawImage(document.getElementById("qrLogo"), canvas.width/2 - 32, canvas.height/2 - 32, 64, 64);
-        logoCanvas.toBlob(blob => {
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(blob);
-          a.download = `PrivX-QR-${currentSecret.slice(0,10)}.png`;
-          a.click();
-        });
-        document.getElementById("unsavedWarning").style.display = "none";
-        alert("Branded QR saved!");
-      };
-
-      // Withdrawer
-      document.getElementById("generateCommit").onclick = () => {
-        const secret = document.getElementById("withdrawSecret").value.trim();
-        const wallet = document.getElementById("withdrawWallet").value.trim();
-        if (!secret) return alert("Paste the Secret first");
-        if (!ethers.utils.isAddress(wallet)) return alert("Invalid wallet address");
-        const packed = ethers.utils.solidityPack(["string", "address"], [secret, wallet]);
-        const commitHash = ethers.utils.keccak256(packed);
-        document.getElementById("commitHashInput").value = commitHash;
-        document.getElementById("wallet1").value = wallet;
-        alert("Commit Hash ready!\nClick Commit Stealth → wait 5 mins → Withdraw");
-      };
+  function notify(msg, color = '#00ff99') {
+    const box = document.createElement('div');
+    box.textContent = msg;
+    Object.assign(box.style, {
+      position: 'fixed',
+      bottom: '30px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      background: color,
+      color: '#000',
+      padding: '10px 20px',
+      borderRadius: '10px',
+      fontWeight: 'bold',
+      boxShadow: '0 0 15px ' + color,
+      zIndex: 9999
     });
+    document.body.appendChild(box);
+    setTimeout(() => box.remove(), 2000);
+  }
+
+  document.getElementById('autoGenerate').onclick = () => {
+    if (currentSecret && !confirm('Generate a new secret?\nYour current one will be lost if not saved!')) return;
+
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    currentSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    secretInput.value = currentSecret;
+
+    const encoded = ethers.utils.defaultAbiCoder.encode(['string'], [currentSecret]);
+    currentDepositHash = ethers.utils.keccak256(encoded);
+    depositHashEl.textContent = currentDepositHash;
+    depositHashField.value = currentDepositHash;
+
+    QRCode.toCanvas(
+      document.getElementById('qrCanvas'),
+      `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash: ${currentDepositHash}`,
+      { width: 280, margin: 2 },
+      () => {
+        qrContainer.style.display = 'block';
+        qrHint.style.display = 'block';
+      }
+    );
+
+    [saveSecretBtn, copySecretBtn, saveQRBtn].forEach(b => b.disabled = false);
+    warnUnsaved.style.display = 'block';
+
+    notify('✅ Secret Generated! Save or Copy before leaving.');
+  };
+
+  saveSecretBtn.onclick = () => {
+    const blob = new Blob([
+      `PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`
+    ], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `PrivX-Secret-${currentSecret.slice(0, 10)}.txt`;
+    a.click();
+    warnUnsaved.style.display = 'none';
+    notify('💾 Secret saved as .txt');
+  };
+
+  copySecretBtn.onclick = async () => {
+    await navigator.clipboard.writeText(currentSecret);
+    warnUnsaved.style.display = 'none';
+    notify('📋 Secret copied to clipboard');
+  };
+
+  saveQRBtn.onclick = () => {
+    const canvas = document.getElementById('qrCanvas');
+    const logo = document.getElementById('qrLogo');
+    const logoCanvas = document.createElement('canvas');
+    logoCanvas.width = canvas.width;
+    logoCanvas.height = canvas.height;
+    const ctx = logoCanvas.getContext('2d');
+    ctx.drawImage(canvas, 0, 0);
+    ctx.drawImage(logo, canvas.width / 2 - 32, canvas.height / 2 - 32, 64, 64);
+    logoCanvas.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `PrivX-QR-${currentSecret.slice(0, 10)}.png`;
+      a.click();
+    });
+    warnUnsaved.style.display = 'none';
+    notify('🖼️ Branded QR saved!');
+  };
+
+  document.getElementById('generateCommit').onclick = () => {
+    const secret = document.getElementById('withdrawSecret').value.trim();
+    const wallet = document.getElementById('withdrawWallet').value.trim();
+    if (!secret) return notify('⚠️ Paste your Secret first', '#ffcc00');
+    if (!ethers.utils.isAddress(wallet)) return notify('❌ Invalid wallet address', '#ff4444');
+    const packed = ethers.utils.solidityPack(['string', 'address'], [secret, wallet]);
+    const commitHash = ethers.utils.keccak256(packed);
+    document.getElementById('commitHashInput').value = commitHash;
+    document.getElementById('wallet1').value = wallet;
+    notify('🕶️ Commit Hash ready! Wait 5 mins before withdrawing.');
+  };
+});
   </script>
 </body>
 </html>
