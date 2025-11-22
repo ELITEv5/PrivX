@@ -265,6 +265,61 @@ function installPWA() {
     </div>
   </div>
 
+  <!-- FINAL DEPOSIT FLOW — WITH BRANDED QR CODE + SAVE + WARNING -->
+<div class="section">
+  <h3>Shield Your PRIVX — Deposit Flow</h3>
+  <p style="color:#00ffcc;font-weight:bold;">Generate → SAVE → SEND via QR (your friend just scans!)</p>
+
+  <!-- Unsaved Warning -->
+  <div id="unsavedWarning" style="display:none;background:#ff3300;color:#fff;padding:1rem;border-radius:10px;margin:1rem 0;font-weight:bold;text-align:center;">
+    ⚠️ UNSAVED SECRET! Save or scan the QR code before generating a new one!
+    <button onclick="document.getElementById('unsavedWarning').style.display='none'" style="margin-left:10px;background:#fff;color:#000;padding:0.4rem 0.8rem;border:none;border-radius:6px;">Dismiss</button>
+  </div>
+
+  <div style="background:#121212;border-radius:12px;padding:1.5rem;margin:1.5rem 0;border:1px solid #222;">
+    
+    <button id="autoGenerate" class="neon-btn" style="background:#00ff88;color:#000;font-weight:bold;padding:1rem 2rem;font-size:1.2rem;">
+      Generate Secret + Deposit Hash
+    </button>
+
+    <div style="margin-top:1.5rem;background:#111;padding:1.2rem;border-radius:10px;line-height:1.7;">
+      <div><b>Your Secret (keep private):</b><br>
+        <input id="masterSecret" readonly style="width:100%;margin-top:0.5rem;background:#222;color:#ffcc00;" /></div>
+      
+      <div style="margin-top:1rem;"><b>Deposit Hash:</b><br>
+        <span id="liveDepositHash" style="color:#00ffcc;word-break:break-all;">—</span></div>
+
+      <!-- QR CODE WITH PRIVX LOGO -->
+      <div style="margin-top:1.5rem;text-align:center;">
+        <div id="qrContainer" style="display:none;margin:1rem auto;">
+          <img id="qrLogo" src="PRIV.png" style="width:64px;height:64px;position:absolute;margin-left:-32px;margin-top:-32px;left:50%;top:50%;pointer-events:none;filter:drop-shadow(0 0 10px #8b5cf6);" />
+          <canvas id="qrCanvas"></canvas>
+        </div>
+        <p id="qrHint" style="display:none;color:#8b5cf6;font-weight:bold;">↑ Scan with your friend’s phone ↑</p>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="margin-top:1rem;display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+      <button id="saveSecretBtn" disabled class="neon-btn" style="background:#00ff99;color:#000;font-weight:bold;">
+        Save as .txt
+      </button>
+      <button id="copySecretBtn" disabled class="neon-btn" style="background:#3366ff;">
+        Copy Secret + Hash
+      </button>
+      <button id="saveQRBtn" disabled class="neon-btn" style="background:#ff00aa;color:#fff;">
+        Save QR Code
+      </button>
+    </div>
+
+    <div style="margin-top:1rem;padding:1rem;background:#141414;border-left:4px solid #8b5cf6;border-radius:8px;text-align:left;font-size:0.94rem;">
+      <b>Send to friend:</b><br>
+      • Show them this QR code<br>
+      • Or send the .txt file<br>
+      • Or copy-paste the secret
+    </div>
+  </div>
+
   <!-- Deposit inputs -->
   <input id="depositAmount" placeholder="Amount to deposit (e.g. 100)" style="margin:1rem 0;"/>
   <div style="position:relative;">
@@ -680,8 +735,9 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
-// ——— FINAL: SAVE + UNSAVED WARNING + COPY ———
+// ——— FINAL: QR CODE + PRIVX LOGO + SAVE + WARNING ———
 let currentSecret = "";
 let currentDepositHash = "";
 
@@ -699,42 +755,62 @@ document.getElementById("autoGenerate").onclick = () => {
   document.getElementById("liveDepositHash").textContent = currentDepositHash;
   document.getElementById("depositHash").value = currentDepositHash;
 
-  // Enable save/copy + show warning
+  // Generate QR Code with embedded PRIVX logo
+  const qrText = `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash: ${currentDepositHash}`;
+  QRCode.toCanvas(document.getElementById("qrCanvas"), qrText, { width: 280, margin: 2 }, (error) => {
+    if (error) console.error(error);
+  });
+
+  // Show QR + enable buttons + warning
+  document.getElementById("qrContainer").style.display = "block";
+  document.getElementById("qrHint").style.display = "block";
   document.getElementById("saveSecretBtn").disabled = false;
   document.getElementById("copySecretBtn").disabled = false;
+  document.getElementById("saveQRBtn").disabled = false;
   document.getElementById("unsavedWarning").style.display = "block";
 
-  alert("Generated! → SAVE YOUR SECRET NOW using the buttons below!");
+  alert("Generated! → Save QR or .txt → Send to friend!");
 };
 
 // Save as .txt
 document.getElementById("saveSecretBtn").onclick = () => {
-  const text = `PRIVX SHIELD DEPOSIT - SAVE THIS FILE!\n\n` +
-               `Secret (keep private): ${currentSecret}\n\n` +
-               `Deposit Hash: ${currentDepositHash}\n\n` +
-               `Amount: ${document.getElementById("depositAmount").value || "Not set yet"}\n\n` +
-               `Generated: ${new Date().toLocaleString()}\n` +
-               `Contract: 0x2F7fc6d09A9A3a5766CF06386c92a099351c64B6`;
-
+  const text = `PRIVX SHIELD - SECRET\n\nSecret: ${currentSecret}\nDeposit Hash: ${currentDepositHash}\nGenerated: ${new Date().toLocaleString()}`;
   const blob = new Blob([text], {type: "text/plain"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `PrivX-Deposit-${currentDepositHash.slice(0,10)}.txt`;
+  a.download = `PrivX-Secret-${currentSecret.slice(0,10)}.txt`;
   a.click();
-
   document.getElementById("unsavedWarning").style.display = "none";
-  alert("Saved! Your secret is now safe.");
 };
 
 // Copy to clipboard
 document.getElementById("copySecretBtn").onclick = async () => {
-  const text = `Secret: ${currentSecret}\nDeposit Hash: ${currentDepositHash}`;
-  await navigator.clipboard.writeText(text);
-  alert("Copied to clipboard!");
+  await navigator.clipboard.writeText(`Secret: ${currentSecret}\nHash: ${currentDepositHash}`);
+  alert("Copied!");
   document.getElementById("unsavedWarning").style.display = "none";
 };
 
-// Withdrawer part (unchanged)
+// Save QR Code as PNG
+document.getElementById("saveQRBtn").onclick = () => {
+  const canvas = document.getElementById("qrCanvas");
+  const logoCanvas = document.createElement("canvas");
+  logoCanvas.width = canvas.width;
+  logoCanvas.height = canvas.height;
+  const ctx = logoCanvas.getContext("2d");
+  ctx.drawImage(canvas, 0, 0);
+  ctx.drawImage(document.getElementById("qrLogo"), canvas.width/2 - 32, canvas.height/2 - 32, 64, 64);
+
+  logoCanvas.toBlob(blob => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `PrivX-Secret-QR-${currentSecret.slice(0,10)}.png`;
+    a.click();
+  });
+  document.getElementById("unsavedWarning").style.display = "none";
+  alert("QR Code saved with PRIVX logo!");
+};
+
+// Withdrawer unchanged
 document.getElementById("generateCommit").onclick = () => {
   const secret = document.getElementById("withdrawSecret").value.trim();
   const wallet = document.getElementById("withdrawWallet").value.trim();
@@ -744,7 +820,7 @@ document.getElementById("generateCommit").onclick = () => {
   const commitHash = ethers.utils.keccak256(packed);
   document.getElementById("commitHashInput").value = commitHash;
   document.getElementById("wallet1").value = wallet;
-  alert("Commit Hash generated!\n→ Click 'Commit Stealth' now\n→ Wait 5 mins → Withdraw");
+  alert("Commit Hash generated!\n→ Commit now → Wait 5 mins → Withdraw");
 };
 </script>
 </body>
