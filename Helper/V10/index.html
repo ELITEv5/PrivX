@@ -217,6 +217,19 @@
   <h2 id="vaultBalance" style="color:#00ff99;font-weight:bold;">Loading...</h2>
   <small id="vaultUpdate">⏳ Waiting for data…</small>
 </div>
+  
+<!-- 🏆 MOST COMMON DEPOSIT AMOUNTS -->
+<div class="section" style="background:#121212;">
+  <h3>🏆 Most Common Deposit Amounts</h3>
+  <p>
+    The most frequent deposit sizes — when many users choose the same amount, 
+    the privacy field strengthens through pattern overlap.
+  </p>
+  <div id="topDeposits">⏳ Loading data…</div>
+  <small style="color:#777;">
+    🧠 Privacy Tip: Matching popular deposit sizes helps strengthen your anonymity set.
+  </small>
+</div>
 
 <!-- 🪙 MINE VAULT LIVE STATS -->
 <div class="section" style="background:#121212;">
@@ -554,7 +567,36 @@ async function updateShieldStrength() {
     document.getElementById("networkActivity").textContent = "⚠️ Error reading shield metrics";
   }
 }
+/* ---------- MOST COMMON DEPOSITS ---------- */
+async function updateTopDeposits() {
+  try {
+    const filter = pubContract.filters.Deposit();
+    const events = await pubContract.queryFilter(filter, -100000); // last ~100k blocks
 
+    const counts = {};
+    for (const e of events) {
+      const amt = Number(ethers.utils.formatUnits(e.args.amount, 18));
+      const exact = amt.toFixed(2); // track exact amount
+      counts[exact] = (counts[exact] || 0) + 1;
+    }
+
+    const sorted = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
+
+    const el = document.getElementById("topDeposits");
+    if (sorted.length === 0) {
+      el.textContent = "No recent deposits found.";
+    } else {
+      el.innerHTML = sorted
+        .map(([amt, count]) => `💰 <b>${amt}</b> PRIVX — ${count} deposits`)
+        .join("<br>");
+    }
+  } catch (err) {
+    console.warn("Top deposits error:", err);
+    document.getElementById("topDeposits").textContent = "⚠️ Unable to load data.";
+  }
+}
   async function ensurePulse(){
     const c=await window.ethereum.request({method:"eth_chainId"});
     if(c!==PULSECHAIN_ID){alert("Switch to PulseChain");return false;}
@@ -679,12 +721,14 @@ async function updateShieldStrength() {
   try {
     await updateVaultBalance();
     await updateBurnCounter();
-    await updateMiningVault(); // your Mining Vault tracker
-    await updateShieldStrength(); // 🛡️ NEW
+    await updateMiningVault();
+    await updateShieldStrength();
+    await updateTopDeposits(); // 🏆 NEW
   } catch (e) {
     console.warn("refreshAll error:", e);
   }
 }
+
 
 // run immediately once on load
 refreshAll();
