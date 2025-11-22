@@ -220,9 +220,31 @@ Simulation and empirical testing confirm that unlinkability scales inversely wit
 ## 10. Discussion
 
 ### 10.1 Limitations
-- Temporal correlation possible with low participation.  
-- Fixed split ratios can be statistically fingerprinted over long periods.  
-- Reward pool balance varies with user activity; low usage periods may reduce incentives.  
+
+Despite its deterministic and ownerless design, **PrivX V9** operates entirely on transparent infrastructure — and therefore inherits certain statistical and behavioral limitations:
+
+- **Temporal Analysis:**  
+  During low activity periods, timing correlation between deposits and withdrawals may narrow the anonymity set.  
+  The protocol mitigates this through the *commit–reveal delay*, which introduces a randomized temporal buffer between user intent and action.
+
+- **Deterministic Randomness:**  
+  Withdrawal split ratios are **deterministically derived** from each user’s secret using keccak256 hashing.  
+  While these ratios appear random network-wide, they remain reproducible for the same secret — meaning users should never reuse a secret across deposits.  
+  This ensures statistical unlinkability without relying on off-chain randomness.
+
+- **Participation Dependence:**  
+  Privacy strength scales directly with network participation.  
+  A smaller active user set yields lower entropy and thus a weaker collective privacy field.  
+  The reward pool partially offsets this by economically incentivizing consistent use.
+
+- **Economic Variability:**  
+  Reward pool size fluctuates with network burn and reclaim cycles.  
+  In periods of low transaction volume, user rewards may temporarily decrease until new shield activity replenishes the pool.
+
+---
+
+These constraints do not represent security flaws, but rather the trade-offs inherent in **fully deterministic on-chain privacy** — a system where anonymity is achieved through *collective participation* rather than obfuscation or encryption.
+
 
 ### 10.2 Future Enhancements
 - Multi-asset support using PRIVX as privacy gas.  
