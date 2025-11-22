@@ -715,5 +715,100 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
+  <script>
+// ——— BUILT-IN HASH GENERATOR LOGIC (THIS WAS MISSING!) ———
+let secret = "", depositHash = "", commitHash = "";
+const warnBanner = document.getElementById("unsavedWarning");
+
+function showSection(id) {
+  document.getElementById("depositSection").style.display = "none";
+  document.getElementById("withdrawSection").style.display = "none";
+  document.getElementById(id).style.display = "block";
+  warnBanner.style.display = "none";
+}
+document.getElementById("btnDeposit").onclick = () => showSection("depositSection");
+document.getElementById("btnWithdraw").onclick = () => showSection("withdrawSection");
+
+// Deposit Mode — Generate secret + deposit hash
+document.getElementById("generateDeposit").onclick = () => {
+  if (secret && !confirm("Generate new secret? Old one will be lost.")) return;
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  secret = Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
+  const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [secret]);
+  depositHash = ethers.utils.keccak256(encoded);
+
+  document.getElementById("outputDeposit").textContent =
+`Secret (keep private):
+${secret}
+
+Deposit Hash (auto-filled below):
+${depositHash}
+
+Save this Secret securely!`;
+
+  document.getElementById("depositHash").value = depositHash;
+  document.getElementById("copyDeposit").disabled = false;
+  document.getElementById("saveDeposit").disabled = false;
+  warnBanner.style.display = "block";
+};
+
+// Withdraw Mode — Generate commit hash
+document.getElementById("generateWithdraw").onclick = () => {
+  const s = document.getElementById("withdrawSecret").value.trim();
+  const w = document.getElementById("walletInput").value.trim();
+  if (!s) return alert("Enter the Secret");
+  if (!ethers.utils.isAddress(w)) return alert("Invalid wallet address");
+
+  const packed = ethers.utils.solidityPack(["string","address"], [s, w]);
+  commitHash = ethers.utils.keccak256(packed);
+
+  document.getElementById("outputWithdraw").textContent = `Commit Hash (auto-filled in Step 2):\n${commitHash}`;
+  document.getElementById("commitHashInput").value = commitHash;
+  document.getElementById("copyWithdraw").disabled = false;
+  document.getElementById("saveWithdraw").disabled = false;
+  warnBanner.style.display = "block";
+};
+
+// Copy / Save buttons
+document.getElementById("copyDeposit").onclick = async () => {
+  await navigator.clipboard.writeText(`Secret:\n${secret}\n\nDeposit Hash:\n${depositHash}`);
+  alert("Copied to clipboard!");
+  warnBanner.style.display = "none";
+};
+document.getElementById("saveDeposit").onclick = () => {
+  const blob = new Blob([`PrivX Deposit\n\nSecret: ${secret}\nDeposit Hash: ${depositHash}`], {type:"text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "PrivX-deposit.txt";
+  a.click();
+  warnBanner.style.display = "none";
+};
+document.getElementById("copyWithdraw").onclick = async () => {
+  await navigator.clipboard.writeText(commitHash);
+  alert("Commit Hash copied!");
+  warnBanner.style.display = "none";
+};
+document.getElementById("saveWithdraw").onclick = () => {
+  const blob = new Blob([`PrivX Commit Hash\n${commitHash}`], {type:"text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "PrivX-commit.txt";
+  a.click();
+  warnBanner.style.display = "none";
+};
+
+// Wallet guide toggle
+document.getElementById("showWalletGuide").onclick = () => {
+  const g = document.getElementById("walletGuide");
+  g.style.display = g.style.display === "block" ? "none" : "block";
+};
+
+// Clear buttons
+document.getElementById("clearHash").onclick = () => document.getElementById("depositHash").value = "";
+document.getElementById("clearCommitHash").onclick = () => document.getElementById("commitHashInput").value = "";
+
+// Start in Deposit Mode
+showSection("depositSection");
+</script>
 </body>
 </html>
