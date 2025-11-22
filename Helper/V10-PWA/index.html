@@ -52,6 +52,11 @@ function installPWA() {
 </script>
 
 <style>
+  /* ←←← THIS MUST BE FIRST — fixes invisible button bug is now dead */
+  .neon-btn{background:#5c00ff;color:#fff;border:none;border-radius:8px;padding:0.7rem 1.2rem;margin:0.4rem;cursor:pointer;font-size:1rem;transition:0.2s;box-shadow:0 0 12px rgba(91,0,255,0.5);}
+  .neon-btn:hover{background:#6f14ff;box-shadow:0 0 28px rgba(91,0,255,0.8);}
+  .neon-btn:disabled{background:#333;opacity:0.6;cursor:not-allowed;box-shadow:none;}
+
   body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#eee;text-align:center;padding:2rem;max-width:900px;margin:auto}
   h1{color:#8b5cf6;font-size:2rem;margin-bottom:.3rem;display:flex;align-items:center;justify-content:center;gap:.5rem}
   h1 img{width:48px;filter:drop-shadow(0 0 10px #8b5cf6);animation:logoGlow 3s infinite alternate;}
@@ -78,8 +83,6 @@ function installPWA() {
   @keyframes pulseGlow{from{text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;}to{text-shadow:0 0 20px #ffaa00,0 0 40px #ff8800;}}
   .feed{background:#0d0d0d;border:1px solid #222;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:180px;overflow-y:auto;}
   .glow{color:#8b5cf6;text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff;}
-  .neon-btn{background:#5c00ff;color:#fff;border:none;border-radius:8px;padding:0.6rem 1rem;margin:0.4rem;cursor:pointer;font-size:1rem;transition:0.2s;box-shadow:0 0 10px rgba(91,0,255,0.4);}
-  .neon-btn:hover{background:#6f14ff;box-shadow:0 0 25px rgba(91,0,255,0.6);}
   .wallet-guide{display:none;background:#141414;border:1px solid #222;border-radius:10px;padding:1rem;margin-top:0.8rem;text-align:left;color:#ccc;line-height:1.6em;}
 </style>
 </head>
