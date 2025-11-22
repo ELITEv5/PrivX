@@ -474,37 +474,65 @@ async function updateMiningVault() {
   }
 async function updateShieldStrength() {
   try {
-    const vault = await pubContract.totalVaultBalance();
-    const burned = await pubContract.totalBurned();
-    const reclaimed = await pubContract.totalReclaimed?.() ?? ethers.BigNumber.from(0);
-
-    const [distributed, remaining] = await Promise.all([
+    const [
+      vaultBal,
+      burned,
+      reclaimed,
+      withdrawals,
+      totalDist,
+      remainingRewards
+    ] = await Promise.all([
+      pubContract.totalVaultBalance(),
+      pubContract.totalBurned(),
+      pubContract.totalReclaimed(),
+      pubContract.totalWithdrawals(),
       mintVault.totalDistributed(),
       mintVault.remainingRewards()
     ]);
 
-    const totalActivity = vault.add(burned).add(reclaimed).add(distributed);
-    const active = vault.add(reclaimed);
+    const v = Number(ethers.utils.formatUnits(vaultBal, 18));
+    const b = Number(ethers.utils.formatUnits(burned, 18));
+    const r = Number(ethers.utils.formatUnits(reclaimed, 18));
+    const w = Number(withdrawals);
+    const d = Number(ethers.utils.formatUnits(totalDist, 18));
+    const rem = Number(ethers.utils.formatUnits(remainingRewards, 18));
 
-    const ratio = active.mul(10000).div(totalActivity.add(1)).toNumber() / 100;
-    const vaultBoost = Math.min(Number(ethers.utils.formatUnits(remaining, 18)) / 1000, 20);
-    let score = ratio + vaultBoost;
+    const activeRatio = Math.min(v / (v + b + d + 1), 1);
+    const burnRatio = Math.min(b / (v + b + d + 1), 1);
+    const rewardActivity = Math.min(d / (d + rem + 1), 1);
+    const rewardReserve = Math.min(rem / 2_100_000, 1);
+    const usage = Math.min((r + w) / 1000, 1);
+
+    let score =
+      activeRatio * 35 +
+      burnRatio * 15 +
+      rewardActivity * 25 +
+      rewardReserve * 15 +
+      usage * 10;
+
+    // Smooth startup scaling: 65–80% for small vaults
+    if (v < 1000) score += 20;
+    else if (v < 5000) score += 10;
+    if (d < 100) score += 10;
     if (score > 100) score = 100;
 
-    let color, label;
-    if (score >= 70) { color="#00ff99"; label="🟢 Optimized"; }
-    else if (score >= 40) { color="#ffcc00"; label="🟡 Stabilizing"; }
-    else { color="#ff6666"; label="🔴 Weak"; }
+    let label, color;
+    if (score >= 70) { label = "🟢 Optimized"; color = "#00ff99"; }
+    else if (score >= 45) { label = "🟡 Stabilizing"; color = "#ffcc00"; }
+    else { label = "🔴 Weak"; color = "#ff6666"; }
 
     const el = document.getElementById("networkActivity");
-    el.style.color=color;
-    el.innerHTML=`${score.toFixed(1)}% Shield Strength<br><small>${label}</small>`;
-    document.getElementById("networkUpdate").textContent="✅ Updated "+new Date().toLocaleTimeString();
+    el.innerHTML = `${score.toFixed(1)}% Shield Strength<br><small>${label}</small>`;
+    el.style.color = color;
+
+    document.getElementById("networkUpdate").textContent =
+      "✅ Updated " + new Date().toLocaleTimeString();
   } catch (e) {
     console.warn("Shield strength update error:", e);
     document.getElementById("networkActivity").textContent = "⚠️ Error reading shield metrics";
   }
 }
+
   async function ensurePulse(){
     const c=await window.ethereum.request({method:"eth_chainId"});
     if(c!==PULSECHAIN_ID){alert("Switch to PulseChain");return false;}
