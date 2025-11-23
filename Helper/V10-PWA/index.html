@@ -678,14 +678,12 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
-  <!-- ✅ FINAL WORKING GENERATOR + WARNING + SAVE LOGIC + SAVE INDICATOR -->
+ <!-- ✅ FIXED GENERATOR + BUTTONS ALWAYS LIVE -->
 <script src="./ethers.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
-window.addEventListener("load", () => {
-  let currentSecret = "";
-  let currentDepositHash = "";
-  let saved = false;
+function initSecretTools() {
+  let currentSecret = "", currentDepositHash = "", saved = false;
 
   const secretInput = document.getElementById("masterSecret");
   const depositHashEl = document.getElementById("liveDepositHash");
@@ -697,7 +695,6 @@ window.addEventListener("load", () => {
   const saveQRBtn = document.getElementById("saveQRBtn");
   const warnUnsaved = document.getElementById("unsavedWarning");
 
-  // ✅ Add a hidden status bar below the buttons
   const saveNotice = document.createElement("div");
   saveNotice.id = "saveNotice";
   Object.assign(saveNotice.style, {
@@ -711,41 +708,30 @@ window.addEventListener("load", () => {
     width: "fit-content",
     marginInline: "auto",
     boxShadow: "0 0 15px #00ff99",
-    transition: "opacity 0.5s ease",
   });
   saveNotice.textContent = "✅ Secret Saved Successfully";
-  document.querySelector(".section").appendChild(saveNotice);
+  document.querySelector(".section:last-of-type").appendChild(saveNotice);
 
   function showSaveNotice() {
     saveNotice.style.display = "block";
     saveNotice.style.opacity = "1";
-    setTimeout(() => {
-      saveNotice.style.opacity = "0";
-      setTimeout(() => (saveNotice.style.display = "none"), 500);
-    }, 2000);
+    setTimeout(() => { saveNotice.style.opacity = "0"; setTimeout(() => saveNotice.style.display = "none", 500); }, 2000);
   }
 
   function notify(msg, color = "#00ff99") {
     const box = document.createElement("div");
     box.textContent = msg;
     Object.assign(box.style, {
-      position: "fixed",
-      bottom: "30px",
-      left: "50%",
-      transform: "translateX(-50%)",
-      background: color,
-      color: "#000",
-      padding: "10px 20px",
-      borderRadius: "10px",
-      fontWeight: "bold",
-      boxShadow: "0 0 15px " + color,
-      zIndex: 9999,
+      position: "fixed", bottom: "30px", left: "50%", transform: "translateX(-50%)",
+      background: color, color: "#000", padding: "10px 20px", borderRadius: "10px",
+      fontWeight: "bold", boxShadow: "0 0 15px " + color, zIndex: 9999
     });
     document.body.appendChild(box);
     setTimeout(() => box.remove(), 2000);
   }
 
   document.getElementById("autoGenerate").onclick = () => {
+    console.log("Generate clicked");
     if (currentSecret && !confirm("Generate a new secret?\nYour current one will be lost if not saved!")) return;
 
     const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -775,10 +761,8 @@ window.addEventListener("load", () => {
   };
 
   saveSecretBtn.onclick = () => {
-    const blob = new Blob(
-      [`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`],
-      { type: "text/plain" }
-    );
+    console.log("Save TXT clicked");
+    const blob = new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`], { type: "text/plain" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `PrivX-Secret-${currentSecret.slice(0, 10)}.txt`;
@@ -789,6 +773,7 @@ window.addEventListener("load", () => {
   };
 
   copySecretBtn.onclick = async () => {
+    console.log("Copy clicked");
     await navigator.clipboard.writeText(currentSecret);
     saved = true;
     warnUnsaved.style.display = "none";
@@ -796,6 +781,7 @@ window.addEventListener("load", () => {
   };
 
   saveQRBtn.onclick = () => {
+    console.log("Save QR clicked");
     const canvas = document.getElementById("qrCanvas");
     const logo = document.getElementById("qrLogo");
     const ctx = canvas.getContext("2d");
@@ -810,14 +796,18 @@ window.addEventListener("load", () => {
     warnUnsaved.style.display = "none";
     showSaveNotice();
   };
+}
 
-  window.addEventListener("beforeunload", e => {
-    if (currentSecret && !saved) {
-      e.preventDefault();
-      e.returnValue = "⚠️ You haven’t saved your secret or deposit hash yet!";
-    }
-  });
-});
+function waitForLibraries() {
+  if (typeof ethers === "undefined" || typeof QRCode === "undefined") {
+    console.log("Waiting for libraries...");
+    return setTimeout(waitForLibraries, 100);
+  }
+  console.log("Libraries loaded — initializing generator");
+  initSecretTools();
+}
+
+window.addEventListener("DOMContentLoaded", waitForLibraries);
 </script>
 </body>
 </html>
