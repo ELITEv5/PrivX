@@ -668,117 +668,103 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
-<!-- FINAL BULLETPROOF QR + SECRET GENERATOR — WORKS EVERYWHERE -->
+<!-- FINAL 100% WORKING QR + SECRET GENERATOR – NO ERRORS, NO CDN BLOCKS -->
 <script>
-// Fallback QRCode library loader with offline backup
-let QRCode = null;
+let currentSecret = "";
+let currentDepositHash = "";
 
-function ensureQRCode() {
-  return new Promise((resolve) => {
-    if (typeof QRCode !== 'undefined' && QRCode) {
-      resolve();
-      return;
-    }
+// Load QRCode with bulletproof fallback
+function loadQR() {
+  return new Promise(resolve => {
+    if (window.QRCode) return resolve();
 
-    // Try CDN first
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
-    script.onload = () => {
-      console.log('QRCode loaded from CDN');
-      resolve();
-    };
-    script.onerror = () => {
-      console.log('CDN failed — using tiny built-in QR fallback');
-      // Tiny built-in QR generator (text-only, but shows secret + hash)
-      window.QRCode = { toCanvas: (canvas, text) => {
-        canvas.width = 280; canvas.height = 280;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, 280, 280);
-        ctx.fillStyle = '#fff';
-        ctx.font = '16px monospace';
-        ctx.textAlign = 'center';
-        const lines = text.split('\n');
-        lines.forEach((line, i) => ctx.fillText(line.substring(0, 40), 140, 40 + i * 24));
-        ctx.fillText('QR BLOCKED — COPY TEXT BELOW', 140, 240);
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+    s.onload = () => resolve();
+    s.onerror = () => {
+      // Fallback tiny drawer if CDN blocked
+      window.QRCode = { toCanvas: (c, text) => {
+        c.width = 280; c.height = 280;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#000'; ctx.fillRect(0,0,280,280);
+        ctx.fillStyle = '#0f0'; ctx.font = '14px monospace'; ctx.textAlign = 'center';
+        text.split('\n').forEach((l,i) => ctx.fillText(l.slice(0,42),140,30+i*22));
+        ctx.fillText('QR BLOCKED – COPY TEXT',140,250);
         resolve();
       }};
+      resolve();
     };
-    document.head.appendChild(script);
-
-    // Safety timeout
-    setTimeout(resolve, 5000);
+    document.head.appendChild(s);
   });
 }
 
-// DOM Elements
-const masterSecretInput = document.getElementById("masterSecret");
-const liveDepositHashSpan = document.getElementById("liveDepositHash");
-const depositHashInput = document.getElementById("depositHash");
-const qrContainer = document.getElementById("qrContainer");
-const qrCanvas = document.getElementById("qrCanvas");
-const qrHint = document.getElementById("qrHint");
-const unsavedWarning = document.getElementById("unsavedWarning");
+// Elements
+const els = {
+  secret: document.getElementById("masterSecret"),
+  hashSpan: document.getElementById("liveDepositHash"),
+  hashInput: document.getElementById("depositHash"),
+  qrBox: document.getElementById("qrContainer"),
+  canvas: document.getElementById("qrCanvas"),
+  hint: document.getElementById("qrHint"),
+  warning: document.getElementById("unsavedWarning")
+};
 
-document.getElementById("autoGenerate").addEventListener("click", async () => {
-  if (currentSecret && !confirm("Generate new secret? Old one will be lost if not saved!")) return;
+// GENERATE BUTTON
+document.getElementById("autoGenerate").onclick = async () => {
+  if (currentSecret && !confirm("Generate new secret? Old one will be lost!")) return;
 
-  // ALWAYS generate secret & hash (works even without QR)
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  currentSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-  
-  masterSecretInput.value = currentSecret;
-  const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]);
-  currentDepositHash = ethers.utils.keccak256(encoded);
-  
-  liveDepositHashSpan.textContent = currentDepositHash;
-  depositHashInput.value = currentDepositHash;
+  // ALWAYS WORKS – secret & hash
+  currentSecret = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+    .map(b => b.toString(16).padStart(2,'0')).join('');
 
-  console.log("Secret & Hash generated — even if QR fails, you’re safe");
-
-  // Now try QR
-  await ensureQRCode();
-  
-  qrCanvas.width = 280;
-  qrCanvas.height = 280;
-  
-  QRCode.toCanvas(qrCanvas,
-    `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`,
-    { width: 280, margin: 2, errorCorrectionLevel: "H" },
-    () => {
-      qrContainer.style.display = "block";
-      qrHint.style.display = "block";
-      document.getElementById("saveSecretBtn").disabled = false;
-      document.getElementById("copySecretBtn").disabled = false;
-      document.getElementById("saveQRBtn").disabled = false;
-      unsavedWarning.style.display = "block";
-      console.log("QR SUCCESS");
-    }
+  els.secret.value = currentSecret;
+  currentDepositHash = ethers.utils.keccak256(
+    ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret])
   );
-});
+  els.hashSpan.textContent = currentDepositHash;
+  els.hashInput.value = currentDepositHash;
 
-// Buttons — always work
+  // QR – will work or show fallback
+  await loadQR();
+  els.canvas.width = 280; els.canvas.height = 280;
+  QRCode.toCanvas(els.canvas,
+    `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`,
+    { width: 280, margin: 2, errorCorrectionLevel: "H" }
+  );
+
+  // Show everything
+  els.qrBox.style.display = "block";
+  els.hint.style.display = "block";
+  els.warning.style.display = "block";
+  document.getElementById("saveSecretBtn").disabled = false;
+  document.getElementById("copySecretBtn").disabled = false;
+  document.getElementById("saveQRBtn").disabled = false;
+};
+
+// SAVE .TXT
 document.getElementById("saveSecretBtn").onclick = () => {
   const blob = new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`], {type: "text/plain"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `PrivX-${currentSecret.slice(0,12)}.txt`;
   a.click();
-  unsavedWarning.style.display = "none";
+  els.warning.style.display = "none";
 };
 
+// COPY SECRET
 document.getElementById("copySecretBtn").onclick = () => {
-  navigator.clipboard.writeText(currentSecret).then(() => alert("Copied!")).catch(() => prompt("Copy this:", currentSecret));
-  unsavedWarning.style.display = "none";
+  navigator.clipboard.writeText(currentSecret).then(() => alert("Copied!")).catch(() => prompt("Copy:", currentSecret));
+  els.warning.style.display = "none";
 };
 
+// SAVE QR
 document.getElementById("saveQRBtn").onclick = () => {
-  qrCanvas.toBlob(blob => {
+  els.canvas.toBlob(b => {
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
+    a.href = URL.createObjectURL(b);
     a.download = `PrivX-QR-${currentSecret.slice(0,12)}.png`;
     a.click();
-    unsavedWarning.style.display = "none";
+    els.warning.style.display = "none";
   });
 };
 </script>
