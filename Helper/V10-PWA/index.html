@@ -235,55 +235,47 @@ function installPWA() {
   </div>
   <small id="networkUpdate">⏳ Fetching on-chain data…</small>
 </div>
-<!-- FINAL DEPOSIT FLOW — BRANDED QR + SAVE + WARNING (PERFECT) -->
+<!-- FIXED FINAL DEPOSIT FLOW — BRANDED QR + SAVE + WARNING (100% WORKING) -->
 <div class="section">
   <h3>Shield Your PRIVX — Deposit Flow</h3>
   <p style="color:#00ffcc;font-weight:bold;">Generate → SAVE → SEND via QR (your friend just scans!)</p>
-
   <div id="unsavedWarning" style="display:none;background:#ff3300;color:#fff;padding:1rem;border-radius:10px;margin:1rem 0;font-weight:bold;text-align:center;">
     UNSAVED SECRET! Save or scan QR before generating a new one!
     <button onclick="document.getElementById('unsavedWarning').style.display='none'" style="margin-left:10px;background:#fff;color:#000;padding:0.4rem 0.8rem;border:none;border-radius:6px;">Dismiss</button>
   </div>
-
   <div style="background:#121212;border-radius:12px;padding:1.5rem;margin:1.5rem 0;border:1px solid #222;">
-    
+   
     <button id="autoGenerate" class="neon-btn" style="background:#00ff88;color:#000;font-weight:bold;padding:1rem 2rem;font-size:1.2rem;">
       Generate Secret + Deposit Hash
     </button>
-
     <div style="margin-top:1.5rem;background:#111;padding:1.2rem;border-radius:10px;line-height:1.7;">
       <div><b>Your Secret (keep private):</b><br>
         <input id="masterSecret" readonly style="width:100%;margin-top:0.5rem;background:#222;color:#ffcc00;" /></div>
-      
+     
       <div style="margin-top:1rem;"><b>Deposit Hash:</b><br>
         <span id="liveDepositHash" style="color:#00ffcc;word-break:break-all;">—</span></div>
-
       <div style="margin-top:1.5rem;text-align:center;">
         <div id="qrContainer" style="display:none;position:relative;margin:1rem auto;width:280px;height:280px;">
           <canvas id="qrCanvas"></canvas>
-          <img id="qrLogo" src="PRIV.png" style="width:64px;height:64px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 0 15px #8b5cf6);" />
+          <img id="qrLogo" src="icon-maskable.png" style="width:64px;height:64px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 0 15px #8b5cf6);" />
         </div>
         <p id="qrHint" style="display:none;color:#8b5cf6;font-weight:bold;margin-top:0.5rem;">↑ Friend scans this ↑</p>
       </div>
     </div>
-
     <div style="margin-top:1rem;display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
       <button id="saveSecretBtn" disabled class="neon-btn" style="background:#00ff99;color:#000;font-weight:bold;">Save .txt</button>
       <button id="copySecretBtn" disabled class="neon-btn" style="background:#3366ff;">Copy Secret</button>
       <button id="saveQRBtn" disabled class="neon-btn" style="background:#ff00aa;color:#fff;">Save QR</button>
     </div>
-
     <div style="margin-top:1rem;padding:1rem;background:#141414;border-left:4px solid #8b5cf6;border-radius:8px;text-align:left;font-size:0.94rem;">
       <b>Send to friend:</b><br>• Show this QR code<br>• Send the .txt file<br>• Or copy-paste
     </div>
   </div>
-
   <input id="depositAmount" placeholder="Amount to deposit (e.g. 100)" style="margin:1rem 0;"/>
   <div style="position:relative;">
     <input id="depositHash" readonly placeholder="Deposit Hash (auto-filled)" style="background:#222;color:#00ffcc;width:100%;padding-right:70px;"/>
     <button onclick="navigator.clipboard.writeText(document.getElementById('depositHash').value);alert('Copied!')" style="position:absolute;right:5px;top:50%;transform:translateY(-50%);background:#333;padding:0.4rem 0.6rem;font-size:0.8rem;">Copy</button>
   </div>
-
   <div style="margin:1.5rem 0;">
     <button id="approveBtn">Approve PRIVX</button>
     <button id="depositBtn">Deposit to Shield</button>
@@ -691,117 +683,84 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
-<!-- ✅ FINAL—Functional PrivX Generator with Working QR + Transparent Maskable Icon -->
+<!-- FIXED QR SCRIPT — 100% WORKING -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const autoGen = document.getElementById("autoGenerate");
-  const secretInput = document.getElementById("masterSecret");
-  const depositHashEl = document.getElementById("liveDepositHash");
-  const depositHashField = document.getElementById("depositHash");
-  const saveSecretBtn = document.getElementById("saveSecretBtn");
-  const copySecretBtn = document.getElementById("copySecretBtn");
-  const saveQRBtn = document.getElementById("saveQRBtn");
-  const qrContainer = document.getElementById("qrContainer");
-  const qrHint = document.getElementById("qrHint");
-  const warnUnsaved = document.getElementById("unsavedWarning");
-  const qrCanvas = document.getElementById("qrCanvas");
+let currentSecret = "", currentDepositHash = "";
 
-  let currentSecret = "", currentDepositHash = "", saved = false;
+document.getElementById("autoGenerate").onclick = () => {
+  if (currentSecret && !confirm("Generate new secret?\nYour current one will be lost forever if not saved!")) return;
 
-  function notify(msg, color="#00ff99") {
-    const n = document.createElement("div");
-    Object.assign(n.style, {
-      position:"fixed",bottom:"25px",left:"50%",transform:"translateX(-50%)",
-      background:color,color:"#000",padding:"10px 18px",borderRadius:"10px",
-      fontWeight:"bold",zIndex:9999,boxShadow:`0 0 15px ${color}`
-    });
-    n.textContent = msg;
-    document.body.appendChild(n);
-    setTimeout(()=>n.remove(),1800);
-  }
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  currentSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+  document.getElementById("masterSecret").value = currentSecret;
 
-  autoGen.addEventListener("click", () => {
-    try {
-      const bytes = crypto.getRandomValues(new Uint8Array(32));
-      currentSecret = Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
-      secretInput.value = currentSecret;
+  const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]);
+  currentDepositHash = ethers.utils.keccak256(encoded);
+  document.getElementById("liveDepositHash").textContent = currentDepositHash;
+  document.getElementById("depositHash").value = currentDepositHash;
 
-      const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]);
-      currentDepositHash = ethers.utils.keccak256(encoded);
-
-      depositHashEl.textContent = currentDepositHash;
-      depositHashField.value = currentDepositHash;
-
-      qrContainer.style.display = "block";
-      qrHint.style.display = "block";
-      const ctx = qrCanvas.getContext("2d");
-      ctx.clearRect(0,0,qrCanvas.width,qrCanvas.height);
-
-      // Generate QR code synchronously and then overlay the transparent logo
-      QRCode.toCanvas(qrCanvas, `PrivX Secret:\n${currentSecret}\nDeposit Hash:\n${currentDepositHash}`, { width: 280, margin: 2 })
-        .then(() => {
-          const logo = new Image();
-          // Use actual local maskable_icon file path
-          logo.src = '/mnt/data/maskable_icon.png';
-          logo.onload = () => {
-            const size = 64;
-            ctx.drawImage(logo, (qrCanvas.width - size)/2, (qrCanvas.height - size)/2, size, size);
-            notify("✅ Secret & QR generated!");
-          };
-          logo.onerror = () => {
-            console.warn("Logo failed to load; QR drawn without logo.");
-            notify("✅ Secret generated (QR ready, no logo)");
-          };
-        })
-        .catch(err => {
-          console.error("QR generation error:", err);
-          notify("⚠️ QR generation failed.", "#ff6666");
-        });
-
-      [saveSecretBtn, copySecretBtn, saveQRBtn].forEach(b => b.disabled = false);
-      warnUnsaved.style.display = "block";
-      saved = false;
-    } catch(e){
-      console.error(e);
-      [saveSecretBtn, copySecretBtn, saveQRBtn].forEach(b => b.disabled = false);
-      notify("⚠️ Generation error, but secret ready.", "#ffaa00");
+  QRCode.toCanvas(document.getElementById("qrCanvas"), `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash: ${currentDepositHash}`, {width:280, margin:2}, (error) => {
+    if (error) console.error(error);
+    else {
+      document.getElementById("qrContainer").style.display = "block";
+      document.getElementById("qrHint").style.display = "block";
     }
   });
 
-  saveSecretBtn.addEventListener("click",()=>{
-    if(!currentSecret) return notify("Generate first","#ffcc00");
-    const blob=new Blob(
-      [`PrivX Secret:\n${currentSecret}\nDeposit Hash:\n${currentDepositHash}`],
-      {type:"text/plain"});
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(blob);
-    a.download=`PrivX-${currentSecret.slice(0,8)}.txt`;
+  document.getElementById("saveSecretBtn").disabled = false;
+  document.getElementById("copySecretBtn").disabled = false;
+  document.getElementById("saveQRBtn").disabled = false;
+  document.getElementById("unsavedWarning").style.display = "block";
+
+  alert("Generated! Save QR or .txt before sending to friend!");
+};
+
+document.getElementById("saveSecretBtn").onclick = () => {
+  const blob = new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`], {type: "text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `PrivX-Secret-${currentSecret.slice(0,10)}.txt`;
+  a.click();
+  document.getElementById("unsavedWarning").style.display = "none";
+};
+
+document.getElementById("copySecretBtn").onclick = async () => {
+  await navigator.clipboard.writeText(currentSecret);
+  alert("Secret copied to clipboard!");
+  document.getElementById("unsavedWarning").style.display = "none";
+};
+
+document.getElementById("saveQRBtn").onclick = () => {
+  const canvas = document.getElementById("qrCanvas");
+  const logoCanvas = document.createElement("canvas");
+  logoCanvas.width = canvas.width;
+  logoCanvas.height = canvas.height;
+  const ctx = logoCanvas.getContext("2d");
+  ctx.drawImage(canvas, 0, 0);
+  ctx.drawImage(document.getElementById("qrLogo"), canvas.width/2 - 32, canvas.height/2 - 32, 64, 64);
+  logoCanvas.toBlob(blob => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `PrivX-QR-${currentSecret.slice(0,10)}.png`;
     a.click();
-    saved=true;warnUnsaved.style.display="none";notify("💾 Saved");
   });
+  document.getElementById("unsavedWarning").style.display = "none";
+  alert("Branded QR Code saved!");
+};
 
-  copySecretBtn.addEventListener("click",async()=>{
-    if(!currentSecret) return notify("Generate first","#ffcc00");
-    await navigator.clipboard.writeText(currentSecret);
-    saved=true;warnUnsaved.style.display="none";notify("📋 Copied");
-  });
-
-  saveQRBtn.addEventListener("click",()=>{
-    if(!currentSecret) return notify("Generate first","#ffcc00");
-    qrCanvas.toBlob(blob=>{
-      const a=document.createElement("a");
-      a.href=URL.createObjectURL(blob);
-      a.download=`PrivX-QR-${currentSecret.slice(0,8)}.png`;
-      a.click();
-    });
-    saved=true;warnUnsaved.style.display="none";notify("🖼 QR saved");
-  });
-
-  window.addEventListener("beforeunload",e=>{
-    if(currentSecret && !saved){e.preventDefault();e.returnValue="Unsaved secret!";}
-  });
-});
+  // Withdrawer
+  document.getElementById("generateCommit").onclick = () => {
+    const secret = document.getElementById("withdrawSecret").value.trim();
+    const wallet = document.getElementById("withdrawWallet").value.trim();
+    if (!secret) return alert("Paste the Secret first");
+    if (!ethers.utils.isAddress(wallet)) return alert("Invalid wallet address");
+    const packed = ethers.utils.solidityPack(["string", "address"], [secret, wallet]);
+    const commitHash = ethers.utils.keccak256(packed);
+    document.getElementById("commitHashInput").value = commitHash;
+    document.getElementById("wallet1").value = wallet;
+    alert("Commit Hash ready!\nClick Commit Stealth → wait 5 mins → Withdraw");
+  };
 </script>
 </body>
 </html>
