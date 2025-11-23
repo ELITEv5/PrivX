@@ -655,7 +655,7 @@ async function updateMiningVault() {
       out.textContent = "❌ Error: " + e.message;
     }
   };
-  async function refreshAll() {
+    async function refreshAll() {
     try {
       await updateVaultBalance();
       await updateBurnCounter();
@@ -666,10 +666,10 @@ async function updateMiningVault() {
       console.warn("refreshAll error:", e);
     }
   }
-    refreshAll();
+  refreshAll();
   setInterval(refreshAll, 30000);
-});   
-</script> 
+})();   // ← THIS IS THE MISSING PIECE YOU NEEDED!!
+</script>
 
 <!-- QRCode library with guaranteed load + fallback -->
 <script>
