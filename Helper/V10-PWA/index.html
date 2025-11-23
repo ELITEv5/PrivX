@@ -691,7 +691,7 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
-<!-- ✅ FINAL—Stable PrivX Generator -->
+<!-- ✅ FINAL—Stable PrivX Generator with Transparent Logo -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -726,19 +726,30 @@ document.addEventListener("DOMContentLoaded", () => {
       const bytes = crypto.getRandomValues(new Uint8Array(32));
       currentSecret = Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
       secretInput.value = currentSecret;
+
       const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]);
       currentDepositHash = ethers.utils.keccak256(encoded);
+
       depositHashEl.textContent = currentDepositHash;
       depositHashField.value = currentDepositHash;
 
       qrContainer.style.display = "block";
       qrHint.style.display = "block";
-      qrCanvas.getContext("2d").clearRect(0,0,qrCanvas.width,qrCanvas.height);
+      const ctx = qrCanvas.getContext("2d");
+      ctx.clearRect(0,0,qrCanvas.width,qrCanvas.height);
 
       QRCode.toCanvas(qrCanvas,
         `PrivX Secret:\n${currentSecret}\nDeposit Hash:\n${currentDepositHash}`,
         {width:280,margin:2},
-        err => { if (err) console.warn("QR error",err); });
+        err => {
+          if (err) console.warn("QR generation error", err);
+          const logo = new Image();
+          logo.src = '/mnt/data/maskable_icon.png';
+          logo.onload = () => {
+            const size = 64;
+            ctx.drawImage(logo, (qrCanvas.width - size)/2, (qrCanvas.height - size)/2, size, size);
+          };
+        });
 
       [saveSecretBtn,copySecretBtn,saveQRBtn].forEach(b=>b.disabled=false);
       warnUnsaved.style.display="block";
@@ -746,7 +757,8 @@ document.addEventListener("DOMContentLoaded", () => {
       notify("✅ Secret generated!");
     } catch(e){
       console.error(e);
-      notify("⚠️ Generator error — see console","#ff6666");
+      [saveSecretBtn,copySecretBtn,saveQRBtn].forEach(b=>b.disabled=false);
+      notify("⚠️ QR generation issue, but secret is ready.","#ffaa00");
     }
   });
 
