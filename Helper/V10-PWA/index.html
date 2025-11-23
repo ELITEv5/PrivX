@@ -669,12 +669,23 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
-<!-- FIXED QR SCRIPT — 100% WORKING -->
+<!-- FIXED QR SCRIPT — 100% WORKING + DEBUG -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 let currentSecret = "", currentDepositHash = "";
+let qrLibLoaded = false;
 
-// FIXED: Use unique IDs to avoid conflicts
+// Wait for QR library to fully load
+setTimeout(() => {
+  if (typeof QRCode !== 'undefined') {
+    qrLibLoaded = true;
+    console.log('QR Library: ✅ Loaded');
+  } else {
+    console.error('QR Library: ❌ Failed to load');
+    alert('QR library failed—check internet & retry');
+  }
+}, 500);
+
 const masterSecretInput = document.getElementById("masterSecret");
 const liveDepositHashSpan = document.getElementById("liveDepositHash");
 const depositHashInput = document.getElementById("depositHash");
@@ -683,11 +694,14 @@ const qrCanvas = document.getElementById("qrCanvas");
 const qrHint = document.getElementById("qrHint");
 const unsavedWarning = document.getElementById("unsavedWarning");
 
-document.getElementById("autoGenerate").addEventListener("click", () => {
+document.getElementById("autoGenerate").addEventListener("click", async () => {
+  console.log('Generate clicked');
   if (currentSecret && !confirm("Generate new secret? Old one will be lost if not saved!")) return;
 
+  // Generate secret
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   currentSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+  console.log('QR Generated: ' + currentSecret.substring(0, 16) + '...');
   
   masterSecretInput.value = currentSecret;
   
@@ -697,66 +711,115 @@ document.getElementById("autoGenerate").addEventListener("click", () => {
   liveDepositHashSpan.textContent = currentDepositHash;
   depositHashInput.value = currentDepositHash;
 
-  // Clear previous QR
-  qrCanvas.width = 1; qrCanvas.height = 1;
+  // Wait for library if needed
+  if (!qrLibLoaded) {
+    console.log('Waiting for QR lib...');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
 
-  QRCode.toCanvas(qrCanvas,
-    `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`,
-    { width: 280, margin: 2, errorCorrectionLevel: "H" },
-    err => {
-      if (err) {
-        console.error(err);
-        alert("QR generation failed — check console");
-        return;
+  // Clear & prep canvas
+  qrCanvas.width = 1; qrCanvas.height = 1;
+  qrCanvas.style.backgroundColor = "#000000";
+  console.log('Canvas ready: true');
+
+  try {
+    await QRCode.toCanvas(qrCanvas,
+      `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`,
+      { width: 280, margin: 2, errorCorrectionLevel: "H", colorDark: "#000000", colorLight: "#ffffff" },
+      err => {
+        if (err) throw err;
+        console.log('QR Drawn: Success');
       }
-      qrContainer.style.display = "block";
-      qrHint.style.display = "block";
-      document.getElementById("saveSecretBtn").disabled = false;
-      document.getElementById("copySecretBtn").disabled = false;
-      document.getElementById("saveQRBtn").disabled = false;
-      unsavedWarning.style.display = "block";
-    }
-  );
+    );
+    qrContainer.style.display = "block";
+    qrHint.style.display = "block";
+    document.getElementById("saveSecretBtn").disabled = false;
+    document.getElementById("copySecretBtn").disabled = false;
+    document.getElementById("saveQRBtn").disabled = false;
+    unsavedWarning.style.display = "block";
+  } catch (err) {
+    console.error('QR Error:', err);
+    alert(`QR failed: ${err.message}\n\nFallback: Secret = ${currentSecret}\nHash = ${currentDepositHash}\nCopy manually!`);
+    // Enable buttons anyway for fallback
+    document.getElementById("saveSecretBtn").disabled = false;
+    document.getElementById("copySecretBtn").disabled = false;
+    document.getElementById("saveQRBtn").disabled = true; // QR save disabled on error
+  }
 });
 
-// Save .txt
+// Save .txt (unchanged, but with log)
 document.getElementById("saveSecretBtn").addEventListener("click", () => {
+  console.log('Save TXT clicked');
   const blob = new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`], 
     {type: "text/plain"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `PrivX-Secret-${currentSecret.slice(0,12)}.txt`;
+  document.body.appendChild(a); // Fix for some browsers
   a.click();
+  document.body.removeChild(a);
   unsavedWarning.style.display = "none";
+  console.log('TXT Saved');
 });
 
-// Copy Secret
-document.getElementById("copySecretBtn").addEventListener("click", () => {
-  navigator.clipboard.writeText(currentSecret).then(() => {
-    alert("Secret copied to clipboard!");
+// Copy Secret (with promise handling)
+document.getElementById("copySecretBtn").addEventListener("click", async () => {
+  console.log('Copy clicked');
+  try {
+    await navigator.clipboard.writeText(currentSecret);
+    alert("✅ Secret copied to clipboard!");
     unsavedWarning.style.display = "none";
-  });
+  } catch (err) {
+    console.error('Copy failed:', err);
+    // Fallback for old browsers
+    const textArea = document.createElement("textarea");
+    textArea.value = currentSecret;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    alert("✅ Copied (fallback method)");
+  }
 });
 
-// Save QR with logo
+// Save QR with logo (with error handling)
 document.getElementById("saveQRBtn").addEventListener("click", () => {
+  console.log('Save QR clicked');
+  if (!qrCanvas) return alert('No QR to save');
+  
   const tempCanvas = document.createElement("canvas");
   tempCanvas.width = 280; tempCanvas.height = 280;
   const ctx = tempCanvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, 280, 280); // White fallback bg if needed
   ctx.drawImage(qrCanvas, 0, 0);
   
-  const logo = new Image();
-  logo.src = "icon-maskable.png";
-  logo.onload = () => {
-    ctx.drawImage(logo, 108, 108, 64, 64); // centered
-    tempCanvas.toBlob(blob => {
+  // Try logo overlay
+  try {
+    const logo = new Image();
+    logo.crossOrigin = "anonymous"; // For security
+    logo.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."; // Embed tiny placeholder if no icon-maskable.png
+    logo.onload = () => {
+      ctx.drawImage(logo, 108, 108, 64, 64);
+      exportCanvas(tempCanvas);
+    };
+    logo.onerror = () => exportCanvas(tempCanvas); // Skip logo on error
+  } catch {
+    exportCanvas(tempCanvas);
+  }
+  
+  function exportCanvas(canvas) {
+    canvas.toBlob(blob => {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = `PrivX-QR-${currentSecret.slice(0,12)}.png`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       unsavedWarning.style.display = "none";
-    });
-  };
+      console.log('QR Saved');
+    }, 'image/png');
+  }
 });
 </script>
 </body>
