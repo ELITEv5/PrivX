@@ -664,54 +664,45 @@ async function refreshAll() {
 }
 refreshAll();
 setInterval(refreshAll, 30000);
-/* ——— QR GENERATOR — FULLY EMBEDDED, NO NESTED SCRIPT, 100% WORKING ——— */
-function drawQR(canvas, text) {
-  const size = 280;
-  const moduleSize = 8;
-  const margin = 16;
-  const qrSize = size - 2 * margin;
-  const modules = Math.floor(qrSize / moduleSize);
-
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, size, size);
-
-  const hash = Array.from(text).reduce((a,c) => a + c.charCodeAt(0), 0);
-  let ptr = 0;
-  function bit() { return (hash + ptr++) % 2; }
-
-  function finder(x, y) {
-    for (let i = 0; i < 7; i++)
-      for (let j = 0; j < 7; j++) {
-        const on = (i < 1 || i > 5 || j < 1 || j > 5) && !(i > 1 && i < 5 && j > 1 && j < 5);
-        if (on) ctx.fillRect(margin + x * moduleSize + i * moduleSize / 7, margin + y * moduleSize + j * moduleSize / 7, moduleSize / 7, moduleSize / 7);
-      }
-  }
-  finder(0, 0); finder(modules - 7, 0); finder(0, modules - 7);
-
-  ctx.fillStyle = '#ffffff';
-  for (let y = 0; y < modules; y++) {
-    for (let x = 0; x < modules; x++) {
-      if ((x < 8 && y < 8) || (x >= modules - 8 && y < 8) || (x < 8 && y >= modules - 8)) continue;
-      if (bit()) {
-        ctx.fillRect(margin + x * moduleSize, margin + y * moduleSize, moduleSize - 1, moduleSize - 1);
-      }
-    }
-  }
-
-  const logo = new Image();
-  logo.src = "icon-maskable.png";
-  logo.onload = () => {
-    const center = size / 2;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(center - 32, center - 32, 64, 64);
-    ctx.drawImage(logo, center - 32, center - 32, 60, 60);
-  };
-}
-
+// QR GENERATOR — FIXED VERSION WITH BETTER FALLBACK
 let currentSecret = "", currentDepositHash = "";
+let QRCode = null;
+
+async function ensureQR() {
+  if (QRCode) return;
+  return new Promise(resolve => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+    s.onload = () => { QRCode = window.QRCode; resolve(); };
+    s.onerror = () => {
+      console.log("QR blocked — using fallback (disable adblock for full QR)");
+      alert("QR library blocked by adblock/extension — disable for full scannable QR. Using text fallback.");
+      QRCode = {
+        toCanvas: (canvas, text, opts, cb) => {
+          canvas.width = 280; canvas.height = 280;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#000'; ctx.fillRect(0,0,280,280);
+          ctx.fillStyle = '#0ff1c0';
+          ctx.font = 'bold 16px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText("QR BLOCKED", 140, 80);
+          ctx.fillText("DISABLE ADBLOCK", 140, 100);
+          ctx.fillText("TO FIX", 140, 120);
+          ctx.font = '12px monospace';
+          ctx.fillText("Secret: " + currentSecret.substring(0,20), 140, 160);
+          ctx.fillText(currentSecret.substring(20,40), 140, 180);
+          ctx.fillText(currentSecret.substring(40), 140, 200);
+          ctx.fillText("Hash: " + currentDepositHash.substring(0,20), 140, 240);
+          ctx.fillText(currentDepositHash.substring(20,40), 140, 260);
+          ctx.fillText(currentDepositHash.substring(40), 140, 280);
+          if (cb) cb();
+        }
+      };
+      resolve();
+    };
+    document.head.appendChild(s);
+  });
+}
 
 const qrEls = {
   secret: document.getElementById("masterSecret"),
@@ -726,32 +717,45 @@ const qrEls = {
 document.getElementById("autoGenerate").onclick = async () => {
   if (currentSecret && !confirm("Generate new secret? Old one will be lost!")) return;
 
-  currentSecret = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-    .map(b => b.toString(16).padStart(2, '0')).join('');
+  currentSecret = Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b=>b.toString(16).padStart(2,'0')).join('');
   currentDepositHash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]));
 
   qrEls.secret.value = currentSecret;
   qrEls.hashSpan.textContent = currentDepositHash;
   qrEls.hashInput.value = currentDepositHash;
 
-  const fullText = `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`;
-  drawQR(qrEls.canvas, fullText);
+  await ensureQR();
+  qrEls.canvas.width = 280; qrEls.canvas.height = 280;
 
-  qrEls.qrBox.style.display = "block";
-  qrEls.hint.style.display = "block";
-  qrEls.warning.style.display = "block";
-  ["saveSecretBtn", "copySecretBtn", "saveQRBtn"].forEach(id => document.getElementById(id).disabled = false);
+  QRCode.toCanvas(qrEls.canvas,
+    `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`,
+    { width: 280, margin: 2, errorCorrectionLevel: "H" },
+    () => {
+      const logo = new Image();
+      logo.src = "icon-maskable.png";
+      logo.onload = () => {
+        const ctx = qrEls.canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(108, 108, 64, 64);
+        ctx.drawImage(logo, 108, 108, 64, 64);
+      };
+      qrEls.qrBox.style.display = "block";
+      qrEls.hint.style.display = "block";
+      qrEls.warning.style.display = "block";
+      ["saveSecretBtn","copySecretBtn","saveQRBtn"].forEach(id => document.getElementById(id).disabled = false);
+    }
+  );
 };
 
 document.getElementById("saveSecretBtn").onclick = () => {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}`], {type: "text/plain"}));
+  a.href = URL.createObjectURL(new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}`], {type:"text/plain"}));
   a.download = `PrivX-${currentSecret.slice(0,12)}.txt`; a.click();
   qrEls.warning.style.display = "none";
 };
 
 document.getElementById("copySecretBtn").onclick = () => {
-  navigator.clipboard.writeText(currentSecret).then(() => alert("Secret copied!")).catch(() => prompt("Copy:", currentSecret));
+  navigator.clipboard.writeText(currentSecret).then(()=>alert("Secret copied!")).catch(()=>prompt("Copy:",currentSecret));
   qrEls.warning.style.display = "none";
 };
 
