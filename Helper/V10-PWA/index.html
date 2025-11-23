@@ -92,7 +92,7 @@ function installPWA() {
 <style>
 @keyframes logoGlow {
   from { filter: drop-shadow(0 0 10px #8b5cf6); }
-  to { filter: drop-shadow(0 0 30px #8b5cf6) drop-shadow(0 0 50px #5c00ff);27
+  to { filter: drop-shadow(0 0 30px #8b5cf6) drop-shadow(0 0 50px #5c00ff); }
 }
 @media (max-width: 600px) {
   div[style*="text-align:center"] img { max-width: 340px; }
@@ -179,19 +179,6 @@ function installPWA() {
   <small style="display:block;margin-top:.8rem;color:#aaa;">
     🧩 Verified Contracts • No Admin • No Upgrades • 100% On-Chain Autonomy
   </small>
-</div>
-  <!-- 💰 BUY PRIVX BUTTON -->
-<div class="section" style="background:#121212;text-align:center;">
-  <h3>💰 Get PRIVX Tokens</h3>
-  <p>Need PRIVX to start shielding? Buy directly on PulseX below.</p>
-  <a href="https://pulsex.mypinata.cloud/ipfs/bafybeiajyhfbf6evh4mdabassmbtsy73ci2gmcgh4ffmjkrgsea35vqxba/#/"
-     target="_blank" rel="noopener noreferrer"
-     style="display:inline-block;background:#00ff99;color:#000;font-weight:bold;
-            padding:1rem 2rem;border-radius:10px;text-decoration:none;
-            font-size:1.1rem;box-shadow:0 0 15px #00ff99;transition:all 0.2s ease;">
-    🚀 Buy PRIVX on PulseX
-  </a>
-  <p style="margin-top:0.6rem;color:#aaa;">Always verify token address before swapping.</p>
 </div>
 <!-- 🔥 TOTAL PRIVX BURNED -->
 <div class="section" style="background:#121212;">
@@ -287,14 +274,13 @@ function installPWA() {
   <p>Paste the Secret you received + your fresh wallet address</p>
   <input id="withdrawSecret" placeholder="Secret (received from depositor)" style="margin:0.5rem 0;"/>
   <input id="withdrawWallet" placeholder="Your fresh wallet address (0x...)" style="margin:0.5rem 0;"/>
- 
   <button id="generateCommit" class="neon-btn" style="background:#ff006e;">
     Generate Commit Hash
   </button>
   <div style="margin-top:1rem;">
     <div style="position:relative;">
       <input id="commitHashInput" readonly placeholder="Commit Hash (auto-filled)" style="background:#222;color:#8b5cf6;width:100%;padding-right:70px;"/>
-      <button onclick="navigator.clipboard.writeText(document.getElementById('commitHashInput').value);alert('Copied!')" 
+      <button onclick="navigator.clipboard.writeText(document.getElementById('commitHashInput').value);alert('Copied!')"
               style="position:absolute;right:5px;top:50%;transform:translateY(-50%);background:#333;padding:0.4rem 0.6rem;font-size:0.8rem;">Copy</button>
     </div>
   </div>
@@ -687,7 +673,6 @@ async function updateMiningVault() {
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 let currentSecret = "", currentDepositHash = "";
-
 document.getElementById("autoGenerate").onclick = () => {
   if (currentSecret && !confirm("Generate new secret?\nYour current one will be lost forever if not saved!")) return;
 
@@ -700,46 +685,14 @@ document.getElementById("autoGenerate").onclick = () => {
   document.getElementById("liveDepositHash").textContent = currentDepositHash;
   document.getElementById("depositHash").value = currentDepositHash;
 
-  // ✅ FINAL—QR GENERATION WITH SCANNABLE EMBEDDED LOGO (LOCAL DIRECTORY)
-QRCode.toCanvas(
-  document.getElementById("qrCanvas"),
-  `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash: ${currentDepositHash}`,
-  {
-    width: 280,
-    margin: 2,
-    errorCorrectionLevel: 'H' // high tolerance for logo overlay
-  },
-  (error) => {
-    if (error) {
-      console.error(error);
-      alert('QR generation error');
-      return;
+  QRCode.toCanvas(document.getElementById("qrCanvas"), `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash: ${currentDepositHash}`, {width:280, margin:2}, (error) => {
+    if (error) console.error(error);
+    else {
+      document.getElementById("qrContainer").style.display = "block";
+      document.getElementById("qrHint").style.display = "block";
     }
-    const canvas = document.getElementById('qrCanvas');
-    const ctx = canvas.getContext('2d');
-    const logo = new Image();
-    logo.src = 'maskable_icon.png'; // ✅ transparent logo in same directory
+  });
 
-    logo.onload = () => {
-      const size = 64; // logo dimensions
-      const x = (canvas.width - size) / 2;
-      const y = (canvas.height - size) / 2;
-      ctx.save();
-      ctx.globalAlpha = 1.0;
-      ctx.drawImage(logo, x, y, size, size);
-      ctx.restore();
-      document.getElementById('qrContainer').style.display = 'block';
-      document.getElementById('qrHint').style.display = 'block';
-      console.log('✅ QR generated successfully — scannable and branded.');
-    };
-
-    logo.onerror = () => {
-      console.warn('⚠️ Logo failed to load — QR generated without branding.');
-      document.getElementById('qrContainer').style.display = 'block';
-      document.getElementById('qrHint').style.display = 'block';
-    };
-  }
-);
   document.getElementById("saveSecretBtn").disabled = false;
   document.getElementById("copySecretBtn").disabled = false;
   document.getElementById("saveQRBtn").disabled = false;
@@ -796,4 +749,3 @@ document.getElementById("saveQRBtn").onclick = () => {
 </script>
 </body>
 </html>
-
