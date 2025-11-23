@@ -696,12 +696,12 @@ async function updateMiningVault() {
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-  function ready() {
+  function initGenerator() {
     if (typeof ethers === "undefined" || typeof QRCode === "undefined") {
-      console.log("⏳ Waiting for libraries...");
-      return setTimeout(ready, 100);
+      console.log("⏳ Waiting for ethers & QRCode...");
+      return setTimeout(initGenerator, 150);
     }
-    console.log("✅ Libraries ready — initializing secret generator");
+    console.log("✅ Libraries loaded — PrivX generator ready");
 
     let currentSecret = "", currentDepositHash = "", saved = false;
 
@@ -715,6 +715,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const saveQRBtn = document.getElementById("saveQRBtn");
     const warnUnsaved = document.getElementById("unsavedWarning");
 
+    // ✅ Floating save confirmation
     const saveNotice = document.createElement("div");
     Object.assign(saveNotice.style, {
       display: "none",
@@ -742,9 +743,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function notify(msg, color = "#00ff99") {
-      const box = document.createElement("div");
-      box.textContent = msg;
-      Object.assign(box.style, {
+      const note = document.createElement("div");
+      note.textContent = msg;
+      Object.assign(note.style, {
         position: "fixed",
         bottom: "30px",
         left: "50%",
@@ -754,16 +755,16 @@ document.addEventListener("DOMContentLoaded", () => {
         padding: "10px 20px",
         borderRadius: "10px",
         fontWeight: "bold",
-        boxShadow: "0 0 15px " + color,
-        zIndex: 9999,
+        boxShadow: `0 0 15px ${color}`,
+        zIndex: 10000,
       });
-      document.body.appendChild(box);
-      setTimeout(() => box.remove(), 2000);
+      document.body.appendChild(note);
+      setTimeout(() => note.remove(), 2000);
     }
 
+    // 🔹 Generate new secret
     document.getElementById("autoGenerate").onclick = () => {
-      const btn = document.getElementById("autoGenerate");
-      console.log("🔹 Generator clicked");
+      console.log("🔹 Generate button clicked");
       if (currentSecret && !confirm("Generate a new secret?\nYour current one will be lost if not saved!")) return;
 
       const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -792,8 +793,9 @@ document.addEventListener("DOMContentLoaded", () => {
       notify("✅ Secret Generated! Save or Copy before leaving.");
     };
 
+    // 💾 Save .txt
     saveSecretBtn.onclick = () => {
-      if (!currentSecret) return notify("⚠️ No secret yet!");
+      if (!currentSecret) return notify("⚠️ Generate secret first!", "#ffcc00");
       const blob = new Blob(
         [`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`],
         { type: "text/plain" }
@@ -807,16 +809,18 @@ document.addEventListener("DOMContentLoaded", () => {
       showSaveNotice();
     };
 
+    // 📋 Copy Secret
     copySecretBtn.onclick = async () => {
-      if (!currentSecret) return notify("⚠️ Nothing to copy");
+      if (!currentSecret) return notify("⚠️ Nothing to copy!", "#ffcc00");
       await navigator.clipboard.writeText(currentSecret);
       saved = true;
       warnUnsaved.style.display = "none";
       showSaveNotice();
     };
 
+    // 🖼 Save QR
     saveQRBtn.onclick = () => {
-      if (!currentSecret) return notify("⚠️ Generate first");
+      if (!currentSecret) return notify("⚠️ Generate secret first!", "#ffcc00");
       const canvas = document.getElementById("qrCanvas");
       const logo = document.getElementById("qrLogo");
       const ctx = canvas.getContext("2d");
@@ -832,6 +836,7 @@ document.addEventListener("DOMContentLoaded", () => {
       showSaveNotice();
     };
 
+    // ⚠️ Prevent losing secrets
     window.addEventListener("beforeunload", e => {
       if (currentSecret && !saved) {
         e.preventDefault();
@@ -840,8 +845,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  ready();
+  initGenerator();
 });
 </script>
 </body>
 </html>
+
