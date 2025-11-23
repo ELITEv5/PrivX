@@ -406,7 +406,7 @@ async function connect() {
   });
   const abi = await fetch("./abi.json").then(r => r.json());
   contract = new ethers.Contract(relayAddress, abi, signer);
-  privx = new ethers.Contract(
+  privx = new ethers.utils.Contract(
     tokenAddress,
     [
       "function approve(address,uint256) external returns(bool)",
@@ -644,7 +644,7 @@ async function updateMiningVault() {
           const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
           const hrs = Math.floor((remaining / (1000 * 60 * 60)) % 24);
           const mins = Math.floor((remaining / (1000 * 60)) % 60);
-          const secs = Math.floor((remaining / 1000) % 60);
+          const secs = Math.floor((remaining / (1000 * 60)) % 60);
           countdownEl.innerHTML = `<b>⏱ Time remaining:</b> ${days}d ${hrs}h ${mins}m ${secs}s`;
           setInterval(tick, 1000);
         };
@@ -673,7 +673,6 @@ async function updateMiningVault() {
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 let currentSecret = "", currentDepositHash = "";
-
 document.getElementById("autoGenerate").addEventListener("click", () => {
   if (currentSecret && !confirm("Generate new secret? Old one will be lost if not saved!")) return;
 
@@ -688,7 +687,7 @@ document.getElementById("autoGenerate").addEventListener("click", () => {
 
   QRCode.toCanvas(document.getElementById("qrCanvas"), 
     `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`, 
-    { width: 280, margin: 2, errorCorrectionLevel: "H" }, 
+    { width: 280, margin: 2, errorCorrectionLevel: 'H' }, 
     err => {
       if (err) { console.error(err); alert("QR error"); return; }
       document.getElementById("qrContainer").style.display = "block";
@@ -702,7 +701,7 @@ document.getElementById("autoGenerate").addEventListener("click", () => {
 });
 
 document.getElementById("saveSecretBtn").addEventListener("click", () => {
-  const blob = new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`], {type: "text/plain"});
+  const blob = new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`], {type:"text/plain"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `PrivX-${currentSecret.slice(0,12)}.txt`;
@@ -712,7 +711,7 @@ document.getElementById("saveSecretBtn").addEventListener("click", () => {
 
 document.getElementById("copySecretBtn").addEventListener("click", () => {
   navigator.clipboard.writeText(currentSecret);
-  alert("Secret copied!");
+  alert("Secret copied to clipboard!");
   document.getElementById("unsavedWarning").style.display = "none";
 });
 
@@ -734,9 +733,9 @@ document.getElementById("saveQRBtn").addEventListener("click", () => {
     });
   };
   document.getElementById("unsavedWarning").style.display = "none";
+  alert("Branded QR Code saved!");
 });
 
-// WITHDRAWER — NOW INSIDE THE SAME SCRIPT (fixed!)
 document.getElementById("generateCommit").onclick = () => {
   const secret = document.getElementById("withdrawSecret").value.trim();
   const wallet = document.getElementById("withdrawWallet").value.trim();
