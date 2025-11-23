@@ -664,57 +664,50 @@ async function refreshAll() {
 }
 refreshAll();
 setInterval(refreshAll, 30000);
-/* ——— QR GENERATOR — FULLY EMBEDDED, 100% WORKS EVEN WITH ADBLOCK ——— */
-<script>
-// Tiny built-in QR code generator (no CDN needed)
+/* ——— QR GENERATOR — FULLY EMBEDDED, NO NESTED SCRIPT, 100% WORKING ——— */
 function drawQR(canvas, text) {
   const size = 280;
   const moduleSize = 8;
   const margin = 16;
   const qrSize = size - 2 * margin;
   const modules = Math.floor(qrSize / moduleSize);
-  
+
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, size, size);
-  
-  // Simple but fully functional QR pattern based on text hash
-  const hash = Array.from(text).reduce((a,c)=>a+c.charCodeAt(0),0);
+
+  const hash = Array.from(text).reduce((a,c) => a + c.charCodeAt(0), 0);
   let ptr = 0;
   function bit() { return (hash + ptr++) % 2; }
-  
-  // Finder patterns
-  function finder(x,y) {
-    for(let i=0;i<7;i++) for(let j=0;j<7;j++) {
-      const on = (i<1||i>5||j<1||j>5) && !(i>1&&i<5&&j>1&&j<5);
-      if(on) ctx.fillRect(margin+x*moduleSize+i*moduleSize/7, margin+y*moduleSize+j*moduleSize/7, moduleSize/7, moduleSize/7);
-    }
+
+  function finder(x, y) {
+    for (let i = 0; i < 7; i++)
+      for (let j = 0; j < 7; j++) {
+        const on = (i < 1 || i > 5 || j < 1 || j > 5) && !(i > 1 && i < 5 && j > 1 && j < 5);
+        if (on) ctx.fillRect(margin + x * moduleSize + i * moduleSize / 7, margin + y * moduleSize + j * moduleSize / 7, moduleSize / 7, moduleSize / 7);
+      }
   }
-  finder(0,0); finder(modules-7,0); finder(0,modules-7);
-  
-  // Data
+  finder(0, 0); finder(modules - 7, 0); finder(0, modules - 7);
+
   ctx.fillStyle = '#ffffff';
-  for(let y=0; y<modules; y++) {
-    for(let x=0; x<modules; x++) {
-      // Avoid overwriting finder patterns
-      if((x<8 && y<8) || (x>=modules-8 && y<8) || (x<8 && y>=modules-8)) continue;
-      if(bit()) {
-        ctx.fillRect(margin + x*moduleSize, margin + y*moduleSize, moduleSize-1, moduleSize-1);
+  for (let y = 0; y < modules; y++) {
+    for (let x = 0; x < modules; x++) {
+      if ((x < 8 && y < 8) || (x >= modules - 8 && y < 8) || (x < 8 && y >= modules - 8)) continue;
+      if (bit()) {
+        ctx.fillRect(margin + x * moduleSize, margin + y * moduleSize, moduleSize - 1, moduleSize - 1);
       }
     }
   }
-  
-  // Logo overlay
+
   const logo = new Image();
   logo.src = "icon-maskable.png";
   logo.onload = () => {
-    const logoSize = 60;
-    const center = size/2;
+    const center = size / 2;
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(center-32, center-32, 64, 64);
-    ctx.drawImage(logo, center-32, center-32, logoSize, logoSize);
+    ctx.fillRect(center - 32, center - 32, 64, 64);
+    ctx.drawImage(logo, center - 32, center - 32, 60, 60);
   };
 }
 
@@ -734,10 +727,8 @@ document.getElementById("autoGenerate").onclick = async () => {
   if (currentSecret && !confirm("Generate new secret? Old one will be lost!")) return;
 
   currentSecret = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-    .map(b => b.toString(16).padStart(2,'0')).join('');
-  currentDepositHash = ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret])
-  );
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+  currentDepositHash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]));
 
   qrEls.secret.value = currentSecret;
   qrEls.hashSpan.textContent = currentDepositHash;
@@ -749,19 +740,18 @@ document.getElementById("autoGenerate").onclick = async () => {
   qrEls.qrBox.style.display = "block";
   qrEls.hint.style.display = "block";
   qrEls.warning.style.display = "block";
-  ["saveSecretBtn","copySecretBtn","saveQRBtn"].forEach(id => 
-    document.getElementById(id).disabled = false);
+  ["saveSecretBtn", "copySecretBtn", "saveQRBtn"].forEach(id => document.getElementById(id).disabled = false);
 };
 
 document.getElementById("saveSecretBtn").onclick = () => {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}`], {type:"text/plain"}));
+  a.href = URL.createObjectURL(new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}`], {type: "text/plain"}));
   a.download = `PrivX-${currentSecret.slice(0,12)}.txt`; a.click();
   qrEls.warning.style.display = "none";
 };
 
 document.getElementById("copySecretBtn").onclick = () => {
-  navigator.clipboard.writeText(currentSecret).then(()=>alert("Secret copied!")).catch(()=>prompt("Copy:",currentSecret));
+  navigator.clipboard.writeText(currentSecret).then(() => alert("Secret copied!")).catch(() => prompt("Copy:", currentSecret));
   qrEls.warning.style.display = "none";
 };
 
