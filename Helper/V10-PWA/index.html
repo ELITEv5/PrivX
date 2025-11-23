@@ -691,140 +691,108 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
-<!-- ✅ FIXED UNIVERSAL GENERATOR (WORKING VERSION) -->
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<!-- ✅ FINAL FIXED UNIVERSAL GENERATOR -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
-window.addEventListener("load", () => {
-  console.log("🔧 PrivX Generator booting...");
+document.addEventListener("DOMContentLoaded", () => {
+  const autoGen = document.getElementById("autoGenerate");
+  const secretInput = document.getElementById("masterSecret");
+  const depositHashEl = document.getElementById("liveDepositHash");
+  const depositHashField = document.getElementById("depositHash");
+  const saveSecretBtn = document.getElementById("saveSecretBtn");
+  const copySecretBtn = document.getElementById("copySecretBtn");
+  const saveQRBtn = document.getElementById("saveQRBtn");
+  const qrContainer = document.getElementById("qrContainer");
+  const qrHint = document.getElementById("qrHint");
+  const warnUnsaved = document.getElementById("unsavedWarning");
+  const qrCanvas = document.getElementById("qrCanvas");
 
-  // Ensure both libraries are ready before initialization
-  function libsReady() {
-    return (typeof ethers !== "undefined" && typeof QRCode !== "undefined");
+  let currentSecret = "", currentDepositHash = "", saved = false;
+
+  function notify(msg, color="#00ff99") {
+    const n = document.createElement("div");
+    Object.assign(n.style, {
+      position:"fixed", bottom:"25px", left:"50%", transform:"translateX(-50%)",
+      background:color, color:"#000", padding:"10px 18px", borderRadius:"10px",
+      fontWeight:"bold", zIndex:9999, boxShadow:`0 0 15px ${color}`
+    });
+    n.textContent = msg;
+    document.body.appendChild(n);
+    setTimeout(()=>n.remove(), 1800);
   }
 
-  async function waitForLibs() {
-    while (!libsReady()) {
-      console.log("⏳ Waiting for libs...");
-      await new Promise(r => setTimeout(r, 200));
-    }
-    initPrivXGenerator();
-  }
+  autoGen.addEventListener("click", async () => {
+    try {
+      const bytes = crypto.getRandomValues(new Uint8Array(32));
+      currentSecret = Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
+      secretInput.value = currentSecret;
 
-  waitForLibs();
+      const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]);
+      currentDepositHash = ethers.utils.keccak256(encoded);
+      depositHashEl.textContent = currentDepositHash;
+      depositHashField.value = currentDepositHash;
 
-  function initPrivXGenerator() {
-    console.log("✅ PrivX Generator initialized successfully");
-
-    let currentSecret = "", currentDepositHash = "", saved = false;
-
-    const el = id => document.getElementById(id);
-    const secretInput = el("masterSecret");
-    const depositHashEl = el("liveDepositHash");
-    const depositHashField = el("depositHash");
-    const qrContainer = el("qrContainer");
-    const qrHint = el("qrHint");
-    const saveSecretBtn = el("saveSecretBtn");
-    const copySecretBtn = el("copySecretBtn");
-    const saveQRBtn = el("saveQRBtn");
-    const warnUnsaved = el("unsavedWarning");
-
-    // Safety check for missing DOM nodes
-    if (!secretInput || !depositHashEl || !el("autoGenerate")) {
-      console.error("❌ Required DOM elements not found.");
-      return;
-    }
-
-    function notify(msg, color = "#00ff99") {
-      const note = document.createElement("div");
-      Object.assign(note.style, {
-        position: "fixed",
-        bottom: "30px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        background: color,
-        color: "#000",
-        padding: "10px 20px",
-        borderRadius: "10px",
-        fontWeight: "bold",
-        zIndex: 9999,
-        boxShadow: `0 0 15px ${color}`,
-      });
-      note.textContent = msg;
-      document.body.appendChild(note);
-      setTimeout(() => note.remove(), 2000);
-    }
-
-    // 🧬 Generate Secret + Deposit Hash
-    el("autoGenerate").onclick = () => {
-      console.log("🔹 Generate button clicked");
-      try {
-        const bytes = crypto.getRandomValues(new Uint8Array(32));
-        currentSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-        secretInput.value = currentSecret;
-
-        const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]);
-        currentDepositHash = ethers.utils.keccak256(encoded);
-
-        depositHashEl.textContent = currentDepositHash;
-        depositHashField.value = currentDepositHash;
-
-        QRCode.toCanvas(document.getElementById("qrCanvas"), `PRIVX SECRET:\n${currentSecret}\nDeposit Hash:\n${currentDepositHash}`, { width: 280 }, (err) => {
+      QRCode.toCanvas(qrCanvas,
+        `PRIVX SECRET\\n${currentSecret}\\n\\nDeposit Hash:\\n${currentDepositHash}`,
+        { width: 280, margin: 2 },
+        err => {
           if (err) console.error(err);
           qrContainer.style.display = "block";
           qrHint.style.display = "block";
         });
 
-        [saveSecretBtn, copySecretBtn, saveQRBtn].forEach(b => (b.disabled = false));
-        warnUnsaved.style.display = "block";
-        saved = false;
-        notify("✅ Secret Generated — Save or Copy now!");
-      } catch (err) {
-        console.error("❌ Generation error:", err);
-        notify("⚠️ Generation failed. Check console.", "#ff6666");
-      }
-    };
+      [saveSecretBtn, copySecretBtn, saveQRBtn].forEach(b => b.disabled = false);
+      warnUnsaved.style.display = "block";
+      saved = false;
+      notify("✅ Secret generated successfully!");
+    } catch (e) {
+      console.error(e);
+      notify("⚠️ Error generating secret", "#ff6666");
+    }
+  });
 
-    // 💾 Save Secret
-    saveSecretBtn.onclick = () => {
-      if (!currentSecret) return notify("⚠️ Generate secret first!", "#ffcc00");
-      const blob = new Blob([
-        `PRIVX SECRET\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`
-      ], { type: "text/plain" });
+  saveSecretBtn.addEventListener("click", () => {
+    if (!currentSecret) return notify("⚠️ Generate secret first", "#ffcc00");
+    const blob = new Blob(
+      [`PrivX Secret:\\n${currentSecret}\\nDeposit Hash:\\n${currentDepositHash}`],
+      { type: "text/plain" }
+    );
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `PrivX-Secret-${currentSecret.slice(0,10)}.txt`;
+    a.click();
+    saved = true;
+    warnUnsaved.style.display = "none";
+    notify("💾 Secret saved");
+  });
+
+  copySecretBtn.addEventListener("click", async () => {
+    if (!currentSecret) return notify("⚠️ Nothing to copy", "#ffcc00");
+    await navigator.clipboard.writeText(currentSecret);
+    saved = true;
+    warnUnsaved.style.display = "none";
+    notify("📋 Secret copied");
+  });
+
+  saveQRBtn.addEventListener("click", () => {
+    if (!currentSecret) return notify("⚠️ Generate secret first", "#ffcc00");
+    qrCanvas.toBlob(blob => {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `PrivX-Secret-${currentSecret.slice(0, 10)}.txt`;
+      a.download = `PrivX-QR-${currentSecret.slice(0,10)}.png`;
       a.click();
-      saved = true;
-      warnUnsaved.style.display = "none";
-      notify("✅ Secret saved to file.");
-    };
+    });
+    saved = true;
+    warnUnsaved.style.display = "none";
+    notify("🖼 QR saved");
+  });
 
-    // 📋 Copy Secret
-    copySecretBtn.onclick = async () => {
-      if (!currentSecret) return notify("⚠️ Nothing to copy!", "#ffcc00");
-      await navigator.clipboard.writeText(currentSecret);
-      saved = true;
-      warnUnsaved.style.display = "none";
-      notify("✅ Secret copied to clipboard!");
-    };
-
-    // 🖼 Save QR Code
-    saveQRBtn.onclick = () => {
-      if (!currentSecret) return notify("⚠️ Generate secret first!", "#ffcc00");
-      const canvas = document.getElementById("qrCanvas");
-      if (!canvas) return notify("⚠️ QR not ready yet!", "#ffcc00");
-      canvas.toBlob(blob => {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `PrivX-QR-${currentSecret.slice(0, 10)}.png`;
-        a.click();
-      });
-      saved = true;
-      warnUnsaved.style.display = "none";
-      notify("✅ QR saved!");
-    };
-  }
+  window.addEventListener("beforeunload", e => {
+    if (currentSecret && !saved) {
+      e.preventDefault();
+      e.returnValue = "⚠️ You haven’t saved your secret yet!";
+    }
+  });
 });
 </script>
 </body>
