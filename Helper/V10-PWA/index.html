@@ -678,7 +678,7 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
-   <!-- ✅ FINAL WORKING GENERATOR + WARNING + SAVE LOGIC -->
+  <!-- ✅ FINAL WORKING GENERATOR + WARNING + SAVE LOGIC + SAVE INDICATOR -->
 <script src="./ethers.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
@@ -696,6 +696,34 @@ window.addEventListener("load", () => {
   const copySecretBtn = document.getElementById("copySecretBtn");
   const saveQRBtn = document.getElementById("saveQRBtn");
   const warnUnsaved = document.getElementById("unsavedWarning");
+
+  // ✅ Add a hidden status bar below the buttons
+  const saveNotice = document.createElement("div");
+  saveNotice.id = "saveNotice";
+  Object.assign(saveNotice.style, {
+    display: "none",
+    background: "#00ff99",
+    color: "#000",
+    fontWeight: "bold",
+    padding: "10px",
+    borderRadius: "10px",
+    marginTop: "15px",
+    width: "fit-content",
+    marginInline: "auto",
+    boxShadow: "0 0 15px #00ff99",
+    transition: "opacity 0.5s ease",
+  });
+  saveNotice.textContent = "✅ Secret Saved Successfully";
+  document.querySelector(".section").appendChild(saveNotice);
+
+  function showSaveNotice() {
+    saveNotice.style.display = "block";
+    saveNotice.style.opacity = "1";
+    setTimeout(() => {
+      saveNotice.style.opacity = "0";
+      setTimeout(() => (saveNotice.style.display = "none"), 500);
+    }, 2000);
+  }
 
   function notify(msg, color = "#00ff99") {
     const box = document.createElement("div");
@@ -757,14 +785,14 @@ window.addEventListener("load", () => {
     a.click();
     saved = true;
     warnUnsaved.style.display = "none";
-    notify("💾 Secret saved as .txt");
+    showSaveNotice();
   };
 
   copySecretBtn.onclick = async () => {
     await navigator.clipboard.writeText(currentSecret);
     saved = true;
     warnUnsaved.style.display = "none";
-    notify("📋 Secret copied to clipboard");
+    showSaveNotice();
   };
 
   saveQRBtn.onclick = () => {
@@ -780,7 +808,7 @@ window.addEventListener("load", () => {
     });
     saved = true;
     warnUnsaved.style.display = "none";
-    notify("🖼️ Branded QR saved!");
+    showSaveNotice();
   };
 
   window.addEventListener("beforeunload", e => {
