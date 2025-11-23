@@ -691,7 +691,7 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
-<!-- ✅ FINAL—Stable PrivX Generator with Working QR + Transparent Maskable Icon -->
+<!-- ✅ FINAL—Functional PrivX Generator with Working QR + Transparent Maskable Icon -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -738,14 +738,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const ctx = qrCanvas.getContext("2d");
       ctx.clearRect(0,0,qrCanvas.width,qrCanvas.height);
 
-      // Generate QR code and then overlay the logo only after QR is drawn
-      QRCode.toCanvas(qrCanvas, `PrivX Secret:\n${currentSecret}\nDeposit Hash:\n${currentDepositHash}`, { width: 280, margin: 2 }, err => {
-        if (err) {
-          console.error("QR generation error:", err);
-          notify("⚠️ QR generation failed.", "#ff6666");
-        } else {
-          // Load transparent logo from uploaded path
+      // Generate QR code synchronously and then overlay the transparent logo
+      QRCode.toCanvas(qrCanvas, `PrivX Secret:\n${currentSecret}\nDeposit Hash:\n${currentDepositHash}`, { width: 280, margin: 2 })
+        .then(() => {
           const logo = new Image();
+          // Use actual local maskable_icon file path
           logo.src = '/mnt/data/maskable_icon.png';
           logo.onload = () => {
             const size = 64;
@@ -753,11 +750,14 @@ document.addEventListener("DOMContentLoaded", () => {
             notify("✅ Secret & QR generated!");
           };
           logo.onerror = () => {
-            console.warn("Logo failed to load; drawing skipped.");
-            notify("✅ Secret generated (no logo)");
+            console.warn("Logo failed to load; QR drawn without logo.");
+            notify("✅ Secret generated (QR ready, no logo)");
           };
-        }
-      });
+        })
+        .catch(err => {
+          console.error("QR generation error:", err);
+          notify("⚠️ QR generation failed.", "#ff6666");
+        });
 
       [saveSecretBtn, copySecretBtn, saveQRBtn].forEach(b => b.disabled = false);
       warnUnsaved.style.display = "block";
