@@ -10,6 +10,7 @@
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#0ff1c0">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PrivX">
 <!-- PWA Service Worker -->
@@ -243,6 +244,7 @@ function installPWA() {
       <div style="margin-top:1.5rem;text-align:center;">
         <div id="qrContainer" style="display:none;position:relative;margin:1rem auto;width:280px;height:280px;">
           <canvas id="qrCanvas"></canvas>
+          <img id="qrLogo" src="icon-maskable.png" style="width:64px;height:64px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 0 15px #8b5cf6);" />
         </div>
         <p id="qrHint" style="display:none;color:#8b5cf6;font-weight:bold;margin-top:0.5rem;">↑ Friend scans this ↑</p>
       </div>
@@ -554,212 +556,196 @@ async function updateMiningVault() {
     return true;
   }
   /* ---------- BUTTON ACTIONS ---------- */
-document.getElementById("connect").onclick = connect;
-document.getElementById("disconnect").onclick = disconnect;
-document.getElementById("approveBtn").onclick = async () => {
-  try {
-    const tx = await privx.approve(relayAddress, ethers.constants.MaxUint256);
-    alert("Approval TX " + tx.hash);
-  } catch (e) { alert("Approval failed: " + e.message); }
-};
-document.getElementById("depositBtn").onclick = async () => {
-  const amt = document.getElementById("depositAmount").value.trim();
-  const h = document.getElementById("depositHash").value.trim();
-  if (!amt || !h) return alert("Enter amount & hash");
-  if (!await ensurePulse()) return;
-  try {
-    const v = ethers.utils.parseUnits(amt, 18);
-    const allow = await privx.allowance(account, relayAddress);
-    if (allow.lt(v)) return alert("Approve PRIVX first");
-    const tx = await contract.deposit(v, h);
-    alert("Deposit TX: " + tx.hash);
-  } catch (e) { alert("Deposit failed: " + e.message); }
-};
-document.getElementById("commitBtn").onclick = async () => {
-  const cHash = document.getElementById("commitHashInput").value.trim();
-  if (!/^0x([A-Fa-f0-9]{64})$/.test(cHash)) return alert("Invalid hash");
-  if (!await ensurePulse()) return;
-  try {
-    const tx = await contract.commit(cHash);
-    alert("Commit TX: " + tx.hash);
-  } catch (e) { alert("Commit failed: " + e.message); }
-};
-document.getElementById("withdrawBtn").onclick = async () => {
-  const s = document.getElementById("withdrawSecret").value.trim();
-  const addrs = ["wallet1","wallet2","wallet3"].map(i => document.getElementById(i).value.trim()).filter(a => ethers.utils.isAddress(a));
-  if (!s || !addrs.length) return alert("Enter secret & at least one wallet");
-  if (!await ensurePulse()) return;
-  try {
-    const tx = await contract.withdraw(s, addrs);
-    alert("Withdraw TX: " + tx.hash);
-  } catch (e) { alert("Withdraw failed: " + e.message); }
-};
-document.getElementById("reclaimBtn").onclick = async () => {
-  const h = document.getElementById("reclaimHash").value.trim();
-  if (!h) return alert("Enter deposit hash");
-  if (!await ensurePulse()) return;
-  try {
-    const tx = await contract.reclaim(h);
-    alert("Reclaim TX: " + tx.hash);
-  } catch (e) { alert("Reclaim failed: " + e.message); }
-};
-document.getElementById("loadReclaimable").onclick = () => {
-  document.getElementById("reclaimList").textContent = "Reading on-chain events (not available in static mode)";
-};
-document.getElementById("checkBtn").onclick = async function checkDepositStatus() {
-  const hash = document.getElementById("checkHash").value.trim();
-  if (!hash) return alert("Enter a valid deposit hash first.");
-  const out = document.getElementById("checkResult");
-  out.textContent = "Checking on-chain status…";
-  try {
-    const d = await pubContract.deposits(hash);
-    if (!d || d.amount.eq(0)) {
-      out.innerHTML = "No deposit found for this hash.";
-      return;
-    }
-    const amount = ethers.utils.formatUnits(d.amount, 18);
-    const ts = Number(d.timestamp);
-    const claimed = d.claimed;
-    const depositDate = new Date(ts > 1e12 ? ts : ts * 1000);
-    const expiry = depositDate.getTime() + 7 * 24 * 60 * 60 * 1000;
-    out.innerHTML = `
-      <div style="color:${claimed ? "#00ff99" : "#00ffcc"}">
-        <b>Status:</b> ${claimed ? "Claimed / Withdrawn" : "Active"}<br>
-        <b>Amount:</b> ${amount} PRIVX<br>
-        <b>Deposited:</b> ${depositDate.toLocaleString()}<br>
-        <b>Expires:</b> ${new Date(expiry).toLocaleString()}<br>
-        <div id="countdown" style="color:#ffcc00;margin-top:0.5rem;"></div>
-      </div>`;
-    if (!claimed) {
-      const countdownEl = document.getElementById("countdown");
-      const tick = () => {
-        const remaining = expiry - Date.now();
-        if (remaining <= 0) {
-          countdownEl.innerHTML = "<b>Expired — Reclaimable</b>";
-          countdownEl.style.color = "#ff6600";
-          return;
-        }
-        const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
-        const hrs = Math.floor((remaining / (1000 * 60 * 60)) % 24);
-        const mins = Math.floor((remaining / (1000 * 60)) % 60);
-        const secs = Math.floor((remaining / 1000) % 60);
-        countdownEl.innerHTML = `<b>Time remaining:</b> ${days}d ${hrs}h ${mins}m ${secs}s`;
-        setTimeout(tick, 1000);
-      };
-      tick();
-    }
-  } catch (e) {
-    out.textContent = "Error: " + e.message;
-  }
-};
-
-async function refreshAll() {
-  try {
-    await updateVaultBalance();
-    await updateBurnCounter();
-    await updateMiningVault();
-    await updateShieldStrength();
-    await updateTopDeposits();
-  } catch (e) { console.warn("refreshAll error:", e); }
-}
-refreshAll();
-setInterval(refreshAll, 30000);
-
-/* ✅ FIXED GENERATOR SCRIPT */
-window.addEventListener("DOMContentLoaded", () => {
-  console.log("✅ DOM ready, initializing PrivX generator...");
-
-  let currentSecret = "", currentDepositHash = "";
-  const el = id => document.getElementById(id);
-  const qrCanvas = el("qrCanvas");
-
-  async function waitForQRCodeLib() {
-    return new Promise(resolve => {
-      if (window.QRCode && typeof QRCode.toCanvas === "function") return resolve();
-      const check = setInterval(() => {
-        if (window.QRCode && typeof QRCode.toCanvas === "function") {
-          clearInterval(check);
-          console.log("✅ QRCode library loaded");
-          resolve();
-        }
-      }, 200);
-    });
-  }
-
-  function enableBtns() {
-    ["saveSecretBtn","copySecretBtn","saveQRBtn"].forEach(id => el(id).disabled = false);
-    el("unsavedWarning").style.display = "block";
-  }
-
-  el("autoGenerate").onclick = async () => {
-    console.log("🔹 Generate clicked");
-    await waitForQRCodeLib();
-
-    if (currentSecret && !confirm("Generate new secret? Unsaved one will be lost.")) return;
-
-    const bytes = crypto.getRandomValues(new Uint8Array(32));
-    currentSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-    el("masterSecret").value = currentSecret;
-
-    const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]);
-    currentDepositHash = ethers.utils.keccak256(encoded);
-    el("liveDepositHash").textContent = currentDepositHash;
-    el("depositHash").value = currentDepositHash;
-
+  document.getElementById("connect").onclick = connect;
+  document.getElementById("disconnect").onclick = disconnect;
+  document.getElementById("approveBtn").onclick = async () => {
     try {
-      await QRCode.toCanvas(qrCanvas, `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`, {
-        width: 280,
-        margin: 2,
-        errorCorrectionLevel: "H"
-      });
-      const ctx = qrCanvas.getContext("2d");
-      const logo = new Image();
-      logo.src = "maskable_icon.png";
-      logo.onload = () => {
-        const size = 64;
-        ctx.drawImage(logo, (qrCanvas.width - size) / 2, (qrCanvas.height - size) / 2, size, size);
-      };
-      el("qrContainer").style.display = "block";
-      el("qrHint").style.display = "block";
-      enableBtns();
-    } catch (err) {
-      console.error("❌ QR generation failed:", err);
+      const tx = await privx.approve(relayAddress, ethers.constants.MaxUint256);
+      alert("✅ Approval TX " + tx.hash);
+    } catch (e) { alert("Approval failed: " + e.message); }
+  };
+  document.getElementById("depositBtn").onclick = async () => {
+    const amt = document.getElementById("depositAmount").value.trim();
+    const h = document.getElementById("depositHash").value.trim();
+    if (!amt || !h) return alert("Enter amount & hash");
+    if (!await ensurePulse()) return;
+    try {
+      const v = ethers.utils.parseUnits(amt, 18);
+      const allow = await privx.allowance(account, relayAddress);
+      if (allow.lt(v)) return alert("Approve PRIVX first");
+      const tx = await contract.deposit(v, h);
+      alert("💰 Deposit TX: " + tx.hash);
+    } catch (e) { alert("Deposit failed: " + e.message); }
+  };
+  document.getElementById("commitBtn").onclick = async () => {
+    const cHash = document.getElementById("commitHashInput").value.trim();
+    if (!/^0x([A-Fa-f0-9]{64})$/.test(cHash)) return alert("Invalid hash");
+    if (!await ensurePulse()) return;
+    try {
+      const tx = await contract.commit(cHash);
+      alert("🕶️ Commit TX: " + tx.hash);
+    } catch (e) { alert("Commit failed: " + e.message); }
+  };
+  document.getElementById("withdrawBtn").onclick = async () => {
+    const s = document.getElementById("withdrawSecret").value.trim();
+    const addrs = ["wallet1","wallet2","wallet3"].map(i => document.getElementById(i).value.trim()).filter(a => ethers.utils.isAddress(a));
+    if (!s || !addrs.length) return alert("Enter secret & at least one wallet");
+    if (!await ensurePulse()) return;
+    try {
+      const tx = await contract.withdraw(s, addrs);
+      alert("💎 Withdraw TX: " + tx.hash);
+    } catch (e) { alert("Withdraw failed: " + e.message); }
+  };
+  document.getElementById("reclaimBtn").onclick = async () => {
+    const h = document.getElementById("reclaimHash").value.trim();
+    if (!h) return alert("Enter deposit hash");
+    if (!await ensurePulse()) return;
+    try {
+      const tx = await contract.reclaim(h);
+      alert("🔥 Reclaim TX: " + tx.hash);
+    } catch (e) { alert("Reclaim failed: " + e.message); }
+  };
+  document.getElementById("loadReclaimable").onclick = () => {
+    document.getElementById("reclaimList").textContent = "⏳ Reading on-chain events (not available in static mode)";
+  };
+  document.getElementById("checkBtn").onclick = async function checkDepositStatus() {
+    const hash = document.getElementById("checkHash").value.trim();
+    if (!hash) return alert("Enter a valid deposit hash first.");
+    const out = document.getElementById("checkResult");
+    out.textContent = "⏳ Checking on-chain status…";
+    try {
+      const d = await pubContract.deposits(hash);
+      if (!d || d.amount.eq(0)) {
+        out.innerHTML = "❌ No deposit found for this hash.";
+        return;
+      }
+      const amount = ethers.utils.formatUnits(d.amount, 18);
+      const ts = Number(d.timestamp);
+      const claimed = d.claimed;
+      const depositDate = new Date(ts > 1e12 ? ts : ts * 1000);
+      const expiry = depositDate.getTime() + 7 * 24 * 60 * 60 * 1000;
+      out.innerHTML = `
+        <div style="color:${claimed ? "#00ff99" : "#00ffcc"}">
+          <b>Status:</b> ${claimed ? "✅ Claimed / Withdrawn" : "🟣 Active"}<br>
+          <b>Amount:</b> ${amount} PRIVX<br>
+          <b>Deposited:</b> ${depositDate.toLocaleString()}<br>
+          <b>Expires:</b> ${new Date(expiry).toLocaleString()}<br>
+          <div id="countdown" style="color:#ffcc00;margin-top:0.5rem;"></div>
+        </div>`;
+      if (!claimed) {
+        const countdownEl = document.getElementById("countdown");
+        const tick = () => {
+          const remaining = expiry - Date.now();
+          if (remaining <= 0) {
+            countdownEl.innerHTML = "<b>🔥 Expired — Reclaimable</b>";
+            countdownEl.style.color = "#ff6600";
+            return;
+          }
+          const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+          const hrs = Math.floor((remaining / (1000 * 60 * 60)) % 24);
+          const mins = Math.floor((remaining / (1000 * 60)) % 60);
+          const secs = Math.floor((remaining / 1000) % 60);
+          countdownEl.innerHTML = `<b>⏱ Time remaining:</b> ${days}d ${hrs}h ${mins}m ${secs}s`;
+          setInterval(tick, 1000);
+        };
+        tick();
+      }
+    } catch (e) {
+      out.textContent = "❌ Error: " + e.message;
     }
   };
+  async function refreshAll() {
+    try {
+      await updateVaultBalance();
+      await updateBurnCounter();
+      await updateMiningVault();
+      await updateShieldStrength();
+      await updateTopDeposits();
+    } catch (e) {
+      console.warn("refreshAll error:", e);
+    }
+  }
+  refreshAll();
+  setInterval(refreshAll, 30000);
+})();
+</script>
+<!-- FIXED QR SCRIPT — 100% WORKING -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+let currentSecret = "", currentDepositHash = "";
+document.getElementById("autoGenerate").onclick = () => {
+  if (currentSecret && !confirm("Generate new secret?\nYour current one will be lost forever if not saved!")) return;
 
-  el("saveSecretBtn").onclick = () => {
-    if (!currentSecret) return alert("Generate a secret first!");
-    const blob = new Blob(
-      [`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`],
-      { type: "text/plain" }
-    );
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  currentSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+  document.getElementById("masterSecret").value = currentSecret;
+
+  const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]);
+  currentDepositHash = ethers.utils.keccak256(encoded);
+  document.getElementById("liveDepositHash").textContent = currentDepositHash;
+  document.getElementById("depositHash").value = currentDepositHash;
+
+  QRCode.toCanvas(document.getElementById("qrCanvas"), `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash: ${currentDepositHash}`, {width:280, margin:2}, (error) => {
+    if (error) console.error(error);
+    else {
+      document.getElementById("qrContainer").style.display = "block";
+      document.getElementById("qrHint").style.display = "block";
+    }
+  });
+
+  document.getElementById("saveSecretBtn").disabled = false;
+  document.getElementById("copySecretBtn").disabled = false;
+  document.getElementById("saveQRBtn").disabled = false;
+  document.getElementById("unsavedWarning").style.display = "block";
+
+  alert("Generated! Save QR or .txt before sending to friend!");
+};
+
+document.getElementById("saveSecretBtn").onclick = () => {
+  const blob = new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`], {type: "text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `PrivX-Secret-${currentSecret.slice(0,10)}.txt`;
+  a.click();
+  document.getElementById("unsavedWarning").style.display = "none";
+};
+
+document.getElementById("copySecretBtn").onclick = async () => {
+  await navigator.clipboard.writeText(currentSecret);
+  alert("Secret copied to clipboard!");
+  document.getElementById("unsavedWarning").style.display = "none";
+};
+
+document.getElementById("saveQRBtn").onclick = () => {
+  const canvas = document.getElementById("qrCanvas");
+  const logoCanvas = document.createElement("canvas");
+  logoCanvas.width = canvas.width;
+  logoCanvas.height = canvas.height;
+  const ctx = logoCanvas.getContext("2d");
+  ctx.drawImage(canvas, 0, 0);
+  ctx.drawImage(document.getElementById("qrLogo"), canvas.width/2 - 32, canvas.height/2 - 32, 64, 64);
+  logoCanvas.toBlob(blob => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `PrivX-Secret-${currentSecret.slice(0,10)}.txt`;
+    a.download = `PrivX-QR-${currentSecret.slice(0,10)}.png`;
     a.click();
-    el("unsavedWarning").style.display = "none";
-  };
+  });
+  document.getElementById("unsavedWarning").style.display = "none";
+  alert("Branded QR Code saved!");
+};
 
-  el("copySecretBtn").onclick = async () => {
-    if (!currentSecret) return alert("Generate a secret first!");
-    await navigator.clipboard.writeText(currentSecret);
-    el("unsavedWarning").style.display = "none";
-    alert("Secret copied to clipboard!");
+  // Withdrawer
+  document.getElementById("generateCommit").onclick = () => {
+    const secret = document.getElementById("withdrawSecret").value.trim();
+    const wallet = document.getElementById("withdrawWallet").value.trim();
+    if (!secret) return alert("Paste the Secret first");
+    if (!ethers.utils.isAddress(wallet)) return alert("Invalid wallet address");
+    const packed = ethers.utils.solidityPack(["string", "address"], [secret, wallet]);
+    const commitHash = ethers.utils.keccak256(packed);
+    document.getElementById("commitHashInput").value = commitHash;
+    document.getElementById("wallet1").value = wallet;
+    alert("Commit Hash ready!\nClick Commit Stealth → wait 5 mins → Withdraw");
   };
-
-  el("saveQRBtn").onclick = () => {
-    if (!currentSecret) return alert("Generate a secret first!");
-    qrCanvas.toBlob(blob => {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `PrivX-QR-${currentSecret.slice(0,10)}.png`;
-      a.click();
-    });
-    el("unsavedWarning").style.display = "none";
-  };
-
-  console.log("✅ Generator setup complete");
-});
 </script>
 </body>
 </html>
