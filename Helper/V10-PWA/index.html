@@ -665,34 +665,35 @@ async function refreshAll() {
 }
 refreshAll();
 setInterval(refreshAll, 30000);
-
-/* ——— FINAL SCANNABLE QR GENERATOR (NO DOUBLE LOGO, 100% PHONE WORKS) ——— */
+// QR GENERATOR — FIXED SCANNABLE VERSION (ALERT IF FAIL, FALLBACK TO TEXT)
 let currentSecret = "", currentDepositHash = "";
 let QRCode = null;
 
 async function ensureQR() {
   if (QRCode) return;
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = 'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
     s.onload = () => { QRCode = window.QRCode; resolve(); };
     s.onerror = () => {
-      console.log("QR blocked — using scannable fallback");
+      console.log("QR CDN blocked — using text fallback (disable adblock for full QR)");
       QRCode = {
         toCanvas: (canvas, text, opts, cb) => {
           canvas.width = 280; canvas.height = 280;
           const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,280,280);
-          ctx.fillStyle = '#000000';
-          for(let i=0;i<21;i++) for(let j=0;j<21;j++) {
-            if ((i+j)%3===0 || Math.random()>0.5) ctx.fillRect(14+i*12,14+j*12,10,10);
-          }
-          // Alignment squares
-          ctx.fillStyle = '#000000';
-          ctx.fillRect(26,26,68,68); ctx.fillRect(186,26,68,68); ctx.fillRect(26,186,68,68);
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(38,38,44,44); ctx.fillRect(198,38,44,44); ctx.fillRect(38,198,44,44);
-          if(cb) cb();
+          ctx.fillStyle = '#000'; ctx.fillRect(0,0,280,280);
+          ctx.fillStyle = '#0ff1c0';
+          ctx.font = 'bold 16px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText("QR Blocked", 140, 80);
+          ctx.fillText("Copy Secret Manually", 140, 100);
+          ctx.font = '12px monospace';
+          ctx.fillText(currentSecret.substring(0,32), 140, 140);
+          ctx.fillText(currentSecret.substring(32), 140, 160);
+          ctx.fillText("Hash: " + currentDepositHash.substring(0,20), 140, 200);
+          ctx.fillText(currentDepositHash.substring(20,40), 140, 220);
+          ctx.fillText(currentDepositHash.substring(40), 140, 240);
+          if (cb) cb();
         }
       };
       resolve();
@@ -726,16 +727,15 @@ document.getElementById("autoGenerate").onclick = async () => {
 
   QRCode.toCanvas(qrEls.canvas,
     `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`,
-    { width: 280, margin: 1, errorCorrectionLevel: "M" },  // M = perfect phone scannability
+    { width: 280, margin: 2, errorCorrectionLevel: "H" },
     () => {
-      // SINGLE CENTERED LOGO — no double, no overlap
       const logo = new Image();
       logo.src = "icon-maskable.png";
       logo.onload = () => {
         const ctx = qrEls.canvas.getContext('2d');
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(108, 108, 64, 64);           // white background under logo
-        ctx.drawImage(logo, 108, 108, 64, 64);     // exact center
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(108, 108, 64, 64); // White under logo for scannability
+        ctx.drawImage(logo, 108, 108, 64, 64);
       };
       qrEls.qrBox.style.display = "block";
       qrEls.hint.style.display = "block";
@@ -751,10 +751,12 @@ document.getElementById("saveSecretBtn").onclick = () => {
   a.download = `PrivX-${currentSecret.slice(0,12)}.txt`; a.click();
   qrEls.warning.style.display = "none";
 };
+
 document.getElementById("copySecretBtn").onclick = () => {
   navigator.clipboard.writeText(currentSecret).then(()=>alert("Secret copied!")).catch(()=>prompt("Copy:",currentSecret));
   qrEls.warning.style.display = "none";
 };
+
 document.getElementById("saveQRBtn").onclick = () => {
   qrEls.canvas.toBlob(b => {
     const a = document.createElement("a");
