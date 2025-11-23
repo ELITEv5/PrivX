@@ -700,14 +700,46 @@ document.getElementById("autoGenerate").onclick = () => {
   document.getElementById("liveDepositHash").textContent = currentDepositHash;
   document.getElementById("depositHash").value = currentDepositHash;
 
-  QRCode.toCanvas(document.getElementById("qrCanvas"), `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash: ${currentDepositHash}`, {width:280, margin:2}, (error) => {
-    if (error) console.error(error);
-    else {
-      document.getElementById("qrContainer").style.display = "block";
-      document.getElementById("qrHint").style.display = "block";
+  // ✅ FINAL—QR GENERATION WITH SCANNABLE EMBEDDED LOGO (LOCAL DIRECTORY)
+QRCode.toCanvas(
+  document.getElementById("qrCanvas"),
+  `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash: ${currentDepositHash}`,
+  {
+    width: 280,
+    margin: 2,
+    errorCorrectionLevel: 'H' // high tolerance for logo overlay
+  },
+  (error) => {
+    if (error) {
+      console.error(error);
+      alert('QR generation error');
+      return;
     }
-  });
+    const canvas = document.getElementById('qrCanvas');
+    const ctx = canvas.getContext('2d');
+    const logo = new Image();
+    logo.src = 'maskable_icon.png'; // ✅ transparent logo in same directory
 
+    logo.onload = () => {
+      const size = 64; // logo dimensions
+      const x = (canvas.width - size) / 2;
+      const y = (canvas.height - size) / 2;
+      ctx.save();
+      ctx.globalAlpha = 1.0;
+      ctx.drawImage(logo, x, y, size, size);
+      ctx.restore();
+      document.getElementById('qrContainer').style.display = 'block';
+      document.getElementById('qrHint').style.display = 'block';
+      console.log('✅ QR generated successfully — scannable and branded.');
+    };
+
+    logo.onerror = () => {
+      console.warn('⚠️ Logo failed to load — QR generated without branding.');
+      document.getElementById('qrContainer').style.display = 'block';
+      document.getElementById('qrHint').style.display = 'block';
+    };
+  }
+);
   document.getElementById("saveSecretBtn").disabled = false;
   document.getElementById("copySecretBtn").disabled = false;
   document.getElementById("saveQRBtn").disabled = false;
