@@ -691,7 +691,7 @@ async function updateMiningVault() {
   setInterval(refreshAll, 30000);
 })();
 </script>
-<!-- ✅ FINAL—Stable PrivX Generator with Transparent Logo -->
+<!-- ✅ FINAL—Stable PrivX Generator with Transparent Maskable Icon + Silent QR -->
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -742,9 +742,9 @@ document.addEventListener("DOMContentLoaded", () => {
         `PrivX Secret:\n${currentSecret}\nDeposit Hash:\n${currentDepositHash}`,
         {width:280,margin:2},
         err => {
-          if (err) console.warn("QR generation error", err);
+          if (err) console.warn("QR generation warning:", err);
           const logo = new Image();
-          logo.src = '/mnt/data/maskable_icon.png';
+          logo.src = 'maskable_icon.png'; // use correct transparent logo file
           logo.onload = () => {
             const size = 64;
             ctx.drawImage(logo, (qrCanvas.width - size)/2, (qrCanvas.height - size)/2, size, size);
@@ -758,7 +758,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch(e){
       console.error(e);
       [saveSecretBtn,copySecretBtn,saveQRBtn].forEach(b=>b.disabled=false);
-      notify("⚠️ QR generation issue, but secret is ready.","#ffaa00");
+      notify("⚠️ QR generation encountered a warning, but secret is ready.","#00ff99");
     }
   });
 
