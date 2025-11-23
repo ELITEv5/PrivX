@@ -674,80 +674,90 @@ async function updateMiningVault() {
 <script>
 let currentSecret = "", currentDepositHash = "";
 
+// FIXED: Use unique IDs to avoid conflicts
+const masterSecretInput = document.getElementById("masterSecret");
+const liveDepositHashSpan = document.getElementById("liveDepositHash");
+const depositHashInput = document.getElementById("depositHash");
+const qrContainer = document.getElementById("qrContainer");
+const qrCanvas = document.getElementById("qrCanvas");
+const qrHint = document.getElementById("qrHint");
+const unsavedWarning = document.getElementById("unsavedWarning");
+
 document.getElementById("autoGenerate").addEventListener("click", () => {
   if (currentSecret && !confirm("Generate new secret? Old one will be lost if not saved!")) return;
 
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   currentSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
   
-  document.getElementById("masterSecret").value = currentSecret;
+  masterSecretInput.value = currentSecret;
+  
   const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]);
   currentDepositHash = ethers.utils.keccak256(encoded);
-  document.getElementById("liveDepositHash").textContent = currentDepositHash;
-  document.getElementById("depositHash").value = currentDepositHash;
+  
+  liveDepositHashSpan.textContent = currentDepositHash;
+  depositHashInput.value = currentDepositHash;
 
-  QRCode.toCanvas(document.getElementById("qrCanvas"), 
-    `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`, 
-    { width: 280, margin: 2, errorCorrectionLevel: "H" }, 
+  // Clear previous QR
+  qrCanvas.width = 1; qrCanvas.height = 1;
+
+  QRCode.toCanvas(qrCanvas,
+    `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`,
+    { width: 280, margin: 2, errorCorrectionLevel: "H" },
     err => {
-      if (err) { console.error(err); alert("QR error"); return; }
-      document.getElementById("qrContainer").style.display = "block";
-      document.getElementById("qrHint").style.display = "block";
+      if (err) {
+        console.error(err);
+        alert("QR generation failed — check console");
+        return;
+      }
+      qrContainer.style.display = "block";
+      qrHint.style.display = "block";
       document.getElementById("saveSecretBtn").disabled = false;
       document.getElementById("copySecretBtn").disabled = false;
       document.getElementById("saveQRBtn").disabled = false;
-      document.getElementById("unsavedWarning").style.display = "block";
+      unsavedWarning.style.display = "block";
     }
   );
 });
 
+// Save .txt
 document.getElementById("saveSecretBtn").addEventListener("click", () => {
-  const blob = new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`], {type: "text/plain"});
+  const blob = new Blob([`PRIVX SECRET\n\nSecret: ${currentSecret}\nHash: ${currentDepositHash}\nSaved: ${new Date().toLocaleString()}`], 
+    {type: "text/plain"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `PrivX-${currentSecret.slice(0,12)}.txt`;
+  a.download = `PrivX-Secret-${currentSecret.slice(0,12)}.txt`;
   a.click();
-  document.getElementById("unsavedWarning").style.display = "none";
+  unsavedWarning.style.display = "none";
 });
 
+// Copy Secret
 document.getElementById("copySecretBtn").addEventListener("click", () => {
-  navigator.clipboard.writeText(currentSecret);
-  alert("Secret copied!");
-  document.getElementById("unsavedWarning").style.display = "none";
+  navigator.clipboard.writeText(currentSecret).then(() => {
+    alert("Secret copied to clipboard!");
+    unsavedWarning.style.display = "none";
+  });
 });
 
+// Save QR with logo
 document.getElementById("saveQRBtn").addEventListener("click", () => {
-  const canvas = document.getElementById("qrCanvas");
-  const temp = document.createElement("canvas");
-  temp.width = canvas.width; temp.height = canvas.height;
-  const ctx = temp.getContext("2d");
-  ctx.drawImage(canvas, 0, 0);
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = 280; tempCanvas.height = 280;
+  const ctx = tempCanvas.getContext("2d");
+  ctx.drawImage(qrCanvas, 0, 0);
+  
   const logo = new Image();
   logo.src = "icon-maskable.png";
   logo.onload = () => {
-    ctx.drawImage(logo, canvas.width/2-32, canvas.height/2-32, 64, 64);
-    temp.toBlob(blob => {
+    ctx.drawImage(logo, 108, 108, 64, 64); // centered
+    tempCanvas.toBlob(blob => {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = `PrivX-QR-${currentSecret.slice(0,12)}.png`;
       a.click();
+      unsavedWarning.style.display = "none";
     });
   };
-  document.getElementById("unsavedWarning").style.display = "none";
 });
-
-// WITHDRAWER — NOW INSIDE THE SAME SCRIPT (fixed!)
-document.getElementById("generateCommit").onclick = () => {
-  const secret = document.getElementById("withdrawSecret").value.trim();
-  const wallet = document.getElementById("withdrawWallet").value.trim();
-  if (!secret) return alert("Paste the Secret first");
-  if (!ethers.utils.isAddress(wallet)) return alert("Invalid wallet address");
-  const packed = ethers.utils.solidityPack(["string", "address"], [secret, wallet]);
-  const commitHash = ethers.utils.keccak256(packed);
-  document.getElementById("commitHashInput").value = commitHash;
-  document.getElementById("wallet1").value = wallet;
-  alert("Commit Hash ready!\nClick Commit Stealth → wait 5 mins → Withdraw");
-};
 </script>
 </body>
 </html>
