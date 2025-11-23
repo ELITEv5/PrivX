@@ -666,10 +666,11 @@ async function updateMiningVault() {
       console.warn("refreshAll error:", e);
     }
   }
-  refreshAll();
+    refreshAll();
   setInterval(refreshAll, 30000);
-})();
-  <script>
+});   
+</script> 
+
 <!-- QRCode library with guaranteed load + fallback -->
 <script>
 // Load QRCode.js safely
@@ -687,24 +688,21 @@ function loadQRCode() {
 // All QR + button logic runs only AFTER library is 100% loaded
 loadQRCode().then(() => {
   console.log("QRCode library loaded — enabling generator");
-
   let currentSecret = "", currentDepositHash = "";
 
   document.getElementById("autoGenerate").addEventListener("click", () => {
     if (currentSecret && !confirm("Generate new secret? Old one will be lost if not saved!")) return;
-
     const bytes = crypto.getRandomValues(new Uint8Array(32));
     currentSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-    
     document.getElementById("masterSecret").value = currentSecret;
     const encoded = ethers.utils.defaultAbiCoder.encode(["string"], [currentSecret]);
     currentDepositHash = ethers.utils.keccak256(encoded);
     document.getElementById("liveDepositHash").textContent = currentDepositHash;
     document.getElementById("depositHash").value = currentDepositHash;
 
-    QRCode.toCanvas(document.getElementById("qrCanvas"), 
-      `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`, 
-      { width: 280, margin: 2, errorCorrectionLevel: 'H' }, 
+    QRCode.toCanvas(document.getElementById("qrCanvas"),
+      `PRIVX SECRET\n${currentSecret}\n\nDeposit Hash:\n${currentDepositHash}`,
+      { width: 280, margin: 2, errorCorrectionLevel: 'H' },
       err => {
         if (err) { console.error(err); alert("QR generation failed"); return; }
         document.getElementById("qrContainer").style.display = "block";
@@ -752,7 +750,6 @@ loadQRCode().then(() => {
     document.getElementById("unsavedWarning").style.display = "none";
   });
 
-  // Withdrawer still works
   document.getElementById("generateCommit").onclick = () => {
     const secret = document.getElementById("withdrawSecret").value.trim();
     const wallet = document.getElementById("withdrawWallet").value.trim();
@@ -770,5 +767,6 @@ loadQRCode().then(() => {
   alert("Failed to load QR code generator — check internet connection");
 });
 </script>
+
 </body>
 </html>
