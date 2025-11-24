@@ -111,7 +111,7 @@ function showSection(id){
 document.getElementById("btnDeposit").onclick=()=>showSection("depositSection");
 document.getElementById("btnWithdraw").onclick=()=>showSection("withdrawSection");
 
-// === DEPOSIT MODE — FIXED FOREVER ===
+// === DEPOSIT MODE FIXED ===
 document.getElementById("generateDeposit").onclick=()=>{
   if(typeof ethers==="undefined"){alert("Ethers.js not loaded.");return;}
   if(secret&&depositHash){if(!confirm("You already have an unsaved Secret.\nGenerate a new one?"))return;}
@@ -119,6 +119,21 @@ document.getElementById("generateDeposit").onclick=()=>{
   const bytes=crypto.getRandomValues(new Uint8Array(32));
   secret=Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
   
+  const abi = new ethers.utils.AbiCoder();
+  const encoded = abi.encode(["string"], [secret]);
+  depositHash = ethers.utils.keccak256(encoded);
+
+  document.getElementById("outputDeposit").textContent=
+`Secret (keep private — this unlocks your PLSX):
+${secret}
+
+Deposit Hash (paste in PLSX Shield → Step 1):
+${depositHash}`;
+  document.getElementById("copyDeposit").disabled=false;
+  document.getElementById("saveDeposit").disabled=false;
+  warnBanner.style.display="block";
+};
+
   // THIS IS THE ONLY LINE THAT MATTERS — matches PLSX Shield contract 100%
   depositHash = ethers.utils.keccak256(ethers.utils.solidityPack(["string"], [secret]));
   
