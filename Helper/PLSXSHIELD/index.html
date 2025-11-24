@@ -1,1 +1,666 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PLSX Proof of Privacy Shield — Official Helper V2</title>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<style>
+  body{font-family:system-ui,sans-serif;background:#0a0a0a;color:#eee;text-align:center;padding:2rem;max-width:900px;margin:auto}
+  h1{color:#8b5cf6;font-size:2rem;margin-bottom:.3rem;display:flex;align-items:center;justify-content:center;gap:.5rem}
+  h1 img{width:48px;filter:drop-shadow(0 0 10px #8b5cf6);animation:logoGlow 3s infinite alternate;}
+  @keyframes logoGlow{from{filter:drop-shadow(0 0 6px #8b5cf6);}to{filter:drop-shadow(0 0 20px #8b5cf6);}}
+  h3{color:#00ffcc}
+  a{color:#8b5cf6;text-decoration:none}
+  a:hover{text-decoration:underline;color:#a36fff}
+  button{background:#5c00ff;color:#fff;padding:.6rem 1rem;border:none;border-radius:8px;font-size:1rem;cursor:pointer;margin:.3rem;transition:.2s}
+  button:hover{background:#6f14ff}
+  button:disabled{background:#333;cursor:not-allowed}
+  input{width:90%;max-width:420px;margin:.3rem 0;padding:.6rem;border-radius:8px;border:none;font-size:1rem;text-align:center;background:#161616;color:#00ffcc}
+  .section{border:1px solid #222;border-radius:12px;padding:1.3rem;margin:1.5rem 0;background:#111}
+  #status{margin-bottom:1rem;color:#f55;font-weight:bold}
+  footer{margin-top:2rem;font-size:.9rem;color:#777}
+  small{color:#aaa;display:block;margin-top:.5rem}
+  .warning{color:#ffcc00}
+  hr{border:none;border-top:1px solid #333;margin:1.5rem 0}
+  .ca-box{background:#161616;padding:0.6rem;border-radius:8px;margin:0.3rem 0;word-break:break-all}
+  .ca-copy{background:#333;color:#00ffcc;border:none;border-radius:6px;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.85rem;margin-left:0.4rem;}
+  .ca-copy:hover{background:#555;}
+  .explainer{background:#141414;border-left:5px solid #8b5cf6;padding:1rem;border-radius:8px;text-align:left;line-height:1.5em;margin-bottom:1.5rem;}
+  .hashList{background:#0f0f0f;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:220px;overflow-y:auto;}
+  .hashItem{margin:0.5rem 0;padding:0.5rem;background:#161616;border-radius:8px;font-size:0.9rem;word-break:break-all;}
+  .hashItem button{background:#ff006e;padding:0.3rem 0.8rem;font-size:0.8rem;border-radius:6px;margin-left:0.5rem;}
+  .timer-glow{color:#ffcc00;text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;animation:pulseGlow 2s infinite alternate;}
+  @keyframes pulseGlow{from{text-shadow:0 0 10px #ffcc00,0 0 20px #ffaa00;}to{text-shadow:0 0 20px #ffaa00,0 0 40px #ff8800;}}
+  .feed{background:#0d0d0d;border:1px solid #222;border-radius:10px;padding:1rem;margin-top:1rem;text-align:left;max-height:180px;overflow-y:auto;}
+  .feed-entry{font-size:0.9rem;margin:0.4rem 0;}
+  .feed-entry span{font-weight:bold;}
+  .glow{color:#8b5cf6;text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff;}
+</style>
+</head>
+<body>
+<!-- 🔷 PLSX Header (Glowing Logo + Subtitle + Fade-In, Large Version) -->
+<div class="plsx-header">
+  <h1>
+    <img src="PLSX.png" alt="PLSX Shield Logo">
+  </h1>
+  <p class="edition">🛡️ PLSX Proof of Privacy Shield — V2</p>
+  <p class="credits">Built by Elite Team6 • © Elite Labs • 2025</p>
+</div>
+<!-- 🔗 WALLET CONNECTION -->
+<div id="walletConnect" style="margin:1.2rem 0;">
+  <button id="connect">🔗 Connect Wallet</button>
+  <button id="disconnect" style="display:none;">❌ Disconnect</button>
+  <div id="status" style="margin-top:0.5rem;color:#aaa;">Not connected</div>
+  <small style="color:#777;">Required for deposits, commits, and withdrawals.</small>
+</div>
+<style>
+/* --- Header Fade + Glow Animation --- */
+.plsx-header {
+  text-align: center;
+  margin-bottom: 1.8rem;
+  opacity: 0;
+  animation: fadeIn 1.6s ease-out forwards;
+}
+.plsx-header h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  animation: glowPulse 4s ease-in-out infinite alternate;
+}
+.plsx-header img {
+  width: 90%;
+  max-width: 540px; /* 🟣 larger logo for desktop */
+  height: auto;
+  filter: drop-shadow(0 0 10px rgba(139,92,246,0.8));
+  transition: transform 0.5s ease, filter 0.5s ease;
+}
+.plsx-header img:hover {
+  transform: scale(1.04);
+  filter: drop-shadow(0 0 20px rgba(139,92,246,1)) drop-shadow(0 0 40px rgba(91,0,255,0.8));
+}
+.plsx-header .edition {
+  color: #8b5cf6;
+  font-weight: bold;
+  font-size: 1.4rem;
+  margin-top: 0.6rem;
+  text-shadow: 0 0 10px rgba(139,92,246,0.8), 0 0 20px rgba(91,0,255,0.6);
+}
+.plsx-header .credits {
+  color: #00ffcc;
+  font-size: 1rem;
+  margin-top: 0.4rem;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes glowPulse {
+  0% { filter: drop-shadow(0 0 6px rgba(139,92,246,0.6)) drop-shadow(0 0 12px rgba(91,0,255,0.4)); }
+  50% { filter: drop-shadow(0 0 18px rgba(139,92,246,0.9)) drop-shadow(0 0 40px rgba(91,0,255,0.8)); }
+  100% { filter: drop-shadow(0 0 10px rgba(139,92,246,0.6)) drop-shadow(0 0 25px rgba(91,0,255,0.5)); }
+}
+/* 🧭 Responsive tweak for mobile */
+@media (max-width: 600px) {
+  .plsx-header img {
+    max-width: 320px;
+  }
+  .plsx-header .edition {
+    font-size: 1.1rem;
+  }
+}
+</style>
+<!-- 🌐 WHY PLSX SHIELD SECTION -->
+<div class="explainer" id="why-plsx">
+  <h3 style="color:#00ffcc;">🌐 Why PLSX Proof of Privacy Shield Exists</h3>
+  <p><b>The shield provides privacy for PLSX transfers, with fees in PRIVX that drive PRIVX deflation.</b></p>
+  <p>Blockchains are transparent. The shield uses commit-reveal and random splits to blend transactions.</p>
+  <hr>
+  <h4 style="color:#00ffcc;">🧠 The Core Mechanism</h4>
+  <p>Deposit PLSX with a hash. Pay 0.3% fee in PRIVX (oracle-priced). 80% PRIVX burned, 20% to PRIVX reward pool.</p>
+  <p>Withdraw with secret, random PRIVX reward, 0.3% PLSX fee burned in PLSX.</p>
+  <hr>
+  <h4 style="color:#00ffcc;">🕶️ Stealth Withdraw Layer</h4>
+  <p>Commit before withdraw to prevent MEV/front-running. Window ~13 minutes.</p>
+  <h4 style="color:#00ffcc;">🕓 The 7-Day Window</h4>
+  <p>Deposits reclaimable after 7 days: 95% PLSX burned, 5% to reclaimer.</p>
+</div>
+<!-- 📜 Official CAs -->
+<div class="section" style="background:#141414;">
+  <h3>📜 Official Contract Addresses</h3>
+  <div class="ca-box">
+    💠 <b>PLSX Token</b><br>
+    <code id="caPlsx">0x95B303987A60C71504D99Aa1b13B4DA07b0790ab</code>
+    <button class="ca-copy" onclick="copyCA('caPlsx')">Copy</button><br>
+    <a href="https://scan.pulsechain.com/address/0x95B303987A60C71504D99Aa1b13B4DA07b0790ab" target="_blank">
+      View on PulseChainScan ↗
+    </a>
+  </div>
+  <div class="ca-box">
+    💠 <b>PRIVX Token</b><br>
+    <code id="caPrivx">0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986</code>
+    <button class="ca-copy" onclick="copyCA('caPrivx')">Copy</button><br>
+    <a href="https://scan.pulsechain.com/address/0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986" target="_blank">
+      View on PulseChainScan ↗
+    </a>
+  </div>
+  <div class="ca-box">
+    🛡️ <b>PLSX Shield V2</b><br>
+    <code id="caRelay">0x0000000000000000000000000000000000000000</code> <!-- UPDATE WITH DEPLOYED ADDRESS -->
+    <button class="ca-copy" onclick="copyCA('caRelay')">Copy</button><br>
+    <a href="https://scan.pulsechain.com/address/0x0000000000000000000000000000000000000000" target="_blank">
+      View on PulseChainScan ↗
+    </a><br>
+    <small style="color:#00ff99;">✅ Live & Immutable</small>
+  </div>
+</div>
+<!-- 💎 REWARD PROTOCOL -->
+<div class="section" style="background:#121212;">
+  <h3>💎 Reward Protocol</h3>
+  <p>Random PRIVX rewards on withdraw, fed from 20% of PRIVX deposit fees.</p>
+  <ul style="text-align:left;line-height:1.5em;">
+    <li>🟣 PRIVX deposit fees: 80% burned, 20% to PRIVX reward pool.</li>
+    <li>💠 PLSX withdraw fees: burned in PLSX.</li>
+    <li>🔥 Reclaim: 95% PLSX burned, 5% to reclaimer.</li>
+  </ul>
+</div>
+<!-- 💠 TOKENOMICS -->
+<div class="section" style="background:#121212;">
+  <h3>💠 Tokenomics</h3>
+  <p>PLSX shielded, PRIVX for fees. PRIVX deflation from burns.</p>
+  <ul style="text-align:left;line-height:1.5em;">
+    <li>🧱 0.3% PRIVX fee on deposits (oracle-priced).</li>
+    <li>🧱 0.3% PLSX fee on withdrawals.</li>
+    <li>🔥 80% PRIVX fees burned.</li>
+    <li>💎 20% PRIVX fees to PRIVX reward pool.</li>
+    <li>⏳ Expired: 95% PLSX burn / 5% reward.</li>
+  </ul>
+</div>
+<!-- PRIVX PRICE -->
+<div class="section" style="background:#121212;">
+  <h3>📈 Current PRIVX Price</h3>
+  <h2 id="privxPrice" class="glow">Loading...</h2>
+  <small id="priceUpdate">⏳ Fetching oracle data...</small>
+</div>
+<!-- 🔥 Burn Counter (PRIVX) -->
+<div class="section" style="background:#121212;">
+  <h3>🔥 Total PRIVX Burned</h3>
+  <h2 id="burnCounter" class="glow">Loading...</h2>
+  <small id="burnUpdate">⏳ Fetching on-chain data…</small>
+</div>
+<!-- 🔒 Vault Tracker (PLSX) -->
+<div class="section" style="background:#121212;">
+  <h3>🔒 Shield Vault Tracker (PLSX)</h3>
+  <h2 id="vaultBalance" style="color:#00ff99;font-weight:bold;">Loading...</h2>
+  <small id="vaultUpdate">⏳ Waiting for data…</small>
+</div>
+<!-- 💎 Reward Pool Tracker (PRIVX) -->
+<div class="section" style="background:#121212;">
+  <h3>💎 Active Reward Pool (PRIVX)</h3>
+  <h2 id="rewardPool" style="color:#8b5cf6;font-weight:bold;">Loading...</h2>
+  <small id="rewardUpdate">⏳ Fetching on-chain data…</small>
+</div>
+<!-- 📊 NETWORK PARTICIPATION -->
+<div class="section" style="background:#121212;">
+  <h3>🛡️ Shield Strength</h3>
+  <p>Tracks activity — deposits, burns, reclaims.</p>
+  <h2 id="networkActivity" class="glow-pulse">Loading...</h2>
+  <small id="networkStatusMsg" style="display:block;margin-top:.5rem;color:#aaa;">
+  ⏳ Initializing...</small>
+  <div id="shieldFeed" class="feed" style="margin-top:1rem;">
+    <div class="feed-entry">🧠 System booted.</div>
+  </div>
+  <small id="networkUpdate">⏳ Fetching...</small>
+</div>
+<style>
+  /* Pulse animation */
+  .glow-pulse {
+    color:#8b5cf6;
+    text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff,0 0 30px #3c00aa;
+    animation:pulseMetric 2s infinite alternate;
+  }
+  @keyframes pulseMetric {
+    from { text-shadow:0 0 10px #8b5cf6,0 0 20px #5c00ff; }
+    to { text-shadow:0 0 25px #9d72ff,0 0 45px #8b5cf6; }
+  }
+@keyframes shieldPulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.03); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.9; }
+  }
+  @keyframes auraPulse {
+  0% { box-shadow: 0 0 10px rgba(0,255,100,0.1); }
+  50% { box-shadow: 0 0 40px rgba(0,255,100,0.25); }
+  100% { box-shadow: 0 0 10px rgba(0,255,100,0.1); }
+}
+.shield-section-active {
+  animation: auraPulse 6s ease-in-out infinite;
+  border: 1px solid rgba(0,255,150,0.25);
+  transition: all .6s ease;
+}
+.feed-entry {
+  font-size: .9rem;
+  margin: .3rem 0;
+  opacity: .9;
+  animation: entryGlow 1s ease-out;
+}
+@keyframes entryGlow {
+  0% { text-shadow: 0 0 15px rgba(255,255,255,0.6); }
+  100% { text-shadow: none; }
+}
+.feed-entry.fade {
+  opacity: 0.5;
+  transition: opacity 2s ease;
+}
+#networkActivity {
+  animation: shieldPulse 3s ease-in-out infinite;
+}
+/* Color-coded */
+.feed-entry[data-type="weak"] { color: #ff6666; }
+.feed-entry[data-type="stabilizing"] { color: #ffcc00; }
+.feed-entry[data-type="optimized"] { color: #00ff99; }
+.section.shield-section-active[data-zone="optimized"] {
+  box-shadow: 0 0 25px rgba(0,255,150,0.25), inset 0 0 25px rgba(0,255,150,0.15);
+}
+.section.shield-section-active[data-zone="stabilizing"] {
+  box-shadow: 0 0 25px rgba(255,220,0,0.25), inset 0 0 25px rgba(255,220,0,0.15);
+}
+.section.shield-section-active[data-zone="weak"] {
+  box-shadow: 0 0 25px rgba(255,80,80,0.25), inset 0 0 25px rgba(255,80,80,0.15);
+}
+</style>
+<!-- 💰 STEP 1 — DEPOSIT -->
+<div class="section">
+  <h3>💰 Step 1 — Deposit PLSX</h3>
+  <p>1️⃣ Generate Commit, Secret, & Deposit Hashes using the <a href="https://elitev5.github.io/PrivX/Hash-Generator/V9" target="_blank">Hash Generator ↗</a>.</p>
+  <p>2️⃣ Paste Deposit Hash below.</p>
+  <p>3️⃣ Enter PLSX amount to deposit.</p>
+  <input id="depositAmount" placeholder="PLSX Amount (e.g. 1000)" /><br/>
+  <div id="feeDisplay" style="color:#ffcc00;margin:0.5rem 0;">Required PRIVX Fee: Calculating...</div>
+  <input id="depositHash" placeholder="Deposit Hash (0x…)" /><br/>
+  <button id="approvePrivxBtn">✅ Approve PRIVX</button>
+  <button id="approvePlsxBtn">✅ Approve PLSX</button>
+  <button id="depositBtn">🚀 Deposit</button>
+  <small>Approve once each, then deposit with new hashes.</small>
+</div>
+<!-- STEP 2 — COMMIT -->
+<div class="section" style="background:#161616;">
+  <h3>🕵️ Step 2 — Commit Secret (Stealth Protection)</h3>
+  <p>Commit before withdraw to prevent front-running. Window ~13 minutes.</p>
+  <input id="commitHashInput" placeholder="Commit Hash (from Generator)" /><br/>
+  <button id="commitBtn">🕶️ Commit</button>
+  <small>Wait ~5-10 minutes after commit before withdraw.</small>
+</div>
+<!-- 💎 STEP 3 — WITHDRAW -->
+<div class="section">
+  <h3>💎 Step 3 — Withdraw PLSX</h3>
+  <p>After commit, withdraw within 7 days to 1-3 wallets.</p>
+  <input id="withdrawSecret" placeholder="Secret (UTF-8)" /><br/>
+  <input id="wallet1" placeholder="Wallet 1 (0x…)" /><br/>
+  <input id="wallet2" placeholder="Wallet 2 (optional)" /><br/>
+  <input id="wallet3" placeholder="Wallet 3 (optional)" /><br/>
+  <button id="withdrawBtn">💎 Withdraw</button>
+  <small class="warning">Use new wallets for max privacy.</small>
+  <small class="warning">⚠️ Secret allows withdraw within 7 days — keep safe.</small>
+</div>
+<!-- 🔥 RECLAIM -->
+<div class="section">
+  <h3>🔥 Reclaim Expired Deposits</h3>
+  <p>After 7 days, reclaim unclaimed. 95% PLSX burn, 5% reward.</p>
+  <input id="reclaimHash" placeholder="Deposit Hash (0x…)" /><br/>
+  <button id="reclaimBtn">🔥 Reclaim</button>
+</div>
+<!-- 🧩 CLAIM HELPER -->
+<div class="section" style="background:#161616;">
+  <h3>🧩 Claim Helper — Unclaimed Deposits</h3>
+  <p>View expired deposits ready to reclaim.</p>
+  <button id="loadReclaimable">🔍 Load Reclaimable</button>
+  <div id="reclaimList" class="hashList">Press to view…</div>
+  <small>Refreshes every 30s. View-only.</small>
+</div>
+<!-- 🔍 DEPOSIT CHECKER -->
+<div class="section" style="background:#101010;">
+  <h3>🔍 Check Deposit Status</h3>
+  <p>Enter Deposit Hash for amount, date, status, countdown.</p>
+  <input id="checkHash" placeholder="Deposit Hash (0x…)" /><br/>
+  <button id="checkBtn">🔍 Check</button>
+  <div id="checkResult" style="margin-top:1rem;color:#00ff99;font-family:monospace;"></div>
+  <small>No wallet needed.</small>
+</div>
+<!-- 📘 HOW IT WORKS -->
+<div class="section" style="background:#131313;">
+  <h3>📘 How It Works</h3>
+  <ol style="text-align:left;line-height:1.6em;">
+    <li>Generate hashes with <a href="https://elitev5.github.io/PrivX/Hash-Generator/V9" target="_blank">Generator</a>.</li>
+    <li>Deposit PLSX (pay PRIVX fee).</li>
+    <li>Commit when ready to withdraw (within 7 days).</li>
+    <li>Withdraw after commit (0.3% PLSX fee).</li>
+    <li>Reclaim after 7 days if forgotten.</li>
+    <li>Check status by hash.</li>
+  </ol>
+  <h3>🧭 Best Practices</h3>
+  <ul style="text-align:left;line-height:1.6em;">
+    <li>🪙 Backup Secret.</li>
+    <li>🔐 Keep Secret private.</li>
+    <li>🕶️ Always commit before withdraw.</li>
+    <li>🕓 Withdraw within 7 days.</li>
+    <li>🔥 Expired burned (95% PLSX).</li>
+    <li>⚙️ Verify addresses.</li>
+    <li>🧩 More users = better privacy.</li>
+    <li>⚠️ Test with small amounts.</li>
+  </ul>
+  <p style="color:#8b5cf6;">Privacy by participation.</p>
+</div>
+<footer>
+  <hr>
+  <p>PulseChain Native • MIT • Open Source</p>
+  <p><a href="https://github.com/ELITEv5/PrivX" target="_blank">GitHub</a></p>
+  <p style="color:#8b5cf6;">“We outnumber.”</p>
+</footer>
+<!-- MAIN LOGIC -->
+<script>
+// Inline Copy
+function copyCA(id) {
+  const el = document.getElementById(id);
+  const text = el.textContent.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = el.nextElementSibling;
+    const original = btn.textContent;
+    btn.textContent = "✅ Copied!";
+    btn.style.background = "#00ff99";
+    btn.style.color = "#000";
+    btn.style.boxShadow = "0 0 10px #00ff99";
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.style.background = "#333";
+      btn.style.color = "#00ffcc";
+      btn.style.boxShadow = "none";
+    }, 1200);
+  });
+}
+// GLOBALS
+const relayAddress = "0x0000000000000000000000000000000000000000"; // UPDATE WITH DEPLOYED ADDRESS
+const plsxAddress = "0x95B303987A60C71504D99Aa1b13B4DA07b0790ab";
+const privxAddress = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+const privxOracleAddress = "0x08Ba2656f26Be2636C3cC6DCF21F97473ad49A20";
+const plsxOracleAddress = "0xF806d677E27f01FCa750ab4C50E6b5ADaDCEb271";
+const PULSECHAIN_ID = "0x171"; // 369
+let provider, signer, contract, account, plsx, privx, privxOracle, plsxOracle;
+let abi;
+// CONNECT
+async function connect() {
+  if (window.ethereum) {
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    account = await signer.getAddress();
+    const chainId = await provider.send("eth_chainId", []);
+    if (chainId !== PULSECHAIN_ID) {
+      alert("Switch to PulseChain (ID 369).");
+      return;
+    }
+    document.getElementById("status").textContent = "✅ Connected: " + account.slice(0, 6) + "…" + account.slice(-4);
+    document.getElementById("status").style.color = "#00ff99";
+    document.getElementById("disconnect").style.display = "inline-block";
+    ["approvePrivxBtn", "approvePlsxBtn", "depositBtn", "withdrawBtn", "reclaimBtn", "commitBtn"].forEach(id => document.getElementById(id).disabled = false);
+    contract = new ethers.Contract(relayAddress, abi, signer);
+    plsx = new ethers.Contract(plsxAddress, ["function approve(address,uint256) external returns (bool)", "function allowance(address,address) view returns (uint256)", "function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"], signer);
+    privx = new ethers.Contract(privxAddress, ["function approve(address,uint256) external returns (bool)", "function allowance(address,address) view returns (uint256)", "function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"], signer);
+    privxOracle = new ethers.Contract(privxOracleAddress, ["function peekSpotPrice() view returns (uint256)"], provider);
+    plsxOracle = new ethers.Contract(plsxOracleAddress, ["function peekSpotPrice() view returns (uint256)"], provider);
+    provider.on("accountsChanged", () => location.reload());
+    provider.on("chainChanged", () => location.reload());
+  } else {
+    alert("Install MetaMask or Rabby.");
+  }
+}
+function disconnect() {
+  provider = signer = contract = plsx = privx = null;
+  document.getElementById("status").textContent = "❌ Disconnected";
+  document.getElementById("status").style.color = "#f55";
+  document.getElementById("disconnect").style.display = "none";
+  ["approvePrivxBtn", "approvePlsxBtn", "depositBtn", "withdrawBtn", "reclaimBtn", "commitBtn"].forEach(id => document.getElementById(id).disabled = true);
+}
+// MAIN
+(async () => {
+  abi = await fetch("./abi.json").then(r => r.json());
+  const pubProv = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
+  const pubContract = new ethers.Contract(relayAddress, abi, pubProv);
+  const pubPrivxOracle = new ethers.Contract(privxOracleAddress, ["function peekSpotPrice() view returns (uint256)"], pubProv);
+  const pubPlsxOracle = new ethers.Contract(plsxOracleAddress, ["function peekSpotPrice() view returns (uint256)"], pubProv);
+  // Disable buttons
+  ["approvePrivxBtn", "approvePlsxBtn", "depositBtn", "withdrawBtn", "reclaimBtn", "commitBtn"].forEach(id => document.getElementById(id).disabled = true);
+  // UPDATES
+  async function updatePrivxPrice() {
+    try {
+      const price = await pubPrivxOracle.peekSpotPrice();
+      document.getElementById("privxPrice").textContent = ethers.utils.formatUnits(price, 18) + " PLS per PRIVX";
+      document.getElementById("priceUpdate").textContent = "✅ Updated " + new Date().toLocaleTimeString();
+    } catch (e) {
+      document.getElementById("privxPrice").textContent = "Error";
+    }
+  }
+  async function updateVaultBalance() {
+    try {
+      const b = await pubContract.totalVaultBalance();
+      document.getElementById("vaultBalance").textContent = ethers.utils.formatUnits(b, 18) + " PLSX";
+      document.getElementById("vaultUpdate").textContent = "✅ Updated " + new Date().toLocaleTimeString();
+    } catch (e) {
+      document.getElementById("vaultBalance").textContent = "Error";
+    }
+  }
+  async function updateBurnCounter() {
+    try {
+      const burned = await pubContract.totalBurned();
+      document.getElementById("burnCounter").textContent = ethers.utils.formatUnits(burned, 18) + " PRIVX 🔥";
+      document.getElementById("burnUpdate").textContent = "✅ Updated " + new Date().toLocaleTimeString();
+    } catch (e) {
+      document.getElementById("burnCounter").textContent = "Error";
+    }
+  }
+  async function updateRewardPool() {
+    try {
+      const pool = await pubContract.rewardPool();
+      document.getElementById("rewardPool").textContent = ethers.utils.formatUnits(pool, 18) + " PRIVX";
+      document.getElementById("rewardUpdate").textContent = "✅ Updated " + new Date().toLocaleTimeString();
+    } catch (e) {
+      document.getElementById("rewardPool").textContent = "Error";
+    }
+  }
+  async function ensurePulse() {
+    const c = await window.ethereum.request({ method: "eth_chainId" });
+    if (c !== PULSECHAIN_ID) {
+      alert("Switch to PulseChain.");
+      return false;
+    }
+    return true;
+  }
+  async function updateShieldStrength() {
+    try {
+      const stats = await pubContract.getSystemStats();
+      const vault = stats[0];
+      const pool = stats[1];
+      const burned = stats[2];
+      const withdrawals = stats[3];
+      const reclaimed = stats[4];
+      const totalActivity = vault.add(pool).add(burned).add(reclaimed);
+      const activeRatio = vault.add(pool).mul(10000).div(totalActivity.add(1)).toNumber() / 100;
+      let score = activeRatio + Number(withdrawals) / 10;
+      if (score > 100) score = 100;
+      let color, label;
+      if (score >= 70) { color = "#00ff99"; label = "🟢 Optimized"; }
+      else if (score >= 40) { color = "#ffcc00"; label = "🟡 Stabilizing"; }
+      else { color = "#ff6666"; label = "🔴 Weak"; }
+      const activityEl = document.getElementById("networkActivity");
+      activityEl.style.color = color;
+      activityEl.innerHTML = `${score.toFixed(1)}% Strength<br><small>${label}</small>`;
+      document.getElementById("networkUpdate").textContent = "✅ Updated " + new Date().toLocaleTimeString();
+      document.getElementById("networkStatusMsg").textContent = "Active.";
+      const section = activityEl.closest(".section");
+      section.classList.add("shield-section-active");
+      section.dataset.zone = label.toLowerCase().replace(" ", "");
+      const feed = document.getElementById("shieldFeed");
+      const entry = document.createElement("div");
+      entry.className = "feed-entry";
+      entry.dataset.type = label.toLowerCase().replace(" ", "");
+      entry.textContent = `${new Date().toLocaleTimeString()} — ${label}: Vault ${ethers.utils.formatUnits(vault, 18)} PLSX, Pool ${ethers.utils.formatUnits(pool, 18)} PRIVX`;
+      feed.prepend(entry);
+      const allEntries = feed.querySelectorAll(".feed-entry");
+      if (allEntries.length > 10) allEntries[allEntries.length - 1].remove();
+      allEntries.forEach((e, i) => { if (i > 5) e.classList.add("fade"); });
+    } catch (e) {
+      document.getElementById("networkStatusMsg").textContent = "⚠️ Error.";
+    }
+  }
+  // ACTIONS
+  async function approvePrivx() {
+    try {
+      const tx = await privx.approve(relayAddress, ethers.constants.MaxUint256);
+      alert("✅ PRIVX Approved: " + tx.hash);
+    } catch (e) {
+      alert("Failed: " + e.message);
+    }
+  }
+  async function approvePlsx() {
+    try {
+      const tx = await plsx.approve(relayAddress, ethers.constants.MaxUint256);
+      alert("✅ PLSX Approved: " + tx.hash);
+    } catch (e) {
+      alert("Failed: " + e.message);
+    }
+  }
+  async function computeFee(amount) {
+    try {
+      const plsxPerPls = await pubPlsxOracle.peekSpotPrice();
+      const privxPerPls = await pubPrivxOracle.peekSpotPrice();
+      const feeBp = 30;
+      const bpDenom = 10000;
+      const plsxBn = ethers.utils.parseUnits(amount || "0", 18);
+      const fee = plsxBn.mul(plsxPerPls).mul(feeBp).div(bpDenom).div(privxPerPls);
+      return ethers.utils.formatUnits(fee, 18);
+    } catch (e) {
+      return "Error";
+    }
+  }
+  document.getElementById("depositAmount").addEventListener("input", async (e) => {
+    const fee = await computeFee(e.target.value);
+    document.getElementById("feeDisplay").textContent = `Required PRIVX Fee: ${fee} PRIVX`;
+  });
+  async function deposit() {
+    const amt = document.getElementById("depositAmount").value.trim();
+    const h = document.getElementById("depositHash").value.trim();
+    if (!amt || !h) return alert("Enter amount and hash.");
+    if (!await ensurePulse()) return;
+    try {
+      const v = ethers.utils.parseUnits(amt, 18);
+      const tx = await contract.deposit(v, h);
+      alert("✅ Deposit: " + tx.hash);
+      updateVaultBalance();
+      updateRewardPool();
+    } catch (e) {
+      alert("Failed: " + e.message);
+    }
+  }
+  async function commitHashDirect() {
+    const commitHash = document.getElementById("commitHashInput").value.trim();
+    if (!commitHash) return alert("Enter Commit Hash.");
+    if (!await ensurePulse()) return;
+    try {
+      const tx = await contract.commit(commitHash);
+      alert("🕶️ Committed: " + tx.hash);
+    } catch (e) {
+      alert("Failed: " + e.message);
+    }
+  }
+  async function withdraw() {
+    const s = document.getElementById("withdrawSecret").value.trim();
+    const addrs = ["wallet1", "wallet2", "wallet3"].map(id => document.getElementById(id).value.trim()).filter(ethers.utils.isAddress);
+    if (!s || addrs.length === 0) return alert("Enter secret and wallets.");
+    if (!await ensurePulse()) return;
+    try {
+      const tx = await contract.withdraw(s, addrs);
+      alert("💎 Withdrawn: " + tx.hash);
+      updateVaultBalance();
+      updateRewardPool();
+    } catch (e) {
+      alert("Failed: " + e.message);
+    }
+  }
+  async function reclaim() {
+    const h = document.getElementById("reclaimHash").value.trim();
+    if (!h) return alert("Enter hash.");
+    if (!await ensurePulse()) return;
+    try {
+      const tx = await contract.reclaim(h);
+      alert("🔥 Reclaimed: " + tx.hash);
+      updateVaultBalance();
+      updateBurnCounter();
+      updateRewardPool();
+    } catch (e) {
+      alert("Failed: " + e.message);
+    }
+  }
+  async function loadReclaimable() {
+    const list = document.getElementById("reclaimList");
+    list.innerHTML = "⏳ Loading…";
+    // Implement event log scanning if possible, or note it's placeholder
+    list.innerHTML = "ℹ️ Feature coming soon - use manual reclaim for now.";
+  }
+  async function checkDepositStatus() {
+    const hash = document.getElementById("checkHash").value.trim();
+    if (!hash) return alert("Enter hash.");
+    const out = document.getElementById("checkResult");
+    try {
+      const d = await pubContract.deposits(hash);
+      const amount = ethers.utils.formatUnits(d.amount, 18);
+      const ts = Number(d.timestamp);
+      const claimed = d.claimed;
+      const depositDate = new Date(ts * 1000);
+      const expiry = depositDate.getTime() + 7 * 86400000;
+      const remainingMs = expiry - Date.now();
+      const remainingDays = (remainingMs / 86400000).toFixed(2);
+      let status, color;
+      if (claimed) { status = "✅ Claimed"; color = "#00ff99"; }
+      else if (remainingMs > 0) { status = `🟣 Active (${remainingDays} days left)`; color = "#00ffcc"; }
+      else { status = "🔥 Expired"; color = "#ff6600"; }
+      out.innerHTML = `
+        <div style="color:${color}">
+          <b>Status:</b> ${status}<br>
+          <b>Amount:</b> ${amount} PLSX<br>
+          <b>Deposited:</b> ${depositDate.toLocaleString()}<br>
+          <b>Expires:</b> ${new Date(expiry).toLocaleString()}<br>
+        </div>
+      `;
+    } catch (e) {
+      out.textContent = "❌ Error: " + e.message;
+    }
+  }
+  // Bindings
+  document.getElementById("connect").onclick = connect;
+  document.getElementById("disconnect").onclick = disconnect;
+  document.getElementById("approvePrivxBtn").onclick = approvePrivx;
+  document.getElementById("approvePlsxBtn").onclick = approvePlsx;
+  document.getElementById("depositBtn").onclick = deposit;
+  document.getElementById("commitBtn").onclick = commitHashDirect;
+  document.getElementById("withdrawBtn").onclick = withdraw;
+  document.getElementById("reclaimBtn").onclick = reclaim;
+  document.getElementById("loadReclaimable").onclick = loadReclaimable;
+  document.getElementById("checkBtn").onclick = checkDepositStatus;
+  // Auto refresh
+  updatePrivxPrice();
+  updateVaultBalance();
+  updateBurnCounter();
+  updateRewardPool();
+  updateShieldStrength();
+  setInterval(() => {
+    updatePrivxPrice();
+    updateVaultBalance();
+    updateBurnCounter();
+    updateRewardPool();
+    updateShieldStrength();
+  }, 30000);
+})();
+</script>
+</body>
+</html>
