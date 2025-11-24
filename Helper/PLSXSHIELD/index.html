@@ -379,8 +379,8 @@ function copyCA(id) {
     }, 1200);
   });
 }
-// GLOBALS
-const relayAddress = "0x0000000000000000000000000000000000000000"; // UPDATE WITH DEPLOYED ADDRESS
+// GLOBALS — UPDATED WITH YOUR DEPLOYED ADDRESS
+const relayAddress = "0xb1c52EcfD225230Bcf69E0Bedc980D8Bc4409A30";  // YOUR NEW SHIELD CONTRACT
 const plsxAddress = "0x95B303987A60C71504D99Aa1b13B4DA07b0790ab";
 const privxAddress = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 const privxOracleAddress = "0x08Ba2656f26Be2636C3cC6DCF21F97473ad49A20";
@@ -426,12 +426,12 @@ function disconnect() {
 (async () => {
   abi = await fetch("./abi.json").then(r => r.json());
   const pubProv = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
-  const pubContract = new ethers.Contract(relayAddress, abi, pubProv);
+  const pubContract = new ethers.Contract(relayAddress, abi, pubProv);  // Now uses correct address
   const pubPrivxOracle = new ethers.Contract(privxOracleAddress, ["function peekSpotPrice() view returns (uint256)"], pubProv);
   const pubPlsxOracle = new ethers.Contract(plsxOracleAddress, ["function peekSpotPrice() view returns (uint256)"], pubProv);
   // Disable buttons
   ["approvePrivxBtn", "approvePlsxBtn", "depositBtn", "withdrawBtn", "reclaimBtn", "commitBtn"].forEach(id => document.getElementById(id).disabled = true);
-  // UPDATES
+  // UPDATES (unchanged — already correct)
   async function updatePrivxPrice() {
     try {
       const price = await pubPrivxOracle.peekSpotPrice();
@@ -513,21 +513,39 @@ function disconnect() {
       document.getElementById("networkStatusMsg").textContent = "⚠️ Error.";
     }
   }
-  // ACTIONS
+  // ACTIONS — FIXED APPROVES WITH VALIDATION
   async function approvePrivx() {
+    if (!account) return alert("Connect wallet first.");
     try {
+      // Check current allowance first (safety)
+      const allowance = await privx.allowance(account, relayAddress);
+      if (allowance.gte(ethers.constants.MaxUint256)) {
+        alert("✅ PRIVX already approved (unlimited).");
+        return;
+      }
       const tx = await privx.approve(relayAddress, ethers.constants.MaxUint256);
-      alert("✅ PRIVX Approved: " + tx.hash);
+      await tx.wait();
+      alert("✅ PRIVX Approved (Unlimited): https://scan.pulsechain.com/tx/" + tx.hash);
     } catch (e) {
-      alert("Failed: " + e.message);
+      alert("Failed: " + (e.message || "Check console for details."));
+      console.error("Approve PRIVX error:", e);
     }
   }
   async function approvePlsx() {
+    if (!account) return alert("Connect wallet first.");
     try {
+      // Check current allowance first (safety)
+      const allowance = await plsx.allowance(account, relayAddress);
+      if (allowance.gte(ethers.constants.MaxUint256)) {
+        alert("✅ PLSX already approved (unlimited).");
+        return;
+      }
       const tx = await plsx.approve(relayAddress, ethers.constants.MaxUint256);
-      alert("✅ PLSX Approved: " + tx.hash);
+      await tx.wait();
+      alert("✅ PLSX Approved (Unlimited): https://scan.pulsechain.com/tx/" + tx.hash);
     } catch (e) {
-      alert("Failed: " + e.message);
+      alert("Failed: " + (e.message || "Check console for details."));
+      console.error("Approve PLSX error:", e);
     }
   }
   async function computeFee(amount) {
@@ -553,13 +571,22 @@ function disconnect() {
     if (!amt || !h) return alert("Enter amount and hash.");
     if (!await ensurePulse()) return;
     try {
+      // Check allowances before deposit
+      const plsxAllow = await plsx.allowance(account, relayAddress);
+      const privxAllowTemp = await privx.allowance(account, relayAddress);
       const v = ethers.utils.parseUnits(amt, 18);
+      const fee = await computeFee(amt);
+      const feeV = ethers.utils.parseUnits(fee, 18);
+      if (plsxAllow.lt(v)) return alert("Approve PLSX first.");
+      if (privxAllowTemp.lt(feeV)) return alert("Approve PRIVX first (fee: " + fee + ").");
       const tx = await contract.deposit(v, h);
-      alert("✅ Deposit: " + tx.hash);
+      await tx.wait();
+      alert("✅ Deposit Confirmed: https://scan.pulsechain.com/tx/" + tx.hash);
       updateVaultBalance();
       updateRewardPool();
     } catch (e) {
-      alert("Failed: " + e.message);
+      alert("Failed: " + (e.message || "Check console."));
+      console.error("Deposit error:", e);
     }
   }
   async function commitHashDirect() {
@@ -568,7 +595,8 @@ function disconnect() {
     if (!await ensurePulse()) return;
     try {
       const tx = await contract.commit(commitHash);
-      alert("🕶️ Committed: " + tx.hash);
+      await tx.wait();
+      alert("🕶️ Committed: https://scan.pulsechain.com/tx/" + tx.hash);
     } catch (e) {
       alert("Failed: " + e.message);
     }
@@ -580,7 +608,8 @@ function disconnect() {
     if (!await ensurePulse()) return;
     try {
       const tx = await contract.withdraw(s, addrs);
-      alert("💎 Withdrawn: " + tx.hash);
+      await tx.wait();
+      alert("💎 Withdrawn: https://scan.pulsechain.com/tx/" + tx.hash);
       updateVaultBalance();
       updateRewardPool();
     } catch (e) {
@@ -593,7 +622,8 @@ function disconnect() {
     if (!await ensurePulse()) return;
     try {
       const tx = await contract.reclaim(h);
-      alert("🔥 Reclaimed: " + tx.hash);
+      await tx.wait();
+      alert("🔥 Reclaimed: https://scan.pulsechain.com/tx/" + tx.hash);
       updateVaultBalance();
       updateBurnCounter();
       updateRewardPool();
@@ -604,7 +634,6 @@ function disconnect() {
   async function loadReclaimable() {
     const list = document.getElementById("reclaimList");
     list.innerHTML = "⏳ Loading…";
-    // Implement event log scanning if possible, or note it's placeholder
     list.innerHTML = "ℹ️ Feature coming soon - use manual reclaim for now.";
   }
   async function checkDepositStatus() {
@@ -662,5 +691,3 @@ function disconnect() {
   }, 30000);
 })();
 </script>
-</body>
-</html>
