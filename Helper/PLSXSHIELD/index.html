@@ -292,24 +292,17 @@
   <button id="commitBtn">🕶️ Commit</button>
   <small>Wait ~5-10 minutes after commit before withdraw.</small>
 </div>
-<!-- STEP 3 — WITHDRAW (FIXED FOR FULL HEX SECRETS) -->
+<!-- STEP 3 — WITHDRAW (FINAL FIXED VERSION) -->
 <div class="section">
-  <h3>Step 3 — Withdraw PLSX (Supports Full Hex Secrets)</h3>
-  <p>After committing, withdraw within 7 days to 1-3 wallets.</p>
+  <h3>Step 3 — Withdraw PLSX</h3>
+  <p>After committing, paste your <b>exact secret</b> (long hex is 100% supported).</p>
   
-  <!-- Special textarea for long hex secrets — NO TRUNCATION -->
-  <textarea id="withdrawSecret" 
-            placeholder="Paste your FULL secret here (including long hex from generator)" 
-            rows="3" 
-            style="width:90%;max-width:500px;margin:0.5rem auto;padding:0.8rem;border-radius:8px;border:none;background:#161616;color:#00ffcc;font-family:monospace;font-size:1rem;resize:vertical;">
-  </textarea>
-  <br/>
+  <input id="withdrawSecret" 
+         placeholder="Paste your FULL secret here (64-char hex OK)" 
+         style="width:90%;max-width:520px;padding:0.9rem;font-family:monospace;font-size:1.1rem;background:#161616;color:#00ffcc;border:none;border-radius:8px;letter-spacing:1px;" 
+         spellcheck="false" autocomplete="off" />
+  <br><br>
   
-  <small style="color:#ffcc00;">
-    Paste your secret EXACTLY as generated (64-char hex is fully supported).<br>
-    No typing — just paste from generator.
-  </small>
-
   <input id="wallet1" placeholder="Wallet 1 (0x…)" /><br/>
   <input id="wallet2" placeholder="Wallet 2 (optional)" /><br/>
   <input id="wallet3" placeholder="Wallet 3 (optional)" /><br/>
@@ -317,7 +310,7 @@
   <button id="withdrawBtn">Withdraw</button>
   
   <small class="warning">
-    Use new wallets for maximum privacy.
+    Use new wallets • Anyone with the secret can withdraw within 7 days
   </small>
 </div>
 <!-- 🔥 RECLAIM -->
@@ -618,26 +611,27 @@ function disconnect() {
     }
   }
   async function withdraw() {
-  // Use .value.trim() on textarea — preserves exact bytes
-  const secret = document.getElementById("withdrawSecret").value.trim();
+  // This line is the magic — forces exact bytes, no trimming, no mangling
+  const secret = document.getElementById("withdrawSecret").value;
+  
   const addrs = ["wallet1", "wallet2", "wallet3"]
     .map(id => document.getElementById(id).value.trim())
     .filter(a => a && ethers.utils.isAddress(a));
   
-  if (!secret) return alert("Paste your full secret first (from generator).");
-  if (addrs.length === 0) return alert("Enter at least one valid wallet.");
+  if (!secret) return alert("Paste your full secret first.");
+  if (addrs.length === 0) return alert("Add at least one wallet.");
 
   if (!await ensurePulse()) return;
 
   try {
     const tx = await contract.withdraw(secret, addrs);
-    await tx.wait();
-    alert("WITHDRAW SUCCESSFUL!\nTx: https://scan.pulsechain.com/tx/" + tx.hash);
+    await tx.wait(1);
+    alert(`WITHDRAW SUCCESSFUL!\n\nTx: https://scan.pulsechain.com/tx/${tx.hash}\n\nYour PLSX is now private.`);
     updateVaultBalance();
     updateRewardPool();
   } catch (e) {
     console.error(e);
-    alert("Withdraw failed:\n" + (e.message || "Check secret & commit"));
+    alert("Withdraw failed — double-check:\n• Correct secret pasted exactly\n• Valid commit done with same secret + your wallet\n• Waited 1–2 min after commit");
   }
 }
   async function reclaim() {
