@@ -126,24 +126,45 @@ Save this now — matches Solidity keccak256(abi.encode(secret)) exactly.`;
   document.getElementById("saveDeposit").disabled=false;
   warnBanner.style.display="block";
 };
-// === WITHDRAW MODE — FIXED (ABI ENCODE) ===
-document.getElementById("generateWithdraw").onclick=()=>{
-  if(typeof ethers==="undefined"){alert("Ethers.js not loaded.");return;}
-  const s=document.getElementById("withdrawSecret").value.trim();
-  const w=document.getElementById("walletInput").value.trim();
-  if(!s){alert("Enter the Secret you received.");return;}
-  if(!ethers.utils.isAddress(w)){alert("Valid wallet address required.");return;}
+// === WITHDRAW MODE — FIXED (WALLET-BOUND + NONCE) ===
+document.getElementById("generateWithdraw").onclick = () => {
+  if (typeof ethers === "undefined") {
+    alert("Ethers.js not loaded.");
+    return;
+  }
+  const s = document.getElementById("withdrawSecret").value.trim();
+  const w = document.getElementById("walletInput").value.trim();
+  if (!s) {
+    alert("Enter the Secret you received.");
+    return;
+  }
+  if (!ethers.utils.isAddress(w)) {
+    alert("Valid wallet address required.");
+    return;
+  }
+
+  // Add a random nonce (prevents reused commit collisions)
+  const nonceBytes = crypto.getRandomValues(new Uint8Array(8)); // 8 bytes = 64-bit nonce
+  const nonce = Array.from(nonceBytes).map(b => b.toString(16).padStart(2, "0")).join("");
+
+  // Encode with nonce included
   const abi = new ethers.utils.AbiCoder();
-  const encoded = abi.encode(["string", "address"], [s, w]);
+  const encoded = abi.encode(["string", "address", "string"], [s, w, nonce]);
   commitHash = ethers.utils.keccak256(encoded);
-  document.getElementById("outputWithdraw").textContent =
+
+  document.getElementById("outputWithdraw").textContent = 
 `Commit Hash (paste in PLSX Shield → Step 2):
 ${commitHash}
 
-✅ Matches Solidity keccak256(abi.encode(secret, wallet)) exactly.`;
-  document.getElementById("copyWithdraw").disabled=false;
-  document.getElementById("saveWithdraw").disabled=false;
-  warnBanner.style.display="block";
+Nonce (used for uniqueness — save this too!):
+${nonce}
+
+✅ Matches Solidity keccak256(abi.encode(secret, wallet, nonce)) exactly.
+Keep the nonce with your secret; you'll need it to withdraw.`;
+
+  document.getElementById("copyWithdraw").disabled = false;
+  document.getElementById("saveWithdraw").disabled = false;
+  warnBanner.style.display = "block";
 };
 
 // === COPY / SAVE BUTTONS ===
