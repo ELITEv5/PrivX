@@ -233,29 +233,33 @@ footer hr {
     🧩 Verified Contracts • No Admin • No Upgrades • 100% On-Chain Autonomy
   </small>
 </div>
-  
-  <div class="section">
-    <h3>💰 Step 1 – Deposit PLSX</h3>
-    <p>Generate your <a href="https://elitev5.github.io/PrivX/Hash-Generator/PLSX/" target="_blank">Deposit Hash ↗</a> and enter amount.</p>
-    <input id="depositAmount" placeholder="Amount (PLSX)" />
-    <input id="depositHash" placeholder="Deposit Hash (0x…)" />
-    <div id="depositFeeEst" style="color:var(--accent2);font-size:.9rem;margin:.4rem 0;">Estimated PRIVX Fee: –</div>
-    <button id="approvePlsx">Approve PLSX</button>
-    <button id="approvePrivx">Approve PRIVX</button>
-    <button id="depositBtn">🚀 Deposit</button>
+ <div class="section">
+  <h3>💰 Step 1 – Deposit PLSX</h3>
+  <p style="color:var(--muted);font-size:.95rem;margin-top:.2rem;">
+    ⚙️ Requires a <strong>0.3% PRIVX gas toll</strong>.  
+    You must hold PRIVX in your wallet to transact.  
+    The fee is distributed as <strong>20% to the reward pool</strong> and <strong>80% burned</strong>.
+  </p>
+  <p>Generate your <a href="https://elitev5.github.io/PrivX/Hash-Generator/PLSX/" target="_blank">Deposit Hash ↗</a> and enter amount.</p>
+  <input id="depositAmount" placeholder="Amount (PLSX)" />
+  <input id="depositHash" placeholder="Deposit Hash (0x…)" />
+  <div id="depositFeeEst" style="color:var(--accent2);font-size:.9rem;margin:.4rem 0;">Estimated PRIVX Fee: –</div>
+  <button id="approvePlsx">Approve PLSX</button>
+  <button id="approvePrivx">Approve PRIVX</button>
+  <button id="depositBtn">🚀 Deposit</button>
 
-    <!-- 🔹 NEW: Top 3 Deposit Insight Box -->
-    <div id="topDepositsBox">
-      <h4>📊 Network Deposit Insights</h4>
-      <p>Depositing a popular amount helps your transaction blend in with others for stronger privacy.</p>
-      <ul id="topDepositsList" style="list-style:none;padding:0;margin-top:.6rem;">
-        <li>1️⃣ Loading…</li>
-        <li>2️⃣ Loading…</li>
-        <li>3️⃣ Loading…</li>
-      </ul>
-      <small style="color:var(--muted);display:block;margin-top:.4rem;">Data updates every minute.</small>
-    </div>
+  <!-- 🔹 NEW: Top 3 Deposit Insight Box -->
+  <div id="topDepositsBox">
+    <h4>📊 Network Deposit Insights</h4>
+    <p>Depositing a popular amount helps your transaction blend in with others for stronger privacy.</p>
+    <ul id="topDepositsList" style="list-style:none;padding:0;margin-top:.6rem;">
+      <li>1️⃣ Loading…</li>
+      <li>2️⃣ Loading…</li>
+      <li>3️⃣ Loading…</li>
+    </ul>
+    <small style="color:var(--muted);display:block;margin-top:.4rem;">Data updates every minute.</small>
   </div>
+</div>
 
   <div class="section">
     <h3>🕵️ Step 2 – Commit Secret</h3>
