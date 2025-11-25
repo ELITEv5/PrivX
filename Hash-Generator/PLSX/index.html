@@ -105,33 +105,45 @@ function showSection(id){
 document.getElementById("btnDeposit").onclick=()=>showSection("depositSection");
 document.getElementById("btnWithdraw").onclick=()=>showSection("withdrawSection");
 
-// === DEPOSIT MODE — FIXED (ABI ENCODE) ===
-document.getElementById("generateDeposit").onclick=()=>{
-  if(typeof ethers==="undefined"){alert("Ethers.js not loaded.");return;}
-  if(secret&&depositHash){if(!confirm("You already have an unsaved Secret.\nGenerate a new one?"))return;}
-  const bytes=crypto.getRandomValues(new Uint8Array(32));
-  secret=Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
-  const abi=new ethers.utils.AbiCoder();
-  const encoded=abi.encode(["string"],[secret]);
-  depositHash=ethers.utils.keccak256(encoded);
-  document.getElementById("outputDeposit").textContent=
+// === DEPOSIT MODE — CONTRACT-MATCHED (keccak256(abi.encode(secret))) ===
+document.getElementById("generateDeposit").onclick = () => {
+  if (typeof ethers === "undefined") {
+    alert("Ethers.js not loaded.");
+    return;
+  }
+  if (secret && depositHash) {
+    if (!confirm("You already have an unsaved Secret.\nGenerate a new one?")) return;
+  }
+
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  secret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+
+  // Matches Solidity: keccak256(abi.encode(secret))
+  const abi = new ethers.utils.AbiCoder();
+  const encoded = abi.encode(["string"], [secret]);
+  depositHash = ethers.utils.keccak256(encoded);
+
+  document.getElementById("outputDeposit").textContent = 
 `Secret (keep private — this unlocks your PLSX):
 ${secret}
 
 Deposit Hash (paste in PLSX Shield → Step 1):
 ${depositHash}
 
-Save this now — matches Solidity keccak256(abi.encode(secret)) exactly.`;
-  document.getElementById("copyDeposit").disabled=false;
-  document.getElementById("saveDeposit").disabled=false;
-  warnBanner.style.display="block";
+✅ Matches Solidity keccak256(abi.encode(secret)) exactly.`;
+
+  document.getElementById("copyDeposit").disabled = false;
+  document.getElementById("saveDeposit").disabled = false;
+  warnBanner.style.display = "block";
 };
-// === WITHDRAW MODE — CONTRACT-COMPATIBLE NONCE VERSION ===
+
+// === WITHDRAW MODE — CONTRACT-MATCHED (keccak256(abi.encodePacked(secret, wallet))) ===
 document.getElementById("generateWithdraw").onclick = () => {
   if (typeof ethers === "undefined") {
     alert("Ethers.js not loaded.");
     return;
   }
+
   const s = document.getElementById("withdrawSecret").value.trim();
   const w = document.getElementById("walletInput").value.trim();
   if (!s) {
@@ -143,27 +155,15 @@ document.getElementById("generateWithdraw").onclick = () => {
     return;
   }
 
-  // Generate a random nonce
-  const nonceBytes = crypto.getRandomValues(new Uint8Array(8));
-  const nonce = Array.from(nonceBytes).map(b => b.toString(16).padStart(2, "0")).join("");
+  // Matches Solidity: keccak256(abi.encodePacked(secret, wallet))
+  const packed = ethers.utils.solidityPack(["string", "address"], [s, w]);
+  commitHash = ethers.utils.keccak256(packed);
 
-  // Combine nonce with secret, so contract still hashes (secret, wallet)
-  const combinedSecret = `${s}:${nonce}`;
-
-  // Encode using your contract's expected format
-  const abi = new ethers.utils.AbiCoder();
-  const encoded = abi.encode(["string", "address"], [combinedSecret, w]);
-  commitHash = ethers.utils.keccak256(encoded);
-
-  document.getElementById("outputWithdraw").textContent =
+  document.getElementById("outputWithdraw").textContent = 
 `Commit Hash (paste in PLSX Shield → Step 2):
 ${commitHash}
 
-Nonce (for uniqueness — part of your secret):
-${nonce}
-
-✅ Matches Solidity keccak256(abi.encode(secret, wallet)) exactly
-(because nonce is merged into the secret string).`;
+✅ Matches Solidity keccak256(abi.encodePacked(secret, wallet)) exactly.`;
 
   document.getElementById("copyWithdraw").disabled = false;
   document.getElementById("saveWithdraw").disabled = false;
