@@ -126,21 +126,21 @@ Save this now — matches Solidity keccak256(abi.encode(secret)) exactly.`;
   document.getElementById("saveDeposit").disabled=false;
   warnBanner.style.display="block";
 };
-
-// === WITHDRAW MODE ===
+// === WITHDRAW MODE — FIXED (ABI ENCODE) ===
 document.getElementById("generateWithdraw").onclick=()=>{
   if(typeof ethers==="undefined"){alert("Ethers.js not loaded.");return;}
   const s=document.getElementById("withdrawSecret").value.trim();
   const w=document.getElementById("walletInput").value.trim();
   if(!s){alert("Enter the Secret you received.");return;}
   if(!ethers.utils.isAddress(w)){alert("Valid wallet address required.");return;}
-  const packed=ethers.utils.solidityPack(["string","address"],[s,w]);
-  commitHash=ethers.utils.keccak256(packed);
-  document.getElementById("outputWithdraw").textContent=
+  const abi = new ethers.utils.AbiCoder();
+  const encoded = abi.encode(["string", "address"], [s, w]);
+  commitHash = ethers.utils.keccak256(encoded);
+  document.getElementById("outputWithdraw").textContent =
 `Commit Hash (paste in PLSX Shield → Step 2):
 ${commitHash}
 
-Use this exact hash with your wallet connected.`;
+✅ Matches Solidity keccak256(abi.encode(secret, wallet)) exactly.`;
   document.getElementById("copyWithdraw").disabled=false;
   document.getElementById("saveWithdraw").disabled=false;
   warnBanner.style.display="block";
