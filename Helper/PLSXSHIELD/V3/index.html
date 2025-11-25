@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PLSX Stealth Shield — Proof of Privacy v3.1</title>
+<title>PLSX Stealth Shield — Proof of Privacy v3</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
@@ -77,7 +77,6 @@ input {
   border-radius: var(--radius);
   padding:1.4rem 1.6rem;
   margin:1.6rem 0;
-  box-shadow: 0 0 0 rgba(0,0,0,0);
   transition: box-shadow .2s;
 }
 .section:hover { box-shadow: 0 0 18px rgba(107,92,255,0.05); }
@@ -119,6 +118,25 @@ footer hr {
   border-top:1px solid var(--border);
   margin:1.5rem 0;
 }
+#topDepositsBox {
+  background:#111315;
+  border-left:4px solid var(--accent2);
+  border-radius:10px;
+  padding:1rem 1.2rem;
+  margin-top:1.4rem;
+  font-size:.95rem;
+  color:var(--fg);
+}
+#topDepositsBox h4 {
+  color:var(--accent2);
+  margin-bottom:.4rem;
+}
+#expiredList {
+  font-family:var(--mono);
+  color:var(--accent2);
+  margin-top:.8rem;
+  font-size:.9rem;
+}
 @media (max-width:600px){ .stats-grid { grid-template-columns:1fr; } }
 </style>
 </head>
@@ -127,15 +145,13 @@ footer hr {
 <header>
   <img src="./PRIVX.png" alt="PRIVX Shield Logo" style="width:240px;max-width:60%;margin-bottom:1rem;">
   <h1>PLSX Stealth Shield</h1>
-  <p>Proof of Privacy v3 • PulseChain Native</p>
+  <p>Proof of Privacy v3.2 • PulseChain Native</p>
   <div style="margin-top:1rem;">
     <button id="connectBtn">🔗 Connect Wallet</button>
     <button id="disconnectBtn" style="display:none;">❌ Disconnect</button>
     <div id="walletStatus" style="margin-top:.5rem;color:var(--muted);">Not connected</div>
   </div>
 </header>
-
-
 <main>
   <div class="explainer">
     <h3>🧭 Why the PLSX Stealth Shield Exists</h3>
@@ -153,6 +169,18 @@ footer hr {
     <button id="approvePlsx">Approve PLSX</button>
     <button id="approvePrivx">Approve PRIVX</button>
     <button id="depositBtn">🚀 Deposit</button>
+
+    <!-- 🔹 NEW: Top 3 Deposit Insight Box -->
+    <div id="topDepositsBox">
+      <h4>📊 Network Deposit Insights</h4>
+      <p>Depositing a popular amount helps your transaction blend in with others for stronger privacy.</p>
+      <ul id="topDepositsList" style="list-style:none;padding:0;margin-top:.6rem;">
+        <li>1️⃣ Loading…</li>
+        <li>2️⃣ Loading…</li>
+        <li>3️⃣ Loading…</li>
+      </ul>
+      <small style="color:var(--muted);display:block;margin-top:.4rem;">Data updates every minute.</small>
+    </div>
   </div>
 
   <div class="section">
@@ -175,6 +203,14 @@ footer hr {
     <input id="reclaimHash" placeholder="Deposit Hash (0x…)" />
     <div id="reclaimFeeEst" style="color:var(--accent2);font-size:.9rem;margin:.4rem 0;">Estimated PRIVX Fee: –</div>
     <button id="reclaimBtn">🔥 Reclaim</button>
+
+    <!-- 🔹 NEW: Find Expired Deposits -->
+    <h4 style="margin-top:1.2rem;">🕒 Find Expired Deposits</h4>
+    <p style="color:var(--muted);font-size:.9rem;">
+      Scan for recently expired deposits that can now be reclaimed by anyone.
+    </p>
+    <button id="scanExpiredBtn">🔎 Scan Expired</button>
+    <div id="expiredList">–</div>
   </div>
 
   <div class="section">
@@ -201,10 +237,9 @@ footer hr {
 
 <footer>
   <hr>
-  <p>PLSX Stealth Shield • Proof of Privacy v3.1</p>
+  <p>PLSX Stealth Shield • Proof of Privacy v3.2</p>
   <p>PulseChain Network • MIT License • Open Source</p>
 </footer>
-
 <script>
 const CONTRACT_ADDR = "0x21a3E97e2347349AC283E972A983c8e6Ee30Bef0";
 const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
@@ -330,6 +365,7 @@ async function reclaim() {
 }
 document.getElementById("reclaimBtn").onclick = reclaim;
 
+// 🔹 Enhanced Check Deposit with Countdown
 async function checkStatus() {
   const h = document.getElementById("checkHash").value.trim();
   if (!h) return alert("Enter hash");
@@ -341,12 +377,50 @@ async function checkStatus() {
   const date = new Date(Number(d.timestamp) * 1000);
   const exp = new Date(date.getTime() + 7 * 24 * 60 * 60 * 1000);
   const amt = ethers.utils.formatUnits(d.amount, 18);
-  document.getElementById("checkResult").innerHTML =
-    `Amount: ${amt} PLSX<br>Deposited: ${date.toLocaleString()}<br>Expires: ${exp.toLocaleString()}<br>Status: ${d.claimed ? "✅ Claimed" : "🟣 Active"}`;
+
+  function updateCountdown() {
+    const now = new Date();
+    const diff = exp - now;
+    if (diff <= 0) {
+      document.getElementById("checkResult").innerHTML =
+        `Amount: ${amt} PLSX<br>Deposited: ${date.toLocaleString()}<br>Expired ⏰ — Available for Reclaim`;
+      clearInterval(timer);
+      return;
+    }
+    const hrs = Math.floor(diff / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    document.getElementById("checkResult").innerHTML =
+      `Amount: ${amt} PLSX<br>Deposited: ${date.toLocaleString()}<br>Expires: ${exp.toLocaleString()}<br>Time Remaining: ${hrs}h ${mins}m<br>Status: ${d.claimed ? "✅ Claimed" : "🟣 Active"}`;
+  }
+  updateCountdown();
+  const timer = setInterval(updateCountdown, 60000);
 }
 document.getElementById("checkBtn").onclick = checkStatus;
 
-// Public stats
+// 🔹 Find Expired Deposits (simple example)
+document.getElementById("scanExpiredBtn").onclick = async () => {
+  try {
+    const filter = contract.filters.Deposited();
+    const logs = await contract.queryFilter(filter, -5000); // last ~5000 blocks
+    const now = Math.floor(Date.now() / 1000);
+    const expired = [];
+    for (let log of logs) {
+      const h = log.args.hash;
+      const d = await contract.deposits(h);
+      if (!d.claimed && now - Number(d.timestamp) > 7 * 24 * 60 * 60) {
+        expired.push({ hash: h, amt: ethers.utils.formatUnits(d.amount, 18) });
+      }
+    }
+    const box = document.getElementById("expiredList");
+    if (expired.length === 0) box.innerHTML = "No expired deposits found.";
+    else box.innerHTML = expired.map(x => `💀 ${x.hash} → ${x.amt} PLSX`).join("<br>");
+  } catch (e) {
+    console.warn("Expired scan error:", e);
+    document.getElementById("expiredList").textContent = "Error scanning.";
+  }
+};
+
+// 🔹 Top 3 Deposits auto-query
 const pubProv = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
 (async () => {
   const abi = await fetch("./abi.json").then(r => r.json());
@@ -362,11 +436,32 @@ const pubProv = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com
       document.getElementById("totalReclaimed").textContent = Number(ethers.utils.formatUnits(r,18)).toFixed(2);
     } catch (e) { console.warn("Stats error", e); }
   }
+
+  async function updateTopDeposits() {
+    try {
+      const filter = pub.filters.Deposited();
+      const logs = await pub.queryFilter(filter, -5000);
+      const map = {};
+      for (let l of logs) {
+        const amt = Number(ethers.utils.formatUnits(l.args.amount, 18));
+        const key = Math.round(amt * 100) / 100;
+        map[key] = (map[key] || 0) + 1;
+      }
+      const top = Object.entries(map)
+        .sort((a,b) => b[1]-a[1])
+        .slice(0,3)
+        .map(([amt,count],i) => `${i+1}️⃣ ${amt} PLSX (${count} deposits)`);
+      document.getElementById("topDepositsList").innerHTML = top.join("<br>");
+    } catch (e) {
+      console.warn("Top deposits error", e);
+    }
+  }
+
   updateStats();
+  updateTopDeposits();
   setInterval(updateStats, 30000);
+  setInterval(updateTopDeposits, 60000);
 })();
 </script>
 </body>
 </html>
-
-
