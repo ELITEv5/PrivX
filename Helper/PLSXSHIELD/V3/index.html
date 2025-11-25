@@ -32,8 +32,6 @@ h1,h2,h3,h4 { font-weight:600; margin:0 0 .4em; }
 a { color: var(--accent2); text-decoration:none; }
 a:hover { text-decoration:underline; }
 main { max-width: 920px; margin: auto; padding: 2rem 1rem 6rem; }
-
-/* Header */
 header {
   text-align: center;
   padding-top: 2rem;
@@ -49,8 +47,6 @@ header p {
   color: var(--muted);
   font-size: 1rem;
 }
-
-/* Buttons & Inputs */
 button {
   background: var(--accent);
   color: #fff;
@@ -63,7 +59,6 @@ button {
 }
 button:hover { opacity: .85; }
 button:disabled { background:#333; color:#777; cursor:not-allowed; }
-
 input {
   width: 100%;
   max-width: 420px;
@@ -76,8 +71,6 @@ input {
   font-family: var(--mono);
   text-align:center;
 }
-
-/* Sections / Cards */
 .section {
   background: var(--card);
   border:1px solid var(--border);
@@ -87,11 +80,7 @@ input {
   box-shadow: 0 0 0 rgba(0,0,0,0);
   transition: box-shadow .2s;
 }
-.section:hover {
-  box-shadow: 0 0 18px rgba(107,92,255,0.05);
-}
-
-/* Collapsible stats */
+.section:hover { box-shadow: 0 0 18px rgba(107,92,255,0.05); }
 #statsPanel {
   overflow:hidden;
   transition: max-height .5s ease;
@@ -112,8 +101,6 @@ input {
   font-family:var(--mono);
   font-size:.9rem;
 }
-
-/* Explainers */
 .explainer {
   background:#111315;
   border-left:4px solid var(--accent);
@@ -121,8 +108,6 @@ input {
   padding:1rem 1.2rem;
   margin:1.6rem 0;
 }
-
-/* Footer */
 footer {
   text-align:center;
   margin-top:3rem;
@@ -134,11 +119,7 @@ footer hr {
   border-top:1px solid var(--border);
   margin:1.5rem 0;
 }
-
-/* Responsive */
-@media (max-width:600px){
-  .stats-grid { grid-template-columns:1fr; }
-}
+@media (max-width:600px){ .stats-grid { grid-template-columns:1fr; } }
 </style>
 </head>
 
@@ -146,25 +127,106 @@ footer hr {
 <header>
   <h1>PLSX Stealth Shield</h1>
   <p>Proof of Privacy v3.1 • PulseChain Native</p>
+  <div style="margin-top:1rem;">
+    <button id="connectBtn">🔗 Connect Wallet</button>
+    <button id="disconnectBtn" style="display:none;">❌ Disconnect</button>
+    <div id="walletStatus" style="margin-top:.5rem;color:var(--muted);">Not connected</div>
+  </div>
 </header>
 
 <main>
-// ============ UNIVERSAL WALLET CONNECTION ============
+  <div class="explainer">
+    <h3>🧭 Why the PLSX Stealth Shield Exists</h3>
+    <p>The blockchain is transparent by design—every address and transfer visible forever.
+    <strong>PLSX Stealth Shield</strong> restores privacy through a mathematics-based commit–reveal mechanism.
+    Each deposit is locked under a <code>keccak256(secret)</code> hash, unlinking it from future withdrawals.</p>
+  </div>
+
+  <div class="section">
+    <h3>💰 Step 1 – Deposit PLSX</h3>
+    <p>Generate your <a href="https://elitev5.github.io/PrivX/Hash-Generator/PLSX/" target="_blank">Deposit Hash ↗</a> and enter amount.</p>
+    <input id="depositAmount" placeholder="Amount (PLSX)" />
+    <input id="depositHash" placeholder="Deposit Hash (0x…)" />
+    <div id="depositFeeEst" style="color:var(--accent2);font-size:.9rem;margin:.4rem 0;">Estimated PRIVX Fee: –</div>
+    <button id="approvePlsx">Approve PLSX</button>
+    <button id="approvePrivx">Approve PRIVX</button>
+    <button id="depositBtn">🚀 Deposit</button>
+  </div>
+
+  <div class="section">
+    <h3>🕵️ Step 2 – Commit Secret</h3>
+    <input id="commitHash" placeholder="Commit Hash (0x…)" />
+    <button id="commitBtn">🕶️ Commit</button>
+  </div>
+
+  <div class="section">
+    <h3>💎 Step 3 – Withdraw</h3>
+    <input id="withdrawSecret" placeholder="Secret (UTF-8)" />
+    <input id="wallet1" placeholder="Wallet 1 (0x…)" />
+    <input id="wallet2" placeholder="Wallet 2 (optional)" />
+    <input id="wallet3" placeholder="Wallet 3 (optional)" />
+    <button id="withdrawBtn">💎 Withdraw</button>
+  </div>
+
+  <div class="section">
+    <h3>🔥 Step 4 – Reclaim</h3>
+    <input id="reclaimHash" placeholder="Deposit Hash (0x…)" />
+    <div id="reclaimFeeEst" style="color:var(--accent2);font-size:.9rem;margin:.4rem 0;">Estimated PRIVX Fee: –</div>
+    <button id="reclaimBtn">🔥 Reclaim</button>
+  </div>
+
+  <div class="section">
+    <h3>🔍 Step 5 – Check Deposit</h3>
+    <input id="checkHash" placeholder="Deposit Hash (0x…)" />
+    <button id="checkBtn">🔍 Check</button>
+    <div id="checkResult" style="margin-top:1rem;font-family:var(--mono);color:var(--accent2);"></div>
+  </div>
+
+  <div class="section">
+    <h3 style="cursor:pointer;" id="toggleStats">📊 View Shield Stats</h3>
+    <div id="statsPanel">
+      <div class="stats-grid">
+        <div>Vault PLSX: <span id="vaultPlsx">–</span></div>
+        <div>Pool PRIVX: <span id="poolPrivx">–</span></div>
+        <div>Burned PRIVX: <span id="burnedPrivx">–</span></div>
+        <div>Burned PLSX: <span id="burnedPlsx">–</span></div>
+        <div>Total Withdrawals: <span id="totalWithdraw">–</span></div>
+        <div>Total Reclaimed: <span id="totalReclaimed">–</span></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <hr>
+  <p>PLSX Stealth Shield • Proof of Privacy v3.1</p>
+  <p>PulseChain Network • MIT License • Open Source</p>
+</footer>
+
+<script>
+const CONTRACT_ADDR = "0x21a3E97e2347349AC283E972A983c8e6Ee30Bef0";
+const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+const PULSECHAIN_ID = "0x171";
+let provider, signer, account, contract, privx, plsx;
+
+// Collapsible stats
+document.getElementById("toggleStats").onclick = () => {
+  document.getElementById("statsPanel").classList.toggle("open");
+};
+
+// Universal Wallet Connect
 async function connectWallet() {
   try {
     if (window.ethereum) {
-      // Detect injected provider (MetaMask / Rabby / Brave / Coinbase)
       provider = new ethers.providers.Web3Provider(window.ethereum, "any");
       await provider.send("eth_requestAccounts", []);
     } else if (window.walletConnectProvider) {
-      // Fallback: WalletConnect (if injected)
       provider = new ethers.providers.Web3Provider(window.walletConnectProvider);
       await provider.send("eth_requestAccounts", []);
     } else {
-      alert("No wallet detected. Please install MetaMask, Rabby, or connect via WalletConnect.");
+      alert("No wallet detected. Install MetaMask or connect via WalletConnect.");
       return;
     }
-
     signer = provider.getSigner();
     account = await signer.getAddress();
 
@@ -172,37 +234,28 @@ async function connectWallet() {
     if (chainId !== PULSECHAIN_ID) {
       try {
         await provider.send("wallet_switchEthereumChain", [{ chainId: PULSECHAIN_ID }]);
-      } catch {
-        alert("Switch to PulseChain (Chain ID 369)");
-        return;
-      }
+      } catch { alert("Switch to PulseChain (369)"); return; }
     }
 
-    document.getElementById("walletStatus").textContent = "Connected: " + account.slice(0, 6) + "…" + account.slice(-4);
+    document.getElementById("walletStatus").textContent =
+      "Connected: " + account.slice(0, 6) + "…" + account.slice(-4);
     document.getElementById("connectBtn").style.display = "none";
     document.getElementById("disconnectBtn").style.display = "inline-block";
 
     const abi = await fetch("./abi.json").then(r => r.json());
     contract = new ethers.Contract(CONTRACT_ADDR, abi, signer);
     privx = new ethers.Contract(PRIVX_TOKEN, [
-      "function approve(address,uint256) external returns(bool)",
-      "function allowance(address,address) view returns(uint256)"
+      "function approve(address,uint256) external returns(bool)"
     ], signer);
-
     const plsxAddr = await contract.plsx();
     plsx = new ethers.Contract(plsxAddr, [
-      "function approve(address,uint256) external returns(bool)",
-      "function allowance(address,address) view returns(uint256)"
+      "function approve(address,uint256) external returns(bool)"
     ], signer);
 
     provider.on("accountsChanged", () => location.reload());
     provider.on("chainChanged", () => location.reload());
-  } catch (err) {
-    console.error("Wallet connect error:", err);
-    alert("Connection failed: " + (err.message || err));
-  }
+  } catch (e) { alert("Wallet error: " + e.message); }
 }
-
 function disconnectWallet() {
   provider = signer = account = null;
   document.getElementById("walletStatus").textContent = "Disconnected";
@@ -212,272 +265,106 @@ function disconnectWallet() {
 document.getElementById("connectBtn").onclick = connectWallet;
 document.getElementById("disconnectBtn").onclick = disconnectWallet;
 
-<!-- 📘 INTRO / EXPLAINER -->
-<div class="explainer">
-  <h3>🧭 Why the PLSX Stealth Shield Exists</h3>
-  <p>The blockchain is transparent by design—every address and transfer visible forever.  
-  <strong>PLSX Stealth Shield</strong> restores privacy through a mathematics-based commit–reveal mechanism.  
-  Each deposit is locked under a <code>keccak256(secret)</code> hash, unlinking it from future withdrawals.</p>
-  <p>As many users interact within the 7-day privacy window, transactions blur together into statistical noise.  
-  <em>Privacy by participation.</em></p>
-</div>
-
-<!-- 💰 STEP 1 — DEPOSIT -->
-<div class="section" id="depositSection">
-  <h3>💰 Step 1 – Deposit PLSX</h3>
-  <p>1️⃣ Generate your <code>Secret & Deposit Hash</code> using the 
-     <a href="https://elitev5.github.io/PrivX/Hash-Generator/PLSX/" target="_blank">official PLSX Hash Generator ↗</a></p>
-  <p>2️⃣ Paste your <b>Deposit Hash</b> and enter the amount of PLSX to deposit.</p>
-  <input id="depositAmount" placeholder="Amount (PLSX)" />
-  <input id="depositHash" placeholder="Deposit Hash (0x…)" />
-  <div id="depositFeeEst" style="color:var(--accent2);font-size:.9rem;margin:.4rem 0;">Estimated PRIVX Fee: –</div>
-  <button id="approvePlsx">Approve PLSX</button>
-  <button id="approvePrivx">Approve PRIVX</button>
-  <button id="depositBtn">🚀 Deposit</button>
-  <small style="display:block;color:var(--muted);margin-top:.5rem;">
-    You must approve both PLSX and PRIVX once before depositing.
-  </small>
-</div>
-
-<!-- 🕵️ STEP 2 — COMMIT -->
-<div class="section">
-  <h3>🕵️ Step 2 – Commit Your Secret (Activate Stealth Protection)</h3>
-  <p>Before withdrawing, commit your <code>Secret Hash</code> to lock your intent on-chain without revealing it.</p>
-  <input id="commitHash" placeholder="Commit Hash (0x…)" />
-  <button id="commitBtn">🕶️ Commit Hash</button>
-  <small style="display:block;color:var(--muted);margin-top:.4rem;">
-    Wait ≈ 15 minutes (256 blocks) after committing before withdrawing.
-  </small>
-</div>
-
-<!-- 💎 STEP 3 — WITHDRAW -->
-<div class="section">
-  <h3>💎 Step 3 – Withdraw Funds (Stealth Mode)</h3>
-  <p>Reveal your secret within 7 days to withdraw to up to 3 wallets.</p>
-  <input id="withdrawSecret" placeholder="Secret (UTF-8 string)" />
-  <input id="wallet1" placeholder="Wallet 1 (0x…)" />
-  <input id="wallet2" placeholder="Wallet 2 (optional)" />
-  <input id="wallet3" placeholder="Wallet 3 (optional)" />
-  <button id="withdrawBtn">💎 Withdraw</button>
-  <small style="color:#f5b914;display:block;margin-top:.5rem;">
-    Use fresh wallets for maximum privacy. Anyone with your secret can withdraw within 7 days.
-  </small>
-</div>
-
-<!-- 🔥 STEP 4 — RECLAIM -->
-<div class="section">
-  <h3>🔥 Step 4 – Reclaim Expired Deposits</h3>
-  <p>After 7 days, anyone can reclaim unclaimed deposits using their hash.</p>
-  <input id="reclaimHash" placeholder="Deposit Hash (0x…)" />
-  <div id="reclaimFeeEst" style="color:var(--accent2);font-size:.9rem;margin:.4rem 0;">Estimated PRIVX Fee: –</div>
-  <button id="reclaimBtn">🔥 Reclaim</button>
-  <small style="display:block;color:var(--muted);margin-top:.4rem;">
-    95 % of PLSX burned • 5 % rewarded to caller • 1 % PRIVX fee applies.
-  </small>
-</div>
-
-<!-- 🔍 STEP 5 — CHECK STATUS -->
-<div class="section">
-  <h3>🔍 Step 5 – Check Deposit Status</h3>
-  <p>Enter your Deposit Hash to view amount, timestamp, and expiration status.</p>
-  <input id="checkHash" placeholder="Deposit Hash (0x…)" />
-  <button id="checkBtn">🔍 Check Status</button>
-  <div id="checkResult" style="margin-top:1rem;font-family:var(--mono);color:var(--accent2);"></div>
-</div>
-
-<!-- 📊 COLLAPSIBLE SHIELD STATS -->
-<div class="section">
-  <h3 style="cursor:pointer;" id="toggleStats">📊 View Shield Stats</h3>
-  <div id="statsPanel">
-    <div class="stats-grid">
-      <div>Vault PLSX: <span id="vaultPlsx">–</span></div>
-      <div>Pool PRIVX: <span id="poolPrivx">–</span></div>
-      <div>Burned PRIVX: <span id="burnedPrivx">–</span></div>
-      <div>Burned PLSX: <span id="burnedPlsx">–</span></div>
-      <div>Total Withdrawals: <span id="totalWithdraw">–</span></div>
-      <div>Total Reclaimed: <span id="totalReclaimed">–</span></div>
-    </div>
-    <small style="color:var(--muted);display:block;margin-top:.8rem;">Auto-updates every 30 seconds from on-chain data.</small>
-  </div>
-</div>
-
-<!-- 📘 BEST PRACTICES -->
-<div class="explainer">
-  <h3>📘 Best Practices</h3>
-  <ul style="padding-left:1.2rem;margin:0;">
-    <li>🪙 Backup your secret offline.</li>
-    <li>🔐 Keep it private — anyone with it can withdraw.</li>
-    <li>🕶️ Always commit before withdrawing to prevent front-running.</li>
-    <li>🕓 Withdraw within 7 days or funds become reclaimable.</li>
-    <li>🔥 Expired deposits burn 95 % of PLSX forever.</li>
-    <li>⚙️ Verify contract addresses before use.</li>
-  </ul>
-</div>
-<!-- FOOTER -->
-<footer>
-  <hr>
-  <p>PLSX Stealth Shield • Proof of Privacy v3.1</p>
-  <p>PulseChain Network • MIT License • Open Source</p>
-  <p><a href="https://github.com/elitev5/PrivX" target="_blank">View Source on GitHub</a></p>
-</footer>
-</main>
-
-<script>
-// ============ CONFIG ============
-const CONTRACT_ADDR = "0x21a3E97e2347349AC283E972A983c8e6Ee30Bef0";
-const PRIVX_TOKEN   = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-const PULSECHAIN_ID = "0x171"; // 369
-
-let provider, signer, account, contract, privx, plsx;
-
-// ============ COLLAPSIBLE STATS ============
-document.getElementById("toggleStats").onclick = () => {
-  const panel = document.getElementById("statsPanel");
-  panel.classList.toggle("open");
-};
-
-// ============ WALLET CONNECTION ============
-async function connectWallet(){
-  if(!window.ethereum){alert("Wallet not detected.");return;}
-  provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-  account = await signer.getAddress();
-  const id = await provider.send("eth_chainId", []);
-  if(id !== PULSECHAIN_ID){alert("Switch to PulseChain (369).");return;}
-  document.getElementById("walletStatus").textContent = "Connected: " + account.slice(0,6) + "…" + account.slice(-4);
-  document.getElementById("connectBtn").style.display="none";
-  document.getElementById("disconnectBtn").style.display="inline-block";
-
-  const abi = await fetch("./abi.json").then(r=>r.json());
-  contract = new ethers.Contract(CONTRACT_ADDR, abi, signer);
-  privx = new ethers.Contract(PRIVX_TOKEN, [
-    "function approve(address,uint256) external returns(bool)",
-    "function allowance(address,address) view returns(uint256)",
-    "function decimals() view returns(uint8)"
-  ], signer);
-  plsx = new ethers.Contract(await contract.plsx(), [
-    "function approve(address,uint256) external returns(bool)",
-    "function allowance(address,address) view returns(uint256)"
-  ], signer);
-}
-function disconnectWallet(){
-  provider = signer = account = null;
-  document.getElementById("walletStatus").textContent = "Disconnected";
-  document.getElementById("connectBtn").style.display="inline-block";
-  document.getElementById("disconnectBtn").style.display="none";
-}
-document.getElementById("connectBtn").onclick = connectWallet;
-document.getElementById("disconnectBtn").onclick = disconnectWallet;
-
-// ============ FEE ESTIMATION ============
-async function estimateFees(){
+// Fee estimators
+async function estimateFees() {
+  if (!contract) return;
   const val = document.getElementById("depositAmount").value.trim();
-  if(!val || !contract) return;
-  try{
-    const amt = ethers.utils.parseUnits(val,18);
-    const fee = await contract.calculatePrivxFee(amt, await contract.DEPOSIT_FEE_BP());
-    document.getElementById("depositFeeEst").textContent = 
-      "Estimated PRIVX Fee: " + ethers.utils.formatUnits(fee,18) + " PRIVX";
-  }catch{}
+  if (!val) return;
+  try {
+    const amt = ethers.utils.parseUnits(val, 18);
+    const bp = await contract.DEPOSIT_FEE_BP();
+    const fee = await contract.calculatePrivxFee(amt, bp);
+    document.getElementById("depositFeeEst").textContent =
+      "Estimated PRIVX Fee: " + ethers.utils.formatUnits(fee, 18) + " PRIVX";
+  } catch {}
 }
 document.getElementById("depositAmount").addEventListener("input", estimateFees);
 
-async function estimateReclaimFee(){
-  if(!contract) return;
-  try{
-    const amt = ethers.utils.parseUnits("1000",18);
-    const fee = await contract.calculatePrivxFee(amt, await contract.RECLAIM_PRIVX_BP());
-    document.getElementById("reclaimFeeEst").textContent = 
-      "≈ " + ethers.utils.formatUnits(fee.mul(100).div(amt),18) + "% of value in PRIVX";
-  }catch{}
-}
-estimateReclaimFee();
-
-// ============ CONTRACT INTERACTIONS ============
-async function approvePlsx(){
-  if(!plsx){alert("Connect wallet first");return;}
+// Contract interactions
+async function approvePlsx() {
   const tx = await plsx.approve(CONTRACT_ADDR, ethers.constants.MaxUint256);
-  alert("PLSX approval sent: "+tx.hash);
+  alert("PLSX Approval TX: " + tx.hash);
 }
-async function approvePrivx(){
-  if(!privx){alert("Connect wallet first");return;}
+async function approvePrivx() {
   const tx = await privx.approve(CONTRACT_ADDR, ethers.constants.MaxUint256);
-  alert("PRIVX approval sent: "+tx.hash);
+  alert("PRIVX Approval TX: " + tx.hash);
 }
 document.getElementById("approvePlsx").onclick = approvePlsx;
 document.getElementById("approvePrivx").onclick = approvePrivx;
 
-async function deposit(){
-  const amt=document.getElementById("depositAmount").value.trim();
-  const hash=document.getElementById("depositHash").value.trim();
-  if(!amt||!hash){alert("Enter amount and deposit hash.");return;}
-  const v=ethers.utils.parseUnits(amt,18);
-  const tx=await contract.deposit(v,hash);
-  alert("Deposit TX: "+tx.hash);
+async function deposit() {
+  const amt = document.getElementById("depositAmount").value.trim();
+  const hash = document.getElementById("depositHash").value.trim();
+  if (!amt || !hash) return alert("Enter amount and hash.");
+  const tx = await contract.deposit(ethers.utils.parseUnits(amt, 18), hash);
+  alert("Deposit TX: " + tx.hash);
 }
 document.getElementById("depositBtn").onclick = deposit;
 
-async function commit(){
-  const h=document.getElementById("commitHash").value.trim();
-  if(!/^0x[0-9a-fA-F]{64}$/.test(h)){alert("Invalid hash.");return;}
-  const tx=await contract.commit(h);
-  alert("Commit TX: "+tx.hash);
+async function commit() {
+  const h = document.getElementById("commitHash").value.trim();
+  if (!/^0x[0-9a-fA-F]{64}$/.test(h)) return alert("Invalid hash");
+  const tx = await contract.commit(h);
+  alert("Commit TX: " + tx.hash);
 }
 document.getElementById("commitBtn").onclick = commit;
 
-async function withdraw(){
-  const s=document.getElementById("withdrawSecret").value.trim();
-  const adds=["wallet1","wallet2","wallet3"]
-    .map(id=>document.getElementById(id).value.trim())
-    .filter(a=>ethers.utils.isAddress(a));
-  if(!s||!adds.length){alert("Enter secret and at least one address.");return;}
-  const tx=await contract.withdraw(s,adds);
-  alert("Withdraw TX: "+tx.hash);
+async function withdraw() {
+  const s = document.getElementById("withdrawSecret").value.trim();
+  const adds = ["wallet1","wallet2","wallet3"]
+    .map(i => document.getElementById(i).value.trim())
+    .filter(a => ethers.utils.isAddress(a));
+  if (!s || !adds.length) return alert("Enter secret and at least one address.");
+  const tx = await contract.withdraw(s, adds);
+  alert("Withdraw TX: " + tx.hash);
 }
 document.getElementById("withdrawBtn").onclick = withdraw;
 
-async function reclaim(){
-  const h=document.getElementById("reclaimHash").value.trim();
-  if(!h){alert("Enter hash.");return;}
-  const tx=await contract.reclaim(h);
-  alert("Reclaim TX: "+tx.hash);
+async function reclaim() {
+  const h = document.getElementById("reclaimHash").value.trim();
+  if (!h) return alert("Enter hash");
+  const tx = await contract.reclaim(h);
+  alert("Reclaim TX: " + tx.hash);
 }
 document.getElementById("reclaimBtn").onclick = reclaim;
 
-// ============ CHECK STATUS ============
-async function checkStatus(){
-  const h=document.getElementById("checkHash").value.trim();
-  if(!h){alert("Enter hash");return;}
-  const d=await contract.deposits(h);
-  if(d.amount.eq(0)){document.getElementById("checkResult").textContent="❌ Not found";return;}
-  const date=new Date(Number(d.timestamp)*1000);
-  const exp=new Date(date.getTime()+7*24*60*60*1000);
-  const amt=ethers.utils.formatUnits(d.amount,18);
-  const claimed=d.claimed;
-  document.getElementById("checkResult").innerHTML=
-  `Amount: ${amt} PLSX<br>Deposited: ${date.toLocaleString()}<br>Expires: ${exp.toLocaleString()}<br>Status: ${claimed?"✅ Claimed":"🟣 Active"}`;
+async function checkStatus() {
+  const h = document.getElementById("checkHash").value.trim();
+  if (!h) return alert("Enter hash");
+  const d = await contract.deposits(h);
+  if (d.amount.eq(0)) {
+    document.getElementById("checkResult").textContent = "❌ Not found";
+    return;
+  }
+  const date = new Date(Number(d.timestamp) * 1000);
+  const exp = new Date(date.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const amt = ethers.utils.formatUnits(d.amount, 18);
+  document.getElementById("checkResult").innerHTML =
+    `Amount: ${amt} PLSX<br>Deposited: ${date.toLocaleString()}<br>Expires: ${exp.toLocaleString()}<br>Status: ${d.claimed ? "✅ Claimed" : "🟣 Active"}`;
 }
 document.getElementById("checkBtn").onclick = checkStatus;
 
-// ============ SYSTEM STATS ============
-const pubProv=new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
-const pubContract=new ethers.Contract(CONTRACT_ADDR,await fetch("./abi.json").then(r=>r.json()),pubProv);
-
-async function updateStats(){
-  try{
-    const [v,p,bp,bl,w,r]=await pubContract.getSystemStats();
-    document.getElementById("vaultPlsx").textContent=Number(ethers.utils.formatUnits(v,18)).toFixed(2);
-    document.getElementById("poolPrivx").textContent=Number(ethers.utils.formatUnits(p,18)).toFixed(2);
-    document.getElementById("burnedPrivx").textContent=Number(ethers.utils.formatUnits(bp,18)).toFixed(2);
-    document.getElementById("burnedPlsx").textContent=Number(ethers.utils.formatUnits(bl,18)).toFixed(2);
-    document.getElementById("totalWithdraw").textContent=w.toString();
-    document.getElementById("totalReclaimed").textContent=Number(ethers.utils.formatUnits(r,18)).toFixed(2);
-  }catch(e){console.warn("stats update error",e);}
-}
-updateStats();
-setInterval(updateStats,30000);
+// Public stats
+const pubProv = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
+(async () => {
+  const abi = await fetch("./abi.json").then(r => r.json());
+  const pub = new ethers.Contract(CONTRACT_ADDR, abi, pubProv);
+  async function updateStats() {
+    try {
+      const [v,p,bp,bl,w,r] = await pub.getSystemStats();
+      document.getElementById("vaultPlsx").textContent = Number(ethers.utils.formatUnits(v,18)).toFixed(2);
+      document.getElementById("poolPrivx").textContent = Number(ethers.utils.formatUnits(p,18)).toFixed(2);
+      document.getElementById("burnedPrivx").textContent = Number(ethers.utils.formatUnits(bp,18)).toFixed(2);
+      document.getElementById("burnedPlsx").textContent = Number(ethers.utils.formatUnits(bl,18)).toFixed(2);
+      document.getElementById("totalWithdraw").textContent = w.toString();
+      document.getElementById("totalReclaimed").textContent = Number(ethers.utils.formatUnits(r,18)).toFixed(2);
+    } catch (e) { console.warn("Stats error", e); }
+  }
+  updateStats();
+  setInterval(updateStats, 30000);
+})();
 </script>
 </body>
 </html>
+
 
