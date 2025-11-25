@@ -126,7 +126,7 @@ Save this now — matches Solidity keccak256(abi.encode(secret)) exactly.`;
   document.getElementById("saveDeposit").disabled=false;
   warnBanner.style.display="block";
 };
-// === WITHDRAW MODE — FIXED (WALLET-BOUND + NONCE) ===
+// === WITHDRAW MODE — CONTRACT-COMPATIBLE NONCE VERSION ===
 document.getElementById("generateWithdraw").onclick = () => {
   if (typeof ethers === "undefined") {
     alert("Ethers.js not loaded.");
@@ -143,24 +143,27 @@ document.getElementById("generateWithdraw").onclick = () => {
     return;
   }
 
-  // Add a random nonce (prevents reused commit collisions)
-  const nonceBytes = crypto.getRandomValues(new Uint8Array(8)); // 8 bytes = 64-bit nonce
+  // Generate a random nonce
+  const nonceBytes = crypto.getRandomValues(new Uint8Array(8));
   const nonce = Array.from(nonceBytes).map(b => b.toString(16).padStart(2, "0")).join("");
 
-  // Encode with nonce included
+  // Combine nonce with secret, so contract still hashes (secret, wallet)
+  const combinedSecret = `${s}:${nonce}`;
+
+  // Encode using your contract's expected format
   const abi = new ethers.utils.AbiCoder();
-  const encoded = abi.encode(["string", "address", "string"], [s, w, nonce]);
+  const encoded = abi.encode(["string", "address"], [combinedSecret, w]);
   commitHash = ethers.utils.keccak256(encoded);
 
-  document.getElementById("outputWithdraw").textContent = 
+  document.getElementById("outputWithdraw").textContent =
 `Commit Hash (paste in PLSX Shield → Step 2):
 ${commitHash}
 
-Nonce (used for uniqueness — save this too!):
+Nonce (for uniqueness — part of your secret):
 ${nonce}
 
-✅ Matches Solidity keccak256(abi.encode(secret, wallet, nonce)) exactly.
-Keep the nonce with your secret; you'll need it to withdraw.`;
+✅ Matches Solidity keccak256(abi.encode(secret, wallet)) exactly
+(because nonce is merged into the secret string).`;
 
   document.getElementById("copyWithdraw").disabled = false;
   document.getElementById("saveWithdraw").disabled = false;
