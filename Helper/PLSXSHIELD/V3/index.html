@@ -149,14 +149,68 @@ footer hr {
 </header>
 
 <main>
-<!-- 🔗 WALLET CONNECTION -->
-<div class="section" id="wallet">
-  <h3>🔗 Connect Wallet</h3>
-  <p>Connect to PulseChain to begin depositing, committing, or withdrawing.</p>
-  <button id="connectBtn">Connect</button>
-  <button id="disconnectBtn" style="display:none;">Disconnect</button>
-  <div id="walletStatus" style="margin-top:.6rem;color:var(--muted)">Not connected</div>
-</div>
+// ============ UNIVERSAL WALLET CONNECTION ============
+async function connectWallet() {
+  try {
+    if (window.ethereum) {
+      // Detect injected provider (MetaMask / Rabby / Brave / Coinbase)
+      provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+      await provider.send("eth_requestAccounts", []);
+    } else if (window.walletConnectProvider) {
+      // Fallback: WalletConnect (if injected)
+      provider = new ethers.providers.Web3Provider(window.walletConnectProvider);
+      await provider.send("eth_requestAccounts", []);
+    } else {
+      alert("No wallet detected. Please install MetaMask, Rabby, or connect via WalletConnect.");
+      return;
+    }
+
+    signer = provider.getSigner();
+    account = await signer.getAddress();
+
+    const chainId = await provider.send("eth_chainId", []);
+    if (chainId !== PULSECHAIN_ID) {
+      try {
+        await provider.send("wallet_switchEthereumChain", [{ chainId: PULSECHAIN_ID }]);
+      } catch {
+        alert("Switch to PulseChain (Chain ID 369)");
+        return;
+      }
+    }
+
+    document.getElementById("walletStatus").textContent = "Connected: " + account.slice(0, 6) + "…" + account.slice(-4);
+    document.getElementById("connectBtn").style.display = "none";
+    document.getElementById("disconnectBtn").style.display = "inline-block";
+
+    const abi = await fetch("./abi.json").then(r => r.json());
+    contract = new ethers.Contract(CONTRACT_ADDR, abi, signer);
+    privx = new ethers.Contract(PRIVX_TOKEN, [
+      "function approve(address,uint256) external returns(bool)",
+      "function allowance(address,address) view returns(uint256)"
+    ], signer);
+
+    const plsxAddr = await contract.plsx();
+    plsx = new ethers.Contract(plsxAddr, [
+      "function approve(address,uint256) external returns(bool)",
+      "function allowance(address,address) view returns(uint256)"
+    ], signer);
+
+    provider.on("accountsChanged", () => location.reload());
+    provider.on("chainChanged", () => location.reload());
+  } catch (err) {
+    console.error("Wallet connect error:", err);
+    alert("Connection failed: " + (err.message || err));
+  }
+}
+
+function disconnectWallet() {
+  provider = signer = account = null;
+  document.getElementById("walletStatus").textContent = "Disconnected";
+  document.getElementById("connectBtn").style.display = "inline-block";
+  document.getElementById("disconnectBtn").style.display = "none";
+}
+document.getElementById("connectBtn").onclick = connectWallet;
+document.getElementById("disconnectBtn").onclick = disconnectWallet;
 
 <!-- 📘 INTRO / EXPLAINER -->
 <div class="explainer">
