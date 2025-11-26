@@ -9,66 +9,101 @@
 <style>
   :root { --bg:#0f1117; --card:#171a21; --text:#e2e8f0; --muted:#94a3b8; --primary:#6366f1; --success:#22c55e; --danger:#ef4444; --border:#2d3748; }
   body { margin:0; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; line-height:1.6; }
-  .container { max-width:420px; margin:2rem auto; padding:0 1rem; }
-  header { text-align:center; padding:2rem 0 1rem; }
-  header img { height:44px; }
-  header h1 { font-size:1.5rem; margin:0.5rem 0 0; color:white; font-weight:700; }
-  header p { color:var(--muted); font-size:0.95rem; }
-  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:1.5rem; margin:1.5rem 0; }
-  .btn { background:var(--primary); color:white; border:none; border-radius:12px; padding:0.9rem; width:100%; font-weight:600; cursor:pointer; transition:0.2s; }
+  .container { max-width:440px; margin:2rem auto; padding:0 1rem; }
+  header { text-align:center; padding:2.5rem 0 1.5rem; }
+  header img { height:88px; border-radius:16px; box-shadow:0 8px 30px rgba(99,102,241,0.4); }
+  header h1 { font-size:1.8rem; margin:1rem 0 0.4rem; color:white; font-weight:700; }
+  header p { color:var(--muted); font-size:1rem; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:1.6rem; margin:1.6rem 0; }
+  .btn { background:var(--primary); color:white; border:none; border-radius:12px; padding:1rem; width:100%; font-weight:600; cursor:pointer; transition:0.2s; font-size:1.05rem; }
   .btn:hover { background:#5558e0; }
   .btn:disabled { background:#334155; cursor:not-allowed; opacity:0.7; }
   .btn-success { background:var(--success); }
-  input, textarea { width:100%; padding:0.9rem; border-radius:12px; border:1px solid var(--border); background:#1e2533; color:white; font-size:1rem; margin:0.5rem 0; box-sizing:border-box; font-family:monospace; }
-  .label { display:block; margin:1.2rem 0 0.4rem; font-size:0.95rem; color:var(--muted); font-weight:500; }
-  .critical { background:#7f1d1d; color:#fca5a5; padding:1rem; border-radius:12px; margin:1rem 0; font-weight:600; text-align:center; }
-  .warning { color:#f59e0b; font-size:0.9rem; margin-top:0.5rem; display:block; }
+  .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+  input, textarea { width:100%; padding:1rem; border-radius:12px; border:1px solid var(--border); background:#1e2533; color:white; font-size:1rem; margin:0.6rem 0; box-sizing:border-box; font-family:monospace; }
+  .label { display:block; margin:1.4rem 0 0.5rem; font-size:1rem; color:var(--muted); font-weight:500; }
+  .critical { background:#7f1d1d; color:#fca5a5; padding:1.2rem; border-radius:12px; margin:1.4rem 0; font-weight:600; text-align:center; font-size:1.05rem; }
+  .warning { color:#f59e0b; font-size:0.95rem; margin-top:0.6rem; display:block; }
+  .mode-tabs { display:flex; gap:1rem; margin-bottom:1rem; }
+  .tab { flex:1; padding:1rem; text-align:center; background:#1e2533; border-radius:12px; cursor:pointer; transition:0.2s; }
+  .tab.active { background:var(--primary); color:white; font-weight:600; }
   .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.5rem 0; }
-  .stat { background:#1e2533; border-radius:12px; padding:1rem; text-align:center; }
-  .stat-value { font-size:1.4rem; font-weight:700; color:white; }
-  footer { text-align:center; padding:2rem; color:#475569; font-size:0.85rem; }
+  .stat { background:#1e2533; border-radius:12px; padding:1.2rem; text-align:center; }
+  .stat-value { font-size:1.5rem; font-weight:700; color:white; }
+  footer { text-align:center; padding:2.5rem; color:#475569; font-size:0.9rem; }
 </style>
 </head>
 <body>
 <div class="container">
 
   <header>
-    <img src="PRIVX.png" alt="PrivX">
+    <img src="PRIVX.png" alt="PrivX Shield">
     <h1>PrivX Shield</h1>
-    <p>Private, irreversible transfers on PulseChain</p>
+    <p>Private transfers on PulseChain • V11</p>
   </header>
 
-  <!-- GENERATOR — 100% CONTRACT IDENTICAL -->
+  <!-- MODE SELECTOR -->
   <div class="card">
-    <div class="label">Create Private Transfer</div>
-    <button id="generateBtn" class="btn" disabled>Generate Secret & Hashes</button>
+    <div class="label">Choose Your Role</div>
+    <div class="mode-tabs">
+      <div class="tab active" id="tabDepositor" onclick="switchMode('depositor')">Depositor (Sender)</div>
+      <div class="tab" id="tabReceiver" onclick="switchMode('receiver')">Receiver</div>
+    </div>
+  </div>
 
-    <div id="generatorOutput" style="display:none; margin-top:1rem;">
-      <div class="label">Your Secret (64 hex chars — keep this safe!)</div>
-      <textarea id="secretField" readonly rows="2"></textarea>
+  <!-- DEPOSITOR MODE -->
+  <div id="depositorMode">
+    <div class="card">
+      <div class="label">1. Generate Deposit (Depositor)</div>
+      <button id="generateDepositBtn" class="btn" disabled>Generate Secret + Deposit Hash</button>
 
-      <div class="label">Deposit Hash (use in Step 1)</div>
-      <input id="depositHash" readonly />
+      <div id="depositOutput" style="display:none; margin-top:1.2rem;">
+        <div class="label">Your Secret (send securely to Receiver)</div>
+        <textarea id="secretField" readonly rows="2"></textarea>
 
-      <div class="label">Commit Hash (use in Step 2)</div>
-      <input id="commitHash" readonly />
+        <div class="label">Deposit Hash (use below in Step 1)</div>
+        <input id="depositHash" readonly />
 
-      <button id="downloadBackup" class="btn-success" style="margin-top:1rem;">
-        Download Backup (.txt) — REQUIRED
-      </button>
+        <button id="downloadDepositBackup" class="btn-success" style="margin-top:1rem;">
+          Download Backup — REQUIRED
+        </button>
 
-      <div class="critical" id="saveWarning">
-        You MUST download this backup.<br>
-        This is the ONLY way to withdraw your funds.
+        <div class="critical">
+          Send the Secret to the Receiver<br>
+          They will use it to withdraw privately
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- CONNECT -->
+  <!-- RECEIVER MODE -->
+  <div id="receiverMode" style="display:none;">
+    <div class="card">
+      <div class="label">1. Enter Secret from Depositor</div>
+      <textarea id="receiverSecret" rows="2" placeholder="Paste the secret you received"></textarea>
+
+      <div class="label">2. Your Fresh Wallet (for withdrawal)</div>
+      <input id="receiverWallet" placeholder="0x..." />
+
+      <button id="generateCommitBtn" class="btn" disabled>Generate Commit Hash</button>
+
+      <div id="commitOutput" style="display:none; margin-top:1.2rem;">
+        <div class="label">Commit Hash (use in Step 2 below)</div>
+        <input id="commitHash" readonly />
+
+        <div class="critical">
+          You now have the Commit Hash<br>
+          Use it in Step 2 → Commit → then Withdraw
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WALLET CONNECT -->
   <div class="card">
     <button id="connect" class="btn">Connect Wallet</button>
-    <button id="disconnect" class="btn" style="display:none; margin-top:0.5rem;">Disconnect</button>
-    <div id="status" style="margin-top:0.8rem; color:var(--muted);"></div>
+    <button id="disconnect" class="btn-outline" style="display:none; margin-top:0.6rem;">Disconnect</button>
+    <div id="status" style="margin-top:0.8rem; color:var(--muted); font-size:0.95rem;"></div>
   </div>
 
   <!-- STATS -->
@@ -82,7 +117,7 @@
     <div class="label">1. Deposit Amount</div>
     <input id="depositAmount" placeholder="e.g. 1000" type="number" />
     <button id="approveBtn" class="btn" disabled>Approve PRIVX</button>
-    <button id="depositBtn" class="btn" style="margin-top:0.5rem;" disabled>Deposit</button>
+    <button id="depositBtn" class="btn" style="margin-top:0.6rem;" disabled>Deposit</button>
   </div>
 
   <!-- COMMIT -->
@@ -98,7 +133,7 @@
     <input id="wallet2" placeholder="Fresh wallet 2 (optional)" />
     <input id="wallet3" placeholder="Fresh wallet 3 (optional)" />
     <button id="withdrawBtn" class="btn" disabled>Withdraw (Random Split)</button>
-    <small class="warning">Use new wallets only</small>
+    <small class="warning">Use brand-new wallets only</small>
   </div>
 
   <!-- RECLAIM + CHECK -->
@@ -118,16 +153,25 @@
 </div>
 
 <footer>
-  PrivX Shield V11 • Immutable • No Admin • 2025<br>
+  PrivX Shield V11 • Immutable • No Admin Keys • 2025<br>
   <a href="https://github.com/ELITEv5/PrivX" style="color:#6366f1;">View Source</a>
 </footer>
 
 <script>
-// CONFIG
+// STATE
 const SHIELD = "0xAF4934a35cc3Bed4821d4220baEF4f71B86260B4";
 const TOKEN  = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 let provider, signer, account, shield, token, pubShield;
 let rawSecret = "", depositHash = "", commitHash = "";
+
+function switchMode(mode) {
+  document.getElementById("depositorMode").style.display = mode === "depositor" ? "block" : "none";
+  document.getElementById("receiverMode").style.display = mode === "receiver" ? "block" : "none";
+  document.getElementById("tabDepositor").classList.toggle("active", mode === "depositor");
+  document.getElementById("tabReceiver").classList.toggle("active", mode === "receiver");
+  document.getElementById("depositOutput").style.display = "none";
+  document.getElementById("commitOutput").style.display = "none";
+}
 
 async function connect() {
   if (!window.ethereum) return alert("MetaMask required");
@@ -138,7 +182,7 @@ async function connect() {
   const net = await provider.getNetwork();
   if (net.chainId !== 369) return alert("Switch to PulseChain");
 
-  document.getElementById("status").textContent = `${account.slice(0,8)}…${account.slice(-6)}`;
+  document.getElementById("status").textContent = `Connected: ${account.slice(0,8)}…${account.slice(-6)}`;
   document.getElementById("connect").style.display = "none";
   document.getElementById("disconnect").style.display = "block";
 
@@ -146,67 +190,66 @@ async function connect() {
   shield = new ethers.Contract(SHIELD, abi, signer);
   token = new ethers.Contract(TOKEN, ["function approve(address,uint256)"], signer);
 
-  document.getElementById("generateBtn").disabled = false;
-  document.getElementById("generateBtn").onclick = generateTransfer;
+  document.getElementById("generateDepositBtn").disabled = false;
 }
 document.getElementById("connect").onclick = connect;
 document.getElementById("disconnect").onclick = () => location.reload();
 
-// 100% SOLIDITY-IDENTICAL HASHING — NO 0x ANYWHERE IN SECRET
-function generateTransfer() {
+// DEPOSITOR: Generate Secret + Deposit Hash
+document.getElementById("generateDepositBtn").onclick = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
-  rawSecret = Array.from(bytes)
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join(""); // ← pure 64-char hex string, NO 0x
+  rawSecret = Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
 
   depositHash = ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(["string"], [rawSecret])
   );
 
-  commitHash = ethers.utils.keccak256(
-    ethers.utils.solidityPack(["string", "address"], [rawSecret, account])
-  );
+  document.getElementById("secretField").value = rawSecret;
+  document.getElementById("depositHash").value = depositHash;
+  document.getElementById("depositOutput").style.display = "block";
 
-  // Display: clean, no 0x prefix on secret
-  document.getElementById("secretField").value   = rawSecret;
-  document.getElementById("depositHash").value   = depositHash;
-  document.getElementById("commitHash").value    = commitHash;
-  document.getElementById("generatorOutput").style.display = "block";
+  document.getElementById("downloadDepositBackup").onclick = () => {
+    const blob = new Blob([`PRIVX SHIELD V11 — DEPOSITOR BACKUP
 
-  document.getElementById("downloadBackup").onclick = () => {
-    const content = `PRIVX SHIELD V11 — PRIVATE BACKUP
-
-Secret (64 hex chars — exact value for withdrawal):
+Secret (send to Receiver):
 ${rawSecret}
 
-Deposit Hash (Step 1):
+Deposit Hash:
 ${depositHash}
 
-Commit Hash (Step 2):
-${commitHash}
-
-Amount: ${document.getElementById("depositAmount").value || "Not set"} PRIVX
-Wallet: ${account}
+Amount: ${document.getElementById("depositAmount").value || "Not set"}
 
 Generated: ${new Date().toLocaleString()}
-
-LOSE THIS = LOSE FUNDS FOREVER`;
-
-    const blob = new Blob([content], {type: "text/plain"});
+`], {type: "text/plain"});
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `privx-backup-${Date.now()}.txt`;
-    a.click();
+    const a = document.createElement("a"); a.href = url; a.download = "privx-depositor-backup.txt"; a.click();
 
-    document.querySelectorAll("#approveBtn,#depositBtn,#commitBtn,#withdrawBtn,#reclaimBtn")
-      .forEach(b => b.disabled = false);
-    document.getElementById("saveWarning").innerHTML = "Backup saved — ready to deposit";
-    document.getElementById("saveWarning").style.background = "#166534";
+    document.querySelectorAll("#approveBtn,#depositBtn").forEach(b => b.disabled = false);
   };
-}
+};
 
-// Stats
+// RECEIVER: Generate Commit Hash
+document.getElementById("receiverSecret").oninput =
+document.getElementById("receiverWallet").oninput = () => {
+  const secret = document.getElementById("receiverSecret").value.trim();
+  const wallet = document.getElementById("receiverWallet").value.trim();
+  document.getElementById("generateCommitBtn").disabled = !(secret && ethers.utils.isAddress(wallet));
+};
+
+document.getElementById("generateCommitBtn").onclick = () => {
+  const secret = document.getElementById("receiverSecret").value.trim();
+  commitHash = ethers.utils.keccak256(
+    ethers.utils.solidityPack(["string", "address"], [secret, account])
+  );
+  document.getElementById("commitHash").value = commitHash;
+  document.getElementById("commitOutput").style.display = "block";
+
+  document.getElementById("commitBtn").disabled = false;
+  document.getElementById("withdrawBtn").disabled = false;
+  rawSecret = secret; // for withdrawal
+};
+
+// Stats + Actions (same as before)
 const pub = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
 (async () => {
   const abi = await fetch("abi.json").then(r=>r.json());
@@ -219,33 +262,16 @@ const pub = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
   update(); setInterval(update, 30000);
 })();
 
-// Actions — using rawSecret (no 0x!)
-document.getElementById("approveBtn").onclick = async () => {
-  const tx = await token.approve(SHIELD, ethers.constants.MaxUint256);
-  alert("Approval: " + tx.hash);
-};
-document.getElementById("depositBtn").onclick = async () => {
-  const amt = ethers.utils.parseUnits(document.getElementById("depositAmount").value || "0", 18);
-  const tx = await shield.deposit(amt, depositHash);
-  alert("Deposit: " + tx.hash);
-};
-document.getElementById("commitBtn").onclick = async () => {
-  const tx = await shield.commit(commitHash);
-  alert("Commit: " + tx.hash);
-};
+document.getElementById("approveBtn").onclick = async () => { const tx = await token.approve(SHIELD, ethers.constants.MaxUint256); alert("Approval: " + tx.hash); };
+document.getElementById("depositBtn").onclick = async () => { const amt = ethers.utils.parseUnits(document.getElementById("depositAmount").value || "0", 18); const tx = await shield.deposit(amt, depositHash); alert("Deposit: " + tx.hash); };
+document.getElementById("commitBtn").onclick = async () => { const tx = await shield.commit(commitHash); alert("Commit: " + tx.hash); };
 document.getElementById("withdrawBtn").onclick = async () => {
-  const wallets = ["wallet1","wallet2","wallet3"]
-    .map(id => document.getElementById(id).value.trim())
-    .filter(a => ethers.utils.isAddress(a));
+  const wallets = ["wallet1","wallet2","wallet3"].map(id=>document.getElementById(id).value.trim()).filter(a=>ethers.utils.isAddress(a));
   if (!wallets.length) return alert("Add at least one wallet");
-  const tx = await shield.withdraw(rawSecret, wallets);  // ← pure hex string
-  alert("Withdrawal sent: " + tx.hash);
+  const tx = await shield.withdraw(rawSecret, wallets);
+  alert("Private withdrawal sent: " + tx.hash);
 };
-document.getElementById("reclaimBtn").onclick = async () => {
-  const h = document.getElementById("reclaimHash").value;
-  const tx = await shield.reclaim(h);
-  alert("Reclaim: " + tx.hash);
-};
+document.getElementById("reclaimBtn").onclick = async () => { const h = document.getElementById("reclaimHash").value; const tx = await shield.reclaim(h); alert("Reclaim: " + tx.hash); };
 document.getElementById("checkBtn").onclick = async () => {
   const h = document.getElementById("checkHash").value;
   const d = await pubShield.deposits(h);
