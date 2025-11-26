@@ -22,10 +22,13 @@
   input, textarea { width:100%; padding:1rem; border-radius:12px; border:1px solid var(--border); background:#1e2533; color:white; font-size:1rem; margin:0.6rem 0; box-sizing:border-box; font-family:monospace; }
   .label { display:block; margin:1.4rem 0 0.5rem; font-size:1rem; color:var(--muted); font-weight:500; }
   .critical { background:#7f1d1d; color:#fca5a5; padding:1.2rem; border-radius:12px; margin:1.4rem 0; font-weight:600; text-align:center; font-size:1.05rem; }
-  .highlight { background:#1e4d3d; color:#22c55e; padding:0.8rem; border-radius:8px; margin:1rem 0; font-family:monospace; font-weight:bold; }
+  .warning { color:#f59e0b; font-size:0.95rem; margin-top:0.6rem; display:block; }
+  .tab { padding:1rem; background:#1e2533; border-radius:12px; cursor:pointer; text-align:center; margin:0.5rem 0; }
+  .tab.active { background:var(--primary); color:white; font-weight:600; }
   .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.5rem 0; }
   .stat { background:#1e2533; border-radius:12px; padding:1.2rem; text-align:center; }
   .stat-value { font-size:1.5rem; font-weight:700; color:white; }
+  .highlight { background:#1e4d3d; color:#22c55e; padding:0.8rem; border-radius:8px; margin:1rem 0; font-family:monospace; font-weight:bold; }
   footer { text-align:center; padding:2.5rem; color:#475569; font-size:0.9rem; }
 </style>
 </head>
@@ -38,27 +41,55 @@
     <p>Private • Instant • Irreversible</p>
   </header>
 
-  <!-- GENERATOR -->
+  <!-- MODE SELECTOR -->
   <div class="card">
-    <div class="label">Create Private Transfer</div>
-    <button id="generateBtn" class="btn" disabled>Generate Secret + Hashes</button>
+    <div class="label">Choose Your Role</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+      <div class="tab active" id="tabDepositor" onclick="setMode('depositor')">Depositor</div>
+      <div class="tab" id="tabReceiver" onclick="setMode('receiver')">Receiver</div>
+    </div>
+  </div>
 
-    <div id="generatorOutput" style="display:none;">
-      <div class="label">Your Secret (64 hex chars — SAVE THIS!)</div>
-      <textarea id="secretField" readonly rows="2"></textarea>
+  <!-- DEPOSITOR MODE -->
+  <div id="depositorSection">
+    <div class="card">
+      <div class="label">1. Generate Deposit (Depositor)</div>
+      <button id="generateDepositBtn" class="btn" disabled>Generate Secret + Deposit Hash</button>
 
-      <div class="highlight">
-        Deposit Hash auto-filled below<br>
-        Commit Hash auto-filled in Step 2
+      <div id="depositorOutput" style="display:none; margin-top:1rem;">
+        <div class="label">Your Secret (send securely to Receiver)</div>
+        <textarea id="secretField" readonly rows="2"></textarea>
+
+        <div class="label">Deposit Hash (auto-filled below)</div>
+        <input id="depositHashField" readonly />
+
+        <button id="downloadDepositorBackup" class="btn-success" style="margin-top:1rem;">
+          Download Backup — REQUIRED
+        </button>
+
+        <div class="critical">
+          Send the Secret to the Receiver<br>
+          They will use it to withdraw privately
+        </div>
       </div>
+    </div>
+  </div>
 
-      <button id="downloadBackup" class="btn-success">
-        Download Backup File — REQUIRED
-      </button>
+  <!-- RECEIVER MODE -->
+  <div id="receiverSection" style="display:none;">
+    <div class="card">
+      <div class="label">1. Enter Secret from Depositor</div>
+      <textarea id="receiverSecret" rows="2" placeholder="Paste the 64-character secret here"></textarea>
 
-      <div class="critical">
-        You MUST save this backup.<br>
-        This is your only way to withdraw.
+      <div class="label">2. Your Fresh Wallet (for withdrawal)</div>
+      <input id="receiverWallet" placeholder="0x..." />
+
+      <button id="generateCommitBtn" class="btn" disabled>Generate Commit Hash</button>
+
+      <div id="receiverOutput" style="display:none; margin-top:1rem;">
+        <div class="label">Commit Hash (auto-filled in Step 2)</div>
+        <div class="highlight" id="commitHashDisplay"></div>
+        <div class="critical">Now go to Step 2 → Commit → then Withdraw</div>
       </div>
     </div>
   </div>
@@ -88,9 +119,6 @@
   <!-- COMMIT -->
   <div class="card">
     <div class="label">2. Commit (Privacy Lock)</div>
-    <div id="commitHashDisplay" class="highlight" style="display:none;">
-      Commit Hash ready: <span id="commitHashText"></span>
-    </div>
     <button id="commitBtn" class="btn" disabled>Commit Hash (~13 min wait)</button>
   </div>
 
@@ -101,7 +129,7 @@
     <input id="wallet2" placeholder="Fresh wallet 2 (optional)" />
     <input id="wallet3" placeholder="Fresh wallet 3 (optional)" />
     <button id="withdrawBtn" class="btn" disabled>Withdraw (Random Split)</button>
-    <small style="color:#f59e0b;">Use brand-new wallets only</small>
+    <small class="warning">Use brand-new wallets only</small>
   </div>
 
 </div>
@@ -112,20 +140,26 @@
 </footer>
 
 <script>
-// CONFIG — LIVE & VERIFIED ON-CHAIN
+// CONFIG
 const SHIELD = "0xAF4934a35cc3Bed4821d4220baEF4f71B86260B4";
 const TOKEN  = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 
 let provider, signer, account, shield, token, pubShield;
 let rawSecret = "", depositHash = "", commitHash = "";
 
-// UNIVERSAL WALLET CONNECT (works with MetaMask, Rabby, Coinbase, etc.)
-async function connectWallet() {
-  if (typeof window.ethereum === "undefined") {
-    alert("No wallet detected. Please install MetaMask, Rabby, or Coinbase Wallet.");
-    return;
-  }
+// MODE SWITCH
+function setMode(mode) {
+  document.getElementById("depositorSection").style.display = mode === "depositor" ? "block" : "none";
+  document.getElementById("receiverSection").style.display = mode === "receiver" ? "block" : "none";
+  document.getElementById("tabDepositor").classList.toggle("active", mode === "depositor");
+  document.getElementById("tabReceiver").classList.toggle("active", mode === "receiver");
+  document.getElementById("depositorOutput").style.display = "none";
+  document.getElementById("receiverOutput").style.display = "none";
+}
 
+// WALLET CONNECT — WORKS WITH ANY WALLET
+async function connectWallet() {
+  if (!window.ethereum) return alert("No wallet detected");
   try {
     await window.ethereum.request({ method: "eth_requestAccounts" });
     provider = new ethers.providers.Web3Provider(window.ethereum, "any");
@@ -134,17 +168,7 @@ async function connectWallet() {
 
     const net = await provider.getNetwork();
     if (net.chainId !== 369) {
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x171" }],
-        });
-      } catch (switchError) {
-        if (switchError.code === 4902) {
-          alert("PulseChain not added to wallet. Add it manually.");
-        }
-        return;
-      }
+      await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x171" }] });
     }
 
     document.getElementById("status").textContent = `Connected: ${account.slice(0,8)}…${account.slice(-6)}`;
@@ -155,119 +179,98 @@ async function connectWallet() {
     shield = new ethers.Contract(SHIELD, abi, signer);
     token = new ethers.Contract(TOKEN, ["function approve(address,uint256)"], signer);
 
-    document.getElementById("generateBtn").disabled = false;
-    document.getElementById("generateBtn").onclick = generateTransfer;
-
-  } catch (err) {
-    console.error(err);
-    alert("Wallet connection failed: " + (err.message || err));
-  }
+    document.getElementById("generateDepositBtn").disabled = false;
+  } catch (e) { alert("Connection failed: " + e.message); }
 }
-
 document.getElementById("connect").onclick = connectWallet;
 document.getElementById("disconnect").onclick = () => location.reload();
 
-// 100% CONTRACT-IDENTICAL HASH GENERATION
-function generateTransfer() {
+// DEPOSITOR: Generate Secret + Deposit Hash
+document.getElementById("generateDepositBtn").onclick = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
-  rawSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+  rawSecret = Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
 
   depositHash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [rawSecret]));
-  commitHash = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], [rawSecret, account]));
 
-  // Auto-fill everything
   document.getElementById("secretField").value = rawSecret;
   document.getElementById("depositHashField").value = depositHash;
-  document.getElementById("commitHashText").textContent = commitHash.slice(0, 12) + "..." + commitHash.slice(-10);
-  document.getElementById("commitHashDisplay").style.display = "block";
-  document.getElementById("generatorOutput").style.display = "block";
+  document.getElementById("depositorOutput").style.display = "block";
 
-  document.getElementById("downloadBackup").onclick = () => {
-    const content = `PRIVX SHIELD V11 — BACKUP
+  document.getElementById("downloadDepositorBackup").onclick = () => {
+    const blob = new Blob([`PRIVX V11 — DEPOSITOR BACKUP
 
-Secret: ${rawSecret}
-Deposit Hash: ${depositHash}
-Commit Hash: ${commitHash}
+Secret (send to Receiver):
+${rawSecret}
+
+Deposit Hash:
+${depositHash}
+
 Amount: ${document.getElementById("depositAmount").value || "Not set"}
 
 Generated: ${new Date().toLocaleString()}
-DO NOT LOSE THIS`;
-
-    const blob = new Blob([content], {type: "text/plain"});
-    const url = URL.createObjectURL(blob);
+`], {type: "text/plain"});
     const a = document.createElement("a");
-    a.href = url;
-    a.download = "privx-v11-backup.txt";
+    a.href = URL.createObjectURL(blob);
+    a.download = "privx-depositor-backup.txt";
     a.click();
 
-    // Enable all buttons
-    ["approveBtn","depositBtn","commitBtn","withdrawBtn"].forEach(id => {
-      document.getElementById(id).disabled = false;
-    });
+    ["approveBtn","depositBtn"].forEach(id => document.getElementById(id).disabled = false);
   };
-}
+};
 
-// ACTIONS — ALL WORKING
+// RECEIVER: Generate Commit Hash from Secret + Wallet
+document.getElementById("receiverSecret").oninput =
+document.getElementById("receiverWallet").oninput = () => {
+  const s = document.getElementById("receiverSecret").value.trim();
+  const w = document.getElementById("receiverWallet").value.trim();
+  document.getElementById("generateCommitBtn").disabled = !(s.length === 64 && ethers.utils.isAddress(w));
+};
+
+document.getElementById("generateCommitBtn").onclick = () => {
+  rawSecret = document.getElementById("receiverSecret").value.trim();
+  commitHash = ethers.utils.keccak256(ethers.utils.solidityPack(["string","address"], [rawSecret, account]));
+  document.getElementById("commitHashDisplay").textContent = commitHash;
+  document.getElementById("receiverOutput").style.display = "block";
+  document.getElementById("commitBtn").disabled = false;
+  document.getElementById("withdrawBtn").disabled = false;
+};
+
+// ACTIONS
 document.getElementById("approveBtn").onclick = async () => {
-  try {
-    const tx = await token.approve(SHIELD, ethers.constants.MaxUint256);
-    await tx.wait();
-    alert("Approved successfully!");
-  } catch (e) { alert("Approval failed: " + e.message); }
+  try { const tx = await token.approve(SHIELD, ethers.constants.MaxUint256); alert("Approved!"); } catch (e) { alert("Failed: " + e.message); }
 };
 
 document.getElementById("depositBtn").onclick = async () => {
   const amt = document.getElementById("depositAmount").value;
-  if (!amt || amt <= 0) return alert("Enter amount");
-  try {
-    const tx = await shield.deposit(ethers.utils.parseUnits(amt, 18), depositHash);
-    alert("Deposit sent! Tx: " + tx.hash);
-  } catch (e) {
-    if (e.message.includes("Hash already used")) {
-      alert("This Deposit Hash was already used!\nGenerate a new one.");
-    } else {
-      alert("Deposit failed: " + e.message);
-    }
-  }
+  if (!amt) return alert("Enter amount");
+  try { const tx = await shield.deposit(ethers.utils.parseUnits(amt,18), depositHash); alert("Deposited! Tx: " + tx.hash); }
+  catch (e) { alert(e.message.includes("Hash already used") ? "Hash already used — generate new one" : "Deposit failed"); }
 };
 
 document.getElementById("commitBtn").onclick = async () => {
-  try {
-    const tx = await shield.commit(commitHash);
-    alert("Commit sent! Wait ~13 minutes.\nTx: " + tx.hash);
-  } catch (e) { alert("Commit failed: " + e.message); }
+  try { const tx = await shield.commit(commitHash); alert("Committed! Wait 13 min.\nTx: " + tx.hash); }
+  catch (e) { alert("Commit failed: " + e.message); }
 };
 
 document.getElementById("withdrawBtn").onclick = async () => {
-  const wallets = ["wallet1","wallet2","wallet3"]
-    .map(id => document.getElementById(id).value.trim())
-    .filter(a => ethers.utils.isAddress(a));
-  if (wallets.length === 0) return alert("Add at least one fresh wallet");
-  try {
-    const tx = await shield.withdraw(rawSecret, wallets);
-    alert("Private withdrawal sent!\nTx: " + tx.hash);
-  } catch (e) {
-    if (e.message.includes("No valid commit")) alert("No valid commit — did you wait 13 min?");
-    else alert("Withdraw failed: " + e.message);
-  }
+  const wallets = ["wallet1","wallet2","wallet3"].map(id=>document.getElementById(id).value.trim()).filter(a=>ethers.utils.isAddress(a));
+  if (!wallets.length) return alert("Add fresh wallet");
+  try { const tx = await shield.withdraw(rawSecret, wallets); alert("Withdrawn privately!\nTx: " + tx.hash); }
+  catch (e) { alert("Withdraw failed — did you wait 13 min after commit?"); }
 };
 
-// Live stats
+// STATS
 const pub = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
 (async () => {
-  try {
-    const abi = await fetch("abi.json").then(r => r.json());
-    pubShield = new ethers.Contract(SHIELD, abi, pub);
-    const update = async () => {
-      try {
-        const [burned, bal] = await Promise.all([pubShield.totalBurned(), pubShield.totalVaultBalance()]);
-        document.getElementById("burnCounter").textContent = Number(ethers.utils.formatUnits(burned,18)).toFixed(0);
-        document.getElementById("vaultBalance").textContent = Number(ethers.utils.formatUnits(bal,18)).toFixed(0);
-      } catch (e) {}
-    };
-    update();
-    setInterval(update, 30000);
-  } catch (e) {}
+  const abi = await fetch("abi.json").then(r=>r.json());
+  pubShield = new ethers.Contract(SHIELD, abi, pub);
+  setInterval(async () => {
+    try {
+      const [b,v] = await Promise.all([pubShield.totalBurned(), pubShield.totalVaultBalance()]);
+      document.getElementById("burnCounter").textContent = Number(ethers.utils.formatUnits(b,18)).toFixed(0);
+      document.getElementById("vaultBalance").textContent = Number(ethers.utils.formatUnits(v,18)).toFixed(0);
+    } catch(e) {}
+  }, 30000);
 })();
 </script>
 </body>
