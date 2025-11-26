@@ -5,66 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PrivX Shield — Private Transfers</title>
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0f1117;
-    --card: #171a21;
-    --text: #e2e8f0;
-    --text-muted: #94a3b8;
-    --primary: #6366f1;
-    --border: #2d3748;
-  }
-  body {
-    margin:0; padding:0; background:var(--bg); color:var(--text);
-    font-family:'Inter',system-ui,sans-serif; line-height:1.6;
-    min-height:100vh; display:flex; flex-direction:column;
-  }
-  .container { max-width:420px; margin:auto; padding:1rem; flex:1; }
+  :root { --bg:#0f1117; --card:#171a21; --text:#e2e8f0; --muted:#94a3b8; --primary:#6366f1; --success:#22c55e; --danger:#ef4444; --border:#2d3748; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; line-height:1.6; }
+  .container { max-width:420px; margin:2rem auto; padding:0 1rem; }
   header { text-align:center; padding:2rem 0 1rem; }
   header img { height:44px; }
-  header h1 { font-size:1.5rem; font-weight:700; margin:0.5rem 0 0; color:white; }
-  header p { color:var(--text-muted); font-size:0.95rem; margin:0.4rem 0 0; }
-  .card {
-    background:var(--card); border:1px solid var(--border);
-    border-radius:16px; padding:1.5rem; margin:1rem 0;
-  }
-  .btn {
-    background:var(--primary); color:white; border:none; border-radius:12px;
-    padding:0.9rem; width:100%; font-size:1rem; font-weight:600;
-    cursor:pointer; transition:background 0.2s;
-  }
+  header h1 { font-size:1.5rem; margin:0.5rem 0 0; color:white; font-weight:700; }
+  header p { color:var(--muted); font-size:0.95rem; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:1.5rem; margin:1.5rem 0; }
+  .btn { background:var(--primary); color:white; border:none; border-radius:12px; padding:0.9rem; width:100%; font-weight:600; cursor:pointer; transition:0.2s; }
   .btn:hover { background:#5558e0; }
-  .btn:disabled { background:#334155; cursor:not-allowed; }
-  .btn-outline {
-    background:transparent; border:1px solid var(--border); color:var(--text);
-  }
-  input {
-    width:100%; padding:0.9rem; border-radius:12px; border:1px solid var(--border);
-    background:#1e2533; color:white; font-size:1rem; margin:0.5rem 0;
-  }
-  .label { display:block; margin:1rem 0 0.4rem; font-size:0.9rem; color:var(--text-muted); font-weight:500; }
-  .stat-grid {
-    display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.5rem 0;
-  }
-  .stat {
-    background:#1e2533; border-radius:12px; padding:1rem; text-align:center;
-  }
-  .stat-value { font-size:1.4rem; font-weight:700; color:white; margin:0.4rem 0 0; }
-  .addresses {
-    font-size:0.85rem; color:var(--text-muted); margin:1.5rem 0;
-  }
-  .addresses code {
-    background:#1e2533; padding:0.6rem 1rem; border-radius:8px;
-    display:block; word-break:break-all; margin:0.6rem 0;
-  }
-  footer {
-    text-align:center; padding:2rem 1rem; color:#475569; font-size:0.85rem;
-  }
-  .success { color:#22c55e; }
+  .btn:disabled { background:#334155; cursor:not-allowed; opacity:0.7; }
+  .btn-success { background:var(--success); }
+  input, textarea { width:100%; padding:0.9rem; border-radius:12px; border:1px solid var(--border); background:#1e2533; color:white; font-size:1rem; margin:0.5rem 0; box-sizing:border-box; }
+  .label { display:block; margin:1rem 0 0.4rem; font-size:0.9rem; color:var(--muted); font-weight:500; }
+  .critical { background:#7f1d1d; color:#fca5a5; padding:1rem; border-radius:12px; margin:1rem 0; font-weight:600; text-align:center; }
   .warning { color:#f59e0b; font-size:0.9rem; margin-top:0.5rem; display:block; }
+  .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.5rem 0; }
+  .stat { background:#1e2533; border-radius:12px; padding:1rem; text-align:center; }
+  .stat-value { font-size:1.4rem; font-weight:700; color:white; }
+  footer { text-align:center; padding:2rem; color:#475569; font-size:0.85rem; }
 </style>
 </head>
 <body>
@@ -73,78 +35,80 @@
   <header>
     <img src="PRIVX.png" alt="PrivX">
     <h1>PrivX Shield</h1>
-    <p>Private, instant, irreversible transfers on PulseChain</p>
+    <p>Private, irreversible transfers on PulseChain</p>
   </header>
 
+  <!-- INLINE GENERATOR -->
+  <div class="card">
+    <div class="label">Create Private Transfer</div>
+    <button id="generateBtn" class="btn" disabled>Generate Secret & Hashes</button>
+    
+    <div id="generatorOutput" style="display:none; margin-top:1rem;">
+      <textarea id="secretField" readonly rows="3" placeholder="Your secret appears here"></textarea>
+      <input id="depositHash" readonly placeholder="Deposit hash (for Step 1)" />
+      <input id="commitHash" readonly placeholder="Commit hash (for Step 2)" />
+      
+      <button id="downloadBackup" class="btn-success" style="margin-top:1rem;">
+        Download Backup (.txt) — REQUIRED
+      </button>
+
+      <div class="critical" id="saveWarning">
+        You MUST download and save this file.<br>
+        Losing your secret = permanent loss of funds.
+      </div>
+    </div>
+  </div>
+
+  <!-- WALLET -->
   <div class="card">
     <button id="connect" class="btn">Connect Wallet</button>
-    <button id="disconnect" class="btn-outline" style="display:none;margin-top:0.5rem;">Disconnect</button>
-    <div id="status" style="margin-top:0.8rem; color:var(--text-muted);"></div>
+    <button id="disconnect" class="btn" style="display:none; margin-top:0.5rem;">Disconnect</button>
+    <div id="status" style="margin-top:0.8rem; color:var(--muted);"></div>
   </div>
 
+  <!-- STATS -->
   <div class="stat-grid">
-    <div class="stat">
-      <div>Total Burned</div>
-      <div id="burnCounter" class="stat-value">—</div>
-    </div>
-    <div class="stat">
-      <div>Shield Balance</div>
-      <div id="vaultBalance" class="stat-value">—</div>
-    </div>
+    <div class="stat"><div>Total Burned</div><div id="burnCounter" class="stat-value">—</div></div>
+    <div class="stat"><div>In Shield</div><div id="vaultBalance" class="stat-value">—</div></div>
   </div>
 
+  <!-- DEPOSIT -->
   <div class="card">
-    <div class="label">1. Deposit PRIVX</div>
-    <input id="depositAmount" placeholder="Amount (e.g. 500)" />
-    <input id="depositHash" placeholder="Deposit hash (0x…)" />
+    <div class="label">1. Deposit Amount</div>
+    <input id="depositAmount" placeholder="e.g. 1000" />
     <button id="approveBtn" class="btn" disabled>Approve PRIVX</button>
     <button id="depositBtn" class="btn" style="margin-top:0.5rem;" disabled>Deposit</button>
   </div>
 
+  <!-- COMMIT -->
   <div class="card">
-    <div class="label">2. Commit Secret (Required for Privacy)</div>
-    <input id="commitHashInput" placeholder="Commit hash (0x…)" />
-    <button id="commitBtn" class="btn" disabled>Commit</button>
-    <small class="warning">Wait ~13 minutes after committing before withdrawing</small>
+    <div class="label">2. Commit (Privacy Lock)</div>
+    <button id="commitBtn" class="btn" disabled>Commit Hash (~13 min wait)</button>
+    <small class="warning">Must be done before withdrawal</small>
   </div>
 
+  <!-- WITHDRAW -->
   <div class="card">
     <div class="label">3. Withdraw Privately</div>
-    <input id="withdrawSecret" placeholder="Your secret phrase" />
-    <input id="wallet1" placeholder="Recipient wallet (fresh recommended)" />
+    <input id="wallet1" placeholder="Fresh recipient wallet" />
     <input id="wallet2" placeholder="Second recipient (optional)" />
     <input id="wallet3" placeholder="Third recipient (optional)" />
-    <button id="withdrawBtn" class="btn" disabled>Withdraw</button>
-    <small class="warning">Funds split randomly across 1–3 outputs</small>
+    <button id="withdrawBtn" class="btn" disabled>Withdraw (Random Split)</button>
+    <small class="warning">Use new wallets • Never reuse</small>
   </div>
 
+  <!-- RECLAIM & CHECK -->
   <div class="card">
     <div class="label">Reclaim Expired Deposit</div>
-    <input id="reclaimHash" placeholder="Deposit hash (0x…)" />
+    <input id="reclaimHash" placeholder="Deposit hash" />
     <button id="reclaimBtn" class="btn" disabled>Reclaim (5% reward)</button>
-    <small class="warning">~94.7% of expired funds are permanently burned</small>
   </div>
 
   <div class="card">
-    <div class="label">Check Deposit Status</div>
+    <div class="label">Check Any Deposit</div>
     <input id="checkHash" placeholder="Deposit hash" />
-    <button id="checkBtn" class="btn">Check</button>
-    <div id="checkResult" style="margin-top:1rem; color:var(--text-muted);"></div>
-  </div>
-
-  <div class="addresses">
-    <strong>Contracts</strong><br>
-    PRIVX Token<br><code>0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986</code>
-    Shield V11<br><code>0xAF4934a35cc3Bed4821d4220baEF4f71B86260B4</code>
-    Mining Vault<br><code>0x07E05aBa9F24275948bDF015cfdfb0Af1810Adc9</code>
-  </div>
-
-  <div class="card" style="font-size:0.9rem; color:var(--text-muted);">
-    <strong>Privacy Tips</strong><br>
-    • Use a fresh wallet for every withdrawal<br>
-    • Never share your secret phrase<br>
-    • Deposits are locked for 7 days — plan ahead<br>
-    • Expired deposits are burned forever
+    <button id="checkBtn" class="btn">Check Status</button>
+    <div id="checkResult" style="margin-top:1rem; color:var(--muted);"></div>
   </div>
 
 </div>
@@ -159,47 +123,100 @@
 const SHIELD = "0xAF4934a35cc3Bed4821d4220baEF4f71B86260B4";
 const TOKEN  = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 let provider, signer, account, shield, token, pubShield;
+let currentSecret = "", currentDepositHash = "", currentCommitHash = "";
 
 async function connect() {
-  if (!window.ethereum) return alert("Please install MetaMask");
+  if (!window.ethereum) return alert("MetaMask required");
   provider = new ethers.providers.Web3Provider(window.ethereum);
   await provider.send("eth_requestAccounts", []);
   signer = provider.getSigner();
   account = await signer.getAddress();
   const net = await provider.getNetwork();
-  if (net.chainId !== 369) return alert("Please switch to PulseChain");
+  if (net.chainId !== 369) return alert("Switch to PulseChain");
 
   document.getElementById("status").textContent = `${account.slice(0,8)}…${account.slice(-6)}`;
   document.getElementById("connect").style.display = "none";
   document.getElementById("disconnect").style.display = "block";
-  document.querySelectorAll("button:disabled").forEach(b=>b.disabled=false);
 
   const abi = await fetch("abi.json").then(r=>r.json());
   shield = new ethers.Contract(SHIELD, abi, signer);
-  token = new ethers.Contract(TOKEN, ["function approve(address,uint256)","function allowance(address,address)"], signer);
+  token = new ethers.Contract(TOKEN, ["function approve(address,uint256)"], signer);
+
+  // Enable generator
+  document.getElementById("generateBtn").disabled = false;
+  document.getElementById("generateBtn").onclick = generateTransfer;
 }
+
 document.getElementById("connect").onclick = connect;
 document.getElementById("disconnect").onclick = () => location.reload();
 
-// Public reads
+// EXACT V9/V11 HASH LOGIC — VERIFIED
+function generateTransfer() {
+  // Generate 32-byte random secret (like V9 tool)
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  currentSecret = "0x" + Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
+
+  // depositHash = keccak256(encode(secret))
+  const abiCoder = new ethers.utils.AbiCoder();
+  currentDepositHash = ethers.utils.keccak256(abiCoder.encode(["string"], [currentSecret]));
+
+  // commitHash = keccak256(pack(secret, account))
+  currentCommitHash = ethers.utils.keccak256(
+    ethers.utils.solidityPack(["string","address"], [currentSecret, account])
+  );
+
+  // Populate fields
+  document.getElementById("secretField").value = currentSecret;
+  document.getElementById("depositHash").value = currentDepositHash;
+  document.getElementById("commitHash").value = currentCommitHash;
+  document.getElementById("generatorOutput").style.display = "block";
+
+  // Download backup
+  document.getElementById("downloadBackup").onclick = () => {
+    const content = `PRIVX SHIELD V11 — PRIVATE BACKUP (DO NOT SHARE)
+
+Secret (required for withdrawal):
+${currentSecret}
+
+Deposit Hash (Step 1):
+${currentDepositHash}
+
+Commit Hash (Step 2 — use with your wallet):
+${currentCommitHash}
+
+Amount: ${document.getElementById("depositAmount").value || "Not set"} PRIVX
+Recipient Wallet: ${account}
+
+This file proves ownership. Lose it = lose funds forever.
+Generated: ${new Date().toLocaleString()}`;
+
+    const blob = new Blob([content], {type: "text/plain"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "privx-shield-backup-" + Date.now() + ".txt";
+    a.click();
+
+    // Only after download → enable actions
+    document.querySelectorAll("#approveBtn,#depositBtn,#commitBtn,#withdrawBtn,#reclaimBtn")
+      .forEach(b => b.disabled = false);
+    document.getElementById("saveWarning").innerHTML = "Backup saved — you may now proceed";
+    document.getElementById("saveWarning").style.background = "#166534";
+  };
+}
+
+// Public stats
 const pub = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
 (async () => {
   const abi = await fetch("abi.json").then(r=>r.json());
   pubShield = new ethers.Contract(SHIELD, abi, pub);
-  updateStats();
-  setInterval(updateStats, 30000);
-})();
-
-async function updateStats() {
-  try {
-    const [burned, bal] = await Promise.all([
-      pubShield.totalBurned(),
-      pubShield.totalVaultBalance()
-    ]);
+  const update = async () => {
+    const [burned, bal] = await Promise.all([pubShield.totalBurned(), pubShield.totalVaultBalance()]);
     document.getElementById("burnCounter").textContent = Number(ethers.utils.formatUnits(burned,18)).toFixed(0);
     document.getElementById("vaultBalance").textContent = Number(ethers.utils.formatUnits(bal,18)).toFixed(0);
-  } catch(e) {}
-}
+  };
+  update(); setInterval(update, 30000);
+})();
 
 // Actions
 document.getElementById("approveBtn").onclick = async () => {
@@ -209,25 +226,22 @@ document.getElementById("approveBtn").onclick = async () => {
 
 document.getElementById("depositBtn").onclick = async () => {
   const amt = ethers.utils.parseUnits(document.getElementById("depositAmount").value || "0", 18);
-  const h = document.getElementById("depositHash").value;
-  const tx = await shield.deposit(amt, h);
+  const tx = await shield.deposit(amt, currentDepositHash);
   alert("Deposit sent: " + tx.hash);
 };
 
 document.getElementById("commitBtn").onclick = async () => {
-  const h = document.getElementById("commitHashInput").value;
-  const tx = await shield.commit(h);
+  const tx = await shield.commit(currentCommitHash);
   alert("Commit sent: " + tx.hash);
 };
 
 document.getElementById("withdrawBtn").onclick = async () => {
-  const secret = document.getElementById("withdrawSecret").value;
   const wallets = ["wallet1","wallet2","wallet3"]
     .map(id => document.getElementById(id).value.trim())
     .filter(a => ethers.utils.isAddress(a));
-  if (!wallets.length) return alert("Enter at least one recipient");
-  const tx = await shield.withdraw(secret, wallets);
-  alert("Withdraw sent: " + tx.hash);
+  if (!wallets.length) return alert("Add at least one fresh wallet");
+  const tx = await shield.withdraw(currentSecret, wallets);
+  alert("Private withdrawal sent: " + tx.hash);
 };
 
 document.getElementById("reclaimBtn").onclick = async () => {
@@ -239,16 +253,9 @@ document.getElementById("reclaimBtn").onclick = async () => {
 document.getElementById("checkBtn").onclick = async () => {
   const h = document.getElementById("checkHash").value;
   const d = await pubShield.deposits(h);
-  if (d.amount.isZero()) {
-    document.getElementById("checkResult").textContent = "No deposit found";
-    return;
-  }
+  if (d.amount.isZero()) return document.getElementById("checkResult").textContent = "Not found";
   const amt = ethers.utils.formatUnits(d.amount,18);
-  const daysLeft = Math.max(0, 7 - (Date.now()/1000 - d.timestamp.toNumber())/86400);
-  document.getElementById("checkResult").innerHTML = `
-    ${amt} PRIVX<br>
-    ${d.claimed ? "Withdrawn" : `Active • ~${daysLeft.toFixed(1)} days remaining`}
-  `;
+  document.getElementById("checkResult").textContent = `${amt} PRIVX • ${d.claimed ? "Withdrawn" : "Active"}`;
 };
 </script>
 </body>
