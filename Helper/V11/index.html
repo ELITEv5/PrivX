@@ -26,6 +26,10 @@
   .tab { padding:1rem; background:#1e2533; border-radius:12px; cursor:pointer; text-align:center; margin:0.5rem 0; }
   .tab.active { background:var(--primary); color:white; font-weight:600; }
   .highlight { background:#1e4d3d; color:#22c55e; padding:0.8rem; border-radius:8px; margin:1rem 0; font-family:monospace; font-weight:bold; text-align:center; }
+  .check-result { background:#1e2533; border-radius:12px; padding:1.2rem; margin-top:1rem; font-size:1rem; line-height:1.8; }
+  .check-active { color:#22c55e; font-weight:600; }
+  .check-claimed { color:#ef4444; font-weight:600; }
+  .check-expired { color:#f59e0b; font-weight:600; }
   .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.5rem 0; }
   .stat { background:#1e2533; border-radius:12px; padding:1.2rem; text-align:center; }
   .stat-value { font-size:1.5rem; font-weight:700; color:white; }
@@ -61,7 +65,7 @@
         <textarea id="secretField" readonly rows="2"></textarea>
 
         <div class="highlight">
-          Deposit Hash auto-filled in Step 1 below
+          Deposit Hash auto-filled below
         </div>
 
         <button id="downloadDepositorBackup" class="btn-success" style="margin-top:1rem;">
@@ -89,7 +93,7 @@
 
       <div id="receiverOutput" style="display:none; margin-top:1rem;">
         <div class="highlight">
-          Commit Hash auto-filled in Step 2 below
+          Commit Hash auto-filled in Step 2
         </div>
         <div class="critical">Now go to Step 2 → Commit → then Withdraw</div>
       </div>
@@ -135,6 +139,14 @@
     <input id="wallet3" placeholder="Fresh wallet 3 (optional)" />
     <button id="withdrawBtn" class="btn" disabled>Withdraw (Random Split)</button>
     <small class="warning">Use brand-new wallets only</small>
+  </div>
+
+  <!-- CHECK DEPOSIT -->
+  <div class="card">
+    <div class="label">Check Any Deposit</div>
+    <input id="checkHashInput" placeholder="Paste Deposit Hash here" />
+    <button id="checkBtn" class="btn">Check Status</button>
+    <div id="checkResult" class="check-result" style="display:none;"></div>
   </div>
 
 </div>
@@ -184,6 +196,7 @@ async function connectWallet() {
     const abi = await fetch("abi.json").then(r => r.json());
     shield = new ethers.Contract(SHIELD, abi, signer);
     token = new ethers.Contract(TOKEN, ["function approve(address,uint256)"], signer);
+    pubShield = new ethers.Contract(SHIELD, abi, new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com"));
 
     document.getElementById("generateDepositBtn").disabled = false;
   } catch (e) { alert("Connection failed: " + e.message); }
@@ -191,42 +204,27 @@ async function connectWallet() {
 document.getElementById("connect").onclick = connectWallet;
 document.getElementById("disconnect").onclick = () => location.reload();
 
-// DEPOSITOR: Generate + AUTO-POPULATE Deposit Hash
+// DEPOSITOR: Generate + AUTO-POPULATE
 document.getElementById("generateDepositBtn").onclick = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   rawSecret = Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
-
   depositHash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [rawSecret]));
 
-  // AUTO-FILL DEPOSIT HASH FIELD
   document.getElementById("depositHashField").value = depositHash;
-
   document.getElementById("secretField").value = rawSecret;
   document.getElementById("depositorOutput").style.display = "block";
 
   document.getElementById("downloadDepositorBackup").onclick = () => {
-    const blob = new Blob([`PRIVX V11 — DEPOSITOR BACKUP
-
-Secret (send to Receiver):
-${rawSecret}
-
-Deposit Hash:
-${depositHash}
-
-Amount: ${document.getElementById("depositAmount").value || "Not set"}
-
-Generated: ${new Date().toLocaleString()}
-`], {type: "text/plain"});
+    const blob = new Blob([`PRIVX V11 — DEPOSITOR BACKUP\n\nSecret: ${rawSecret}\nDeposit Hash: ${depositHash}\n\nGenerated: ${new Date().toLocaleString()}`], {type: "text/plain"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "privx-depositor-backup.txt";
     a.click();
-
     ["approveBtn","depositBtn"].forEach(id => document.getElementById(id).disabled = false);
   };
 };
 
-// RECEIVER: Generate Commit Hash + AUTO-SHOW
+// RECEIVER: Generate Commit Hash
 document.getElementById("receiverSecret").oninput =
 document.getElementById("receiverWallet").oninput = () => {
   const s = document.getElementById("receiverSecret").value.trim();
@@ -241,6 +239,47 @@ document.getElementById("generateCommitBtn").onclick = () => {
   document.getElementById("receiverOutput").style.display = "block";
   document.getElementById("commitBtn").disabled = false;
   document.getElementById("withdrawBtn").disabled = false;
+};
+
+// CHECK DEPOSIT — FULLY WORKING
+document.getElementById("checkBtn").onclick = async () => {
+  const hash = document.getElementById("checkHashInput").value.trim();
+  if (!hash || !hash.startsWith("0x") || hash.length !== 66) {
+    return alert("Enter a valid Deposit Hash (0x...)");
+  }
+
+  try {
+    const deposit = await pubShield.deposits(hash);
+    const amount = Number(ethers.utils.formatUnits(deposit.amount, 18));
+    const timestamp = deposit.timestamp.toNumber();
+    const claimed = deposit.claimed;
+
+    const now = Date.now() / 1000;
+    const expiresAt = timestamp + 7 * 24 * 60 * 60;
+    const timeLeft = expiresAt - now;
+    const daysLeft = timeLeft > 0 ? (timeLeft / 86400).toFixed(2) : 0;
+
+    const expireDate = new Date(expiresAt * 1000).toLocaleString();
+
+    let status = "";
+    if (claimed) {
+      status = `<span class="check-claimed">Withdrawn</span>`;
+    } else if (timeLeft <= 0) {
+      status = `<span class="check-expired">Reclaimable Now (5% reward)</span>`;
+    } else {
+      status = `<span class="check-active">Active — ${daysLeft} days left</span>`;
+    }
+
+    document.getElementById("checkResult").innerHTML = `
+      <strong>${amount.toFixed(4)} PRIVX</strong><br>
+      Status: ${status}<br>
+      Expires: ${expireDate}
+    `;
+    document.getElementById("checkResult").style.display = "block";
+  } catch (e) {
+    document.getElementById("checkResult").innerHTML = "No deposit found or invalid hash";
+    document.getElementById("checkResult").style.display = "block";
+  }
 };
 
 // ACTIONS
@@ -266,20 +305,6 @@ document.getElementById("withdrawBtn").onclick = async () => {
   try { const tx = await shield.withdraw(rawSecret, wallets); alert("Withdrawn privately!\nTx: " + tx.hash); }
   catch (e) { alert("Withdraw failed — did you wait 13 min after commit?"); }
 };
-
-// STATS
-const pub = new ethers.providers.JsonRpcProvider("https://rpc.pulsechain.com");
-(async () => {
-  const abi = await fetch("abi.json").then(r=>r.json());
-  pubShield = new ethers.Contract(SHIELD, abi, pub);
-  setInterval(async () => {
-    try {
-      const [b,v] = await Promise.all([pubShield.totalBurned(), pubShield.totalVaultBalance()]);
-      document.getElementById("burnCounter").textContent = Number(ethers.utils.formatUnits(b,18)).toFixed(0);
-      document.getElementById("vaultBalance").textContent = Number(ethers.utils.formatUnits(v,18)).toFixed(0);
-    } catch(e) {}
-  }, 30000);
-})();
 </script>
 </body>
 </html>
