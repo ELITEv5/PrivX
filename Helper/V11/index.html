@@ -25,10 +25,10 @@
   .warning { color:#f59e0b; font-size:0.95rem; margin-top:0.6rem; display:block; }
   .tab { padding:1rem; background:#1e2533; border-radius:12px; cursor:pointer; text-align:center; margin:0.5rem 0; }
   .tab.active { background:var(--primary); color:white; font-weight:600; }
+  .highlight { background:#1e4d3d; color:#22c55e; padding:0.8rem; border-radius:8px; margin:1rem 0; font-family:monospace; font-weight:bold; text-align:center; }
   .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.5rem 0; }
   .stat { background:#1e2533; border-radius:12px; padding:1.2rem; text-align:center; }
   .stat-value { font-size:1.5rem; font-weight:700; color:white; }
-  .highlight { background:#1e4d3d; color:#22c55e; padding:0.8rem; border-radius:8px; margin:1rem 0; font-family:monospace; font-weight:bold; }
   footer { text-align:center; padding:2.5rem; color:#475569; font-size:0.9rem; }
 </style>
 </head>
@@ -60,8 +60,9 @@
         <div class="label">Your Secret (send securely to Receiver)</div>
         <textarea id="secretField" readonly rows="2"></textarea>
 
-        <div class="label">Deposit Hash (auto-filled below)</div>
-        <input id="depositHashField" readonly />
+        <div class="highlight">
+          Deposit Hash auto-filled in Step 1 below
+        </div>
 
         <button id="downloadDepositorBackup" class="btn-success" style="margin-top:1rem;">
           Download Backup — REQUIRED
@@ -87,8 +88,9 @@
       <button id="generateCommitBtn" class="btn" disabled>Generate Commit Hash</button>
 
       <div id="receiverOutput" style="display:none; margin-top:1rem;">
-        <div class="label">Commit Hash (auto-filled in Step 2)</div>
-        <div class="highlight" id="commitHashDisplay"></div>
+        <div class="highlight">
+          Commit Hash auto-filled in Step 2 below
+        </div>
         <div class="critical">Now go to Step 2 → Commit → then Withdraw</div>
       </div>
     </div>
@@ -111,7 +113,7 @@
   <div class="card">
     <div class="label">1. Deposit Amount</div>
     <input id="depositAmount" placeholder="e.g. 1000" type="number" step="any" />
-    <input id="depositHashField" readonly placeholder="Deposit Hash appears here" style="margin-top:0.8rem;" />
+    <input id="depositHashField" readonly placeholder="Deposit Hash appears here automatically" style="margin-top:0.8rem; background:#162d20; border-color:#22c55e;" />
     <button id="approveBtn" class="btn" disabled>Approve PRIVX</button>
     <button id="depositBtn" class="btn" style="margin-top:0.6rem;" disabled>Deposit</button>
   </div>
@@ -119,6 +121,9 @@
   <!-- COMMIT -->
   <div class="card">
     <div class="label">2. Commit (Privacy Lock)</div>
+    <div id="commitHashDisplay" class="highlight" style="display:none;">
+      Commit Hash ready
+    </div>
     <button id="commitBtn" class="btn" disabled>Commit Hash (~13 min wait)</button>
   </div>
 
@@ -155,9 +160,10 @@ function setMode(mode) {
   document.getElementById("tabReceiver").classList.toggle("active", mode === "receiver");
   document.getElementById("depositorOutput").style.display = "none";
   document.getElementById("receiverOutput").style.display = "none";
+  document.getElementById("commitHashDisplay").style.display = "none";
 }
 
-// WALLET CONNECT — WORKS WITH ANY WALLET
+// WALLET CONNECT
 async function connectWallet() {
   if (!window.ethereum) return alert("No wallet detected");
   try {
@@ -185,15 +191,17 @@ async function connectWallet() {
 document.getElementById("connect").onclick = connectWallet;
 document.getElementById("disconnect").onclick = () => location.reload();
 
-// DEPOSITOR: Generate Secret + Deposit Hash
+// DEPOSITOR: Generate + AUTO-POPULATE Deposit Hash
 document.getElementById("generateDepositBtn").onclick = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   rawSecret = Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("");
 
   depositHash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [rawSecret]));
 
-  document.getElementById("secretField").value = rawSecret;
+  // AUTO-FILL DEPOSIT HASH FIELD
   document.getElementById("depositHashField").value = depositHash;
+
+  document.getElementById("secretField").value = rawSecret;
   document.getElementById("depositorOutput").style.display = "block";
 
   document.getElementById("downloadDepositorBackup").onclick = () => {
@@ -218,7 +226,7 @@ Generated: ${new Date().toLocaleString()}
   };
 };
 
-// RECEIVER: Generate Commit Hash from Secret + Wallet
+// RECEIVER: Generate Commit Hash + AUTO-SHOW
 document.getElementById("receiverSecret").oninput =
 document.getElementById("receiverWallet").oninput = () => {
   const s = document.getElementById("receiverSecret").value.trim();
@@ -229,7 +237,7 @@ document.getElementById("receiverWallet").oninput = () => {
 document.getElementById("generateCommitBtn").onclick = () => {
   rawSecret = document.getElementById("receiverSecret").value.trim();
   commitHash = ethers.utils.keccak256(ethers.utils.solidityPack(["string","address"], [rawSecret, account]));
-  document.getElementById("commitHashDisplay").textContent = commitHash;
+  document.getElementById("commitHashDisplay").style.display = "block";
   document.getElementById("receiverOutput").style.display = "block";
   document.getElementById("commitBtn").disabled = false;
   document.getElementById("withdrawBtn").disabled = false;
