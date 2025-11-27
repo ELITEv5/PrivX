@@ -146,41 +146,29 @@
 <script>
 // === CONFIG ===
 const SHIELD_CA = "0x772Cc0a6AD3620447043b513717C4967b008D504";
-const VAULT_CA  = "0x5F92468586044b55e251D5e5E4dFF8376A146dF1";
-const TOKEN_CA  = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-
-const RPCS = [
-  "https://rpc.pulsechain.com",
-  "https://rpc-pulsechain.g4mm4.io",
-  "https://rpc.v4.testnet.pulsechain.com"
-];
+const VAULT_CA = "0x5F92468586044b55e251D5e5E4dFF8376A146dF1";
+const TOKEN_CA = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+const RPCS = ["https://rpc.pulsechain.com","https://rpc-pulsechain.g4mm4.io","https://rpc.v4.testnet.pulsechain.com"];
 let currentRpc = 0;
 const getProvider = () => new ethers.providers.JsonRpcProvider(RPCS[currentRpc]);
-
 let provider, signer, account;
-let shield, vault, token, pubShield, pubVault;
-
-const SHIELD_ABI = [ /* Paste the second ABI you gave (abi.json) here → shortened for clarity */ ];
-const VAULT_ABI  = [ /* Paste the first ABI (MiningVaultabi.json) here → shortened */ ];
-const TOKEN_ABI  = ["function approve(address,uint256) returns(bool)","function allowance(address,address) view returns(uint256)","function balanceOf(address) view returns(uint256)"];
-
-// Full ABIs (minified but complete)
-const FULL_SHIELD_ABI = [{"type":"constructor","inputs":[{"name":"_privx","type":"address"}]},{"name":"SafeERC20FailedOperation","type":"error","inputs":[{"name":"token","type":"address"}]},{"name":"CommitMade","type":"event","inputs":[{"name":"user","type":"address","indexed":true},{"name":"commitHash","type":"bytes32","indexed":true}]},{"name":"CommitPurged","type":"event","inputs":[{"name":"user","type":"address","indexed":true},{"name":"commitHash","type":"bytes32","indexed":true}]},{"name":"Deposited","type":"event","inputs":[{"name":"hash","type":"bytes32","indexed":true},{"name":"amount","type":"uint256"},{"name":"depositor","type":"address","indexed":true}]},{"name":"FeeProcessed","type":"event","inputs":[{"name":"burnAmt","type":"uint256"},{"name":"sentToVault","type":"uint256"}]},{"name":"MiningVaultLinked","type":"event","inputs":[{"name":"vault","type":"address"}]},{"name":"Reclaimed","type":"event","inputs":[{"name":"hash","type":"bytes32","indexed":true},{"name":"burned","type":"uint256"},{"name":"bounty","type":"uint256"}]},{"name":"ShieldSealed","type":"event","inputs":[{"name":"by","type":"address"}]},{"name":"Withdrawn","type":"event","inputs":[{"name":"hash","type":"bytes32","indexed":true},{"name":"amount","type":"uint256"},{"name":"outputs","type":"uint256"}]},{"name":"totalBurned","type":"function","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"},{"name":"vaultBalance","type":"function","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"},{"name":"deposits","type":"function","inputs":[{"name":"","type":"bytes32"}],"outputs":[{"name":"amount","type":"uint256"},{"name":"timestamp","type":"uint256"},{"name":"claimed","type":"bool"}],"stateMutability":"view"},{"name":"deposit","type":"function","inputs":[{"name":"amount","type":"uint256"},{"name":"secretHash","type":"bytes32"}],"outputs":[],"stateMutability":"nonpayable"},{"name":"commit","type":"function","inputs":[{"name":"commitHash","type":"bytes32"}],"outputs":[],"stateMutability":"nonpayable"},{"name":"withdraw","type":"function","inputs":[{"name":"secret","type":"string"},{"name":"recipients","type":"address[]"}],"outputs":[],"stateMutability":"nonpayable"}];
-
-const FULL_VAULT_ABI = [{"name":"totalMined","type":"function","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"},{"name":"vaultBalance","type":"function","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"}];
-
-pubShield = new ethers.Contract(SHIELD_CA, FULL_SHIELD_ABI, getProvider());
-pubVault  = new ethers.Contract(VAULT_CA,  FULL_VAULT_ABI,  getProvider());
-
-// === REST OF LOGIC (unchanged except stats fix) ===
+let shield, token, pubShield;
 let rawSecret = "", depositHash = "", commitHash = "";
 
+// FULL ABI
+const FULL_SHIELD_ABI = [{"type":"constructor","inputs":[{"name":"_privx","type":"address"}]},{"name":"SafeERC20FailedOperation","type":"error","inputs":[{"name":"token","type":"address"}]},{"name":"CommitMade","type":"event","inputs":[{"name":"user","type":"address","indexed":true},{"name":"commitHash","type":"bytes32","indexed":true}]},{"name":"Deposited","type":"event","inputs":[{"name":"hash","type":"bytes32","indexed":true},{"name":"amount","type":"uint256"},{"name":"depositor","type":"address","indexed":true}]},{"name":"Withdrawn","type":"event","inputs":[{"name":"hash","type":"bytes32","indexed":true},{"name":"amount","type":"uint256"},{"name":"outputs","type":"uint256"}]},{"name":"totalBurned","type":"function","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"},{"name":"vaultBalance","type":"function","outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"},{"name":"deposits","type":"function","inputs":[{"name":"","type":"bytes32"}],"outputs":[{"name":"amount","type":"uint256"},{"name":"timestamp","type":"uint256"},{"name":"claimed","type":"bool"}],"stateMutability":"view"},{"name":"deposit","type":"function","inputs":[{"name":"amount","type":"uint256"},{"name":"secretHash","type":"bytes32"}],"outputs":[],"stateMutability":"nonpayable"},{"name":"commit","type":"function","inputs":[{"name":"commitHash","type":"bytes32"}],"outputs":[],"stateMutability":"nonpayable"},{"name":"withdraw","type":"function","inputs":[{"name":"secret","type":"string"},{"name":"recipients","type":"address[]"}],"outputs":[],"stateMutability":"nonpayable"}];
+const TOKEN_ABI = ["function approve(address,uint256) returns(bool)","function allowance(address,address) view returns(uint256)"];
+
+pubShield = new ethers.Contract(SHIELD_CA, FULL_SHIELD_ABI, getProvider());
+
+// MODE
 function setMode(m) {
   document.getElementById("depositorSection").style.display = m==="depositor"?"block":"none";
   document.getElementById("receiverSection").style.display = m==="receiver"?"block":"none";
   ["tabDepositor","tabReceiver"].forEach(id=>document.getElementById(id).classList.toggle("active",id==="tab"+(m==="depositor"?"Depositor":"Receiver")));
 }
 
+// CONNECT WALLET
 async function connectWallet() {
   if (!window.ethereum) return alert("Install MetaMask");
   try {
@@ -192,24 +180,20 @@ async function connectWallet() {
     document.getElementById("status").textContent = `Connected: ${account.slice(0,8)}…${account.slice(-6)}`;
     document.getElementById("connect").style.display="none"; document.getElementById("disconnect").style.display="block";
     shield = new ethers.Contract(SHIELD_CA, FULL_SHIELD_ABI, signer);
-    token  = new ethers.Contract(TOKEN_CA,  TOKEN_ABI, signer);
+    token = new ethers.Contract(TOKEN_CA, TOKEN_ABI, signer);
     document.getElementById("generateDepositBtn").disabled = false;
-    updateStats();
-    setInterval(updateStats, 15000);
+    updateStats(); setInterval(updateStats,15000);
   } catch(e) { alert("Failed: "+e.message); }
 }
 document.getElementById("connect").onclick = connectWallet;
 document.getElementById("disconnect").onclick = ()=>location.reload();
 
-// === LIVE STATS (NOW WORKING) ===
+// STATS
 async function updateStats() {
   try {
-    const [burned, shieldBal] = await Promise.all([
-      pubShield.totalBurned(),
-      pubShield.vaultBalance()
-    ]);
-    document.getElementById("burnCounter").textContent   = Number(ethers.utils.formatUnits(burned,18)).toLocaleString(undefined,{maximumFractionDigits:0});
-    document.getElementById("shieldBalance").textContent = Number(ethers.utils.formatUnits(shieldBal,18)).toLocaleString(undefined,{maximumFractionDigits:0});
+    const [burned, bal] = await Promise.all([pubShield.totalBurned(), pubShield.vaultBalance()]);
+    document.getElementById("burnCounter").textContent = Number(ethers.utils.formatUnits(burned,18)).toLocaleString();
+    document.getElementById("shieldBalance").textContent = Number(ethers.utils.formatUnits(bal,18)).toLocaleString();
   } catch(e) {
     currentRpc = (currentRpc+1)%RPCS.length;
     pubShield = new ethers.Contract(SHIELD_CA, FULL_SHIELD_ABI, getProvider());
@@ -218,7 +202,7 @@ async function updateStats() {
 }
 updateStats();
 
-// === DEPOSITOR FLOW ===
+// DEPOSITOR
 document.getElementById("generateDepositBtn").onclick = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   rawSecret = Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
@@ -227,34 +211,37 @@ document.getElementById("generateDepositBtn").onclick = () => {
   document.getElementById("depositHashField").value = depositHash;
   document.getElementById("depositorOutput").style.display = "block";
   document.getElementById("downloadBackup").onclick = () => {
-    const blob = new Blob([`PRIVX STEALTH SHIELD V13\n\nSecret: ${rawSecret}\nDeposit Hash: ${depositHash}\nGenerated: ${new Date().toLocaleString()}`],{type:"text/plain"});
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "privx-v13-backup.txt"; a.click();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([`Secret: ${rawSecret}\nHash: ${depositHash}`],{type:"text/plain"}));
+    a.download = "privx-backup.txt"; a.click();
   };
   ["approveBtn","depositBtn"].forEach(id=>document.getElementById(id).disabled=false);
 };
 
-// === RECEIVER FLOW ===
+// RECEIVER — FINAL WORKING V13 COMMIT (ADDRESS FIRST)
 document.getElementById("receiverSecret").oninput = () => {
   const s = document.getElementById("receiverSecret").value.trim();
   document.getElementById("generateCommitBtn").disabled = s.length !== 64;
 };
+
 document.getElementById("generateCommitBtn").onclick = () => {
-  rawSecret = document.getElementById("receiverSecret").value.trim();
+  rawSecret = document.getElementById("receiverSecret").value.trim().toLowerCase();
   
-  // THIS IS THE ONE THAT ACTUALLY WORKS WITH YOUR DEPLOYED V13 CONTRACT
+  // THIS IS THE REAL V13 LOGIC — ADDRESS FIRST
   commitHash = ethers.utils.keccak256(
-    ethers.utils.solidityPack(["string","address"], [rawSecret, account])
+    ethers.utils.solidityPack(["address","string"], [account.toLowerCase(), rawSecret])
   );
   
-  document.getElementById("commitHashDisplay").innerHTML = 
-    `Commit Hash Ready<br><small style="font-size:0.7rem;word-break:break-all;">${commitHash}</small>`;
+  console.log("V13 COMMIT HASH →", commitHash); // ← you’ll see 0x442638a89...
+  
+  document.getElementById("commitHashDisplay").innerHTML = `Commit Hash Ready<br><small>${commitHash}</small>`;
   document.getElementById("commitHashDisplay").style.display = "block";
   document.getElementById("receiverOutput").style.display = "block";
   document.getElementById("commitBtn").disabled = false;
   document.getElementById("withdrawBtn").disabled = false;
 };
 
-// === ACTIONS ===
+// ACTIONS
 document.getElementById("approveBtn").onclick = async () => {
   try { await (await token.approve(SHIELD_CA, ethers.constants.MaxUint256)).wait(); alert("Approved!"); }
   catch(e) { alert("Approve failed: "+e.message); }
@@ -263,40 +250,20 @@ document.getElementById("approveBtn").onclick = async () => {
 document.getElementById("depositBtn").onclick = async () => {
   const amt = document.getElementById("depositAmount").value;
   if (!amt || !depositHash) return alert("Missing amount or hash");
-  try {
-    const tx = await shield.deposit(ethers.utils.parseUnits(amt,18), depositHash);
-    alert(`Deposited! Mining reward incoming.\nTx: ${tx.hash}`);
-  } catch(e) { alert(e.message.includes("Hash used")?"Hash already used — generate new":e.message); }
+  try { const tx = await shield.deposit(ethers.utils.parseUnits(amt,18), depositHash); alert(`Deposited!\nTx: ${tx.hash}`); }
+  catch(e) { alert(e.message.includes("Hash used")?"Hash already used":"Deposit failed"); }
 };
 
-  document.getElementById("generateCommitBtn").onclick = () => {
-  rawSecret = document.getElementById("receiverSecret").value.trim().toLowerCase();
-  
-  commitHash = ethers.utils.keccak256(
-    ethers.utils.solidityPack(
-      ["address", "string"],
-      [account.toLowerCase(), rawSecret]
-    )
-  );
-  
-  console.log("FINAL V13 COMMIT HASH →", commitHash);  // ← CHECK THIS IN CONSOLE (F12)
-  
-  document.getElementById("commitHashDisplay").innerHTML =
-    `Commit Hash Ready<br><small>${commitHash}</small>`;
-  document.getElementById("commitHashDisplay").style.display = "block";
-  document.getElementById("receiverOutput").style.display = "block";
-  
-  // FORCE ENABLE BUTTONS
-  document.getElementById("commitBtn").disabled = false;
-  document.getElementById("withdrawBtn").disabled = false;
+document.getElementById("commitBtn").onclick = async () => {
+  try { const tx = await shield.commit(commitHash); alert(`Committed!\nTx: ${tx.hash}`); }
+  catch(e) { alert("Commit failed: "+e.message); }
 };
-  
-  document.getElementById("commitHashDisplay").innerHTML =
-    `Commit Hash Ready<br><small style="font-size:0.7rem;word-break:break-all;">${commitHash}</small>`;
-  document.getElementById("commitHashDisplay").style.display = "block";
-  document.getElementById("receiverOutput").style.display = "block";
-  document.getElementById("commitBtn").disabled = false;
-  document.getElementById("withdrawBtn").disabled = false;
+
+document.getElementById("withdrawBtn").onclick = async () => {
+  const wallets = ["wallet1","wallet2","wallet3"].map(id=>document.getElementById(id).value.trim()).filter(a=>ethers.utils.isAddress(a));
+  if (!wallets.length) return alert("Add at least one fresh wallet");
+  try { const tx = await shield.withdraw(rawSecret, wallets); alert(`GHOSTED!\nTx: ${tx.hash}`); }
+  catch(e) { alert("Withdraw failed — did you wait after commit?"); }
 };
 
 document.getElementById("checkBtn").onclick = async () => {
@@ -308,11 +275,11 @@ document.getElementById("checkBtn").onclick = async () => {
     const amt = Number(ethers.utils.formatUnits(d.amount,18)).toFixed(2);
     const claimed = d.claimed;
     const expires = Number(d.timestamp)+7*86400;
-    const daysLeft = Math.max(0, (expires - Date.now()/1000)/86400).toFixed(1);
+    const daysLeft = Math.max(0,(expires-Date.now()/1000)/86400).toFixed(1);
     const status = claimed ? `<span class="check-claimed">Withdrawn</span>` :
                    daysLeft==0 ? `<span class="check-expired">Reclaimable (5% bounty)</span>` :
                    `<span class="check-active">Active — ${daysLeft} days left</span>`;
-    document.getElementById("checkResult").innerHTML = `<strong>${amt} PRIVX</strong><br>Status: ${status}<br>Expires: ${new Date(expires*1000).toLocaleString()}`;
+    document.getElementById("checkResult").innerHTML = `<strong>${amt} PRIVX</strong><br>Status: ${status}`;
     document.getElementById("checkResult").style.display = "block";
   } catch { document.getElementById("checkResult").innerHTML = "Error"; document.getElementById("checkResult").style.display="block"; }
 };
