@@ -215,6 +215,53 @@
     margin-top:0.5rem;
     font-size:0.9rem;
   }
+  /* === UNIFIED ACTION BUTTONS (Buy + Reclaim) === */
+.btn-action {
+  background:linear-gradient(90deg,#a78bfa,#8b5cf6);
+  color:white;
+  border:none;
+  border-radius:14px;
+  padding:1rem;
+  width:100%;
+  font-weight:700;
+  cursor:pointer;
+  font-size:1.1rem;
+  transition:all 0.25s ease;
+  box-shadow:0 0 20px rgba(167,139,250,0.25);
+}
+
+.btn-action:hover {
+  background:linear-gradient(90deg,#b794f4,#c084fc);
+  box-shadow:0 0 30px rgba(167,139,250,0.45);
+  transform:translateY(-1px);
+}
+
+.btn-action:disabled {
+  background:#334155;
+  cursor:not-allowed;
+  opacity:0.7;
+}
+
+/* Reclaim section labels and headers */
+#reclaimTab h2 {
+  color:#a78bfa !important; /* replaces gold headers */
+}
+
+#reclaimTab .btn-action {
+  margin-top:0.5rem;
+}
+
+#reclaimTab .reclaim-item strong {
+  color:#e2e8f0; /* neutral text */
+}
+
+#reclaimTab .reclaim-item {
+  background:#1e2533;
+  border:1px solid #2d3748;
+  border-radius:16px;
+  padding:1rem;
+  margin:0.8rem 0;
+}
 </style>
 </head>
 
@@ -255,11 +302,11 @@
     <!-- 💰 BUY PRIVX + COPY CA -->
     <div class="card" style="text-align:center;">
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
-        <button class="btn-gold"
+        <button class="btn-action"
           onclick="window.open('https://app.pulsex.com/swap?outputCurrency=0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986','_blank')">
           Buy PRIVX
         </button>
-        <button class="btn" onclick="copyPrivxCA()">Copy Token CA</button>
+        <button class="btn-action" onclick="reclaimDeposit('...')">Claim Now</button>
       </div>
       <div id="copyNotice" style="display:none; color:#22c55e; margin-top:0.6rem;">✅ Copied!</div>
     </div>
