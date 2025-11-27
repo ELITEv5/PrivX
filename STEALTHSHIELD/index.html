@@ -327,26 +327,34 @@ document.getElementById("checkBtn").onclick = async () => {
     return;
   }
   try {
-    const d = await pubShield.deposits(h);
-    if (d.amount.isZero()) {
-      document.getElementById("checkResult").innerHTML = "No deposit";
+    // This forces correct tuple unpacking in ethers v5.7.2
+    const [amount, timestamp, claimed] = await pubShield.deposits(h);
+
+    if (amount.isZero()) {
+      document.getElementById("checkResult").innerHTML = "No deposit found";
       document.getElementById("checkResult").style.display = "block";
       return;
     }
-    const amt = Number(ethers.utils.formatUnits(d.amount,18)).toFixed(2);
-    const claimed = d.claimed;
-    const expires = Number(d.timestamp) + 7 * 86400;
-    const daysLeft = Math.max(0, (expires - Date.now()/1000)/86400).toFixed(1);
+
+    const amt = Number(ethers.utils.formatUnits(amount, 18)).toFixed(2);
+    const expires = Number(timestamp) + 7 * 86400;
+    const daysLeft = Math.max(0, (expires - Date.now() / 1000) / 86400).toFixed(1);
+
     const status = claimed
       ? `<span class="check-claimed">Withdrawn</span>`
-      : daysLeft == 0
-        ? `<span class="check-expired">Reclaimable (5% bounty)</span>`
+      : daysLeft <= 0
+        ? `<span class="check-expired">Reclaimable Now (5% bounty)</span>`
         : `<span class="check-active">Active — ${daysLeft} days left</span>`;
-    document.getElementById("checkResult").innerHTML =
-      `<strong>${amt} PRIVX</strong><br>Status: ${status}`;
+
+    document.getElementById("checkResult").innerHTML = `
+      <strong>${amt} PRIVX</strong><br>
+      Status: ${status}<br>
+      Expires: ${new Date(expires * 1000).toLocaleString()}
+    `;
     document.getElementById("checkResult").style.display = "block";
-  } catch {
-    document.getElementById("checkResult").innerHTML = "Error";
+  } catch (e) {
+    console.error(e);
+    document.getElementById("checkResult").innerHTML = "RPC error — try again";
     document.getElementById("checkResult").style.display = "block";
   }
 };
