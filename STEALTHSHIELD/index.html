@@ -262,6 +262,36 @@
   padding:1rem;
   margin:0.8rem 0;
 }
+  /* === PREMIUM GLOW EFFECT FOR ALL PRIMARY ACTIONS === */
+.btn, .btn-success, .btn-accent, .btn-action {
+  position:relative;
+  transition:all 0.25s ease;
+  box-shadow:0 0 15px rgba(167,139,250,0.15);
+}
+
+.btn:hover,
+.btn-success:hover,
+.btn-accent:hover,
+.btn-action:hover {
+  transform:translateY(-1px);
+  box-shadow:0 0 25px rgba(167,139,250,0.35);
+}
+
+/* Special success hover (green) */
+.btn-success:hover {
+  box-shadow:0 0 25px rgba(34,197,94,0.35);
+}
+
+/* Smooth pulse for Connect Wallet when disconnected */
+#connect:not([disabled]) {
+  animation:pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0%   { box-shadow:0 0 0 rgba(167,139,250,0.0); }
+  50%  { box-shadow:0 0 20px rgba(167,139,250,0.4); }
+  100% { box-shadow:0 0 0 rgba(167,139,250,0.0); }
+}
 </style>
 </head>
 
@@ -299,17 +329,25 @@
       <div id="status" style="margin-top:0.8rem; color:var(--muted); text-align:center;"></div>
     </div>
 
-    <!-- 💰 BUY PRIVX + COPY CA -->
-    <div class="card" style="text-align:center;">
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
-        <button class="btn-action"
-          onclick="window.open('https://app.pulsex.com/swap?outputCurrency=0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986','_blank')">
-          Buy PRIVX
-        </button>
-        <button class="btn-action" onclick="reclaimDeposit('...')">Claim Now</button>
-      </div>
-      <div id="copyNotice" style="display:none; color:#22c55e; margin-top:0.6rem;">✅ Copied!</div>
-    </div>
+   <!-- 💰 BUY PRIVX + COPY CA -->
+<div class="card" style="text-align:center;">
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+    <!-- Buy PRIVX -->
+    <button class="btn-action"
+      onclick="window.open('https://app.pulsex.com/swap?outputCurrency=0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986','_blank')">
+      Buy PRIVX
+    </button>
+
+    <!-- Copy Contract Address -->
+    <button class="btn-action" onclick="copyPrivxCA()">
+      Copy CA
+    </button>
+  </div>
+
+  <div id="copyNotice" style="display:none; color:#22c55e; margin-top:0.6rem;">
+    ✅ Copied!
+  </div>
+</div>
 
     <!-- ⚠ FLASH WARNING FOR UNSAVED SECRETS -->
     <div id="flashWarning"
@@ -418,20 +456,24 @@
     </div>
   </div>
 
-  <!-- ───────────── ♻ RECLAIM TAB ───────────── -->
-  <div id="reclaimTab" style="display:none;">
-    <div class="card">
-      <h2 style="text-align:center; color:#f59e0b; margin:0;">Reclaim Expired Deposits</h2>
-      <p style="text-align:center; color:var(--muted); font-size:0.9rem;">
-        5 % bounty • 0.3 % fee • Automatic burn
-      </p>
+  <!-- ───────────── ♻ RECLAIM TAB (Updated Style) ───────────── -->
+<div id="reclaimTab" style="display:none;">
+  <div class="card">
+    <h2 style="text-align:center; color:#a78bfa; margin:0;">♻ Reclaim Expired Deposits</h2>
+    <p style="text-align:center; color:var(--muted); font-size:0.9rem;">
+      5% bounty • 0.3% fee • Automatic burn
+    </p>
 
-      <div class="label">Deposit Hash (0x...)</div>
-      <input id="reclaimInput" placeholder="Paste or auto-detected hash" />
-      <button id="claimBtn" class="btn-gold" style="margin-top:1rem;">Claim Deposit</button>
-      <div id="reclaimStatus" style="text-align:center; color:var(--muted); margin-top:1rem;"></div>
-    </div>
+    <div class="label">Deposit Hash (0x...)</div>
+    <input id="reclaimInput" placeholder="Paste or auto-detected hash" />
+    
+    <button id="claimBtn" class="btn-action" style="margin-top:1rem;">
+      Claim Deposit
+    </button>
+
+    <div id="reclaimStatus" style="text-align:center; color:var(--muted); margin-top:1rem;"></div>
   </div>
+</div>
 
   <!-- ───────────── ABOUT TAB ───────────── -->
   <div id="aboutTab" style="display:none;">
@@ -630,56 +672,109 @@ document.getElementById("withdrawBtn").onclick=async()=>{
  alert(`✅ Withdraw Complete!\nTx: ${tx.hash}`);}catch(e){alert("Withdraw failed: "+e.message);}
 };
 
-// ───────────── CHECK + RECLAIM LOGIC ─────────────
-document.getElementById("checkBtn").onclick=async()=>{
- const h=document.getElementById("checkHashInput").value.trim();
- if(!h.startsWith("0x")||h.length!==66){
-  document.getElementById("checkResult").innerHTML="Invalid hash";
-  document.getElementById("checkResult").style.display="block";return;
- }
- try{
-  const [amt,t,claimed]=await pubShield.deposits(h);
-  if(amt.isZero()){document.getElementById("checkResult").innerHTML="No deposit found";
-   document.getElementById("checkResult").style.display="block";return;}
-  const amount=Number(ethers.utils.formatUnits(amt,18)).toFixed(2);
-  const exp=Number(t)+7*86400;
-  const days=Math.max(0,(exp-Date.now()/1000)/86400).toFixed(1);
-  const st=claimed?"<span class='check-claimed'>Withdrawn</span>":
-   days<=0?"<span class='check-expired'>Reclaimable Now (5% bounty)</span>":
-   `<span class='check-active'>Active — ${days} days left</span>`;
-  document.getElementById("checkResult").innerHTML=
-   `<strong>${amount} PRIVX</strong><br>Status: ${st}<br>Expires: ${new Date(exp*1000).toLocaleString()}`;
-  document.getElementById("checkResult").style.display="block";
-  if(st.includes("Reclaimable")) lastReclaimableHash=h;
- }catch(e){
-  document.getElementById("checkResult").innerHTML="RPC error — try again";
-  document.getElementById("checkResult").style.display="block";
- }
+// ───────────── CHECK + RECLAIM LOGIC (Unified Final) ─────────────
+
+// Track last detected reclaimable deposit hash
+let lastReclaimableHash = "";
+
+// CHECK ANY DEPOSIT
+document.getElementById("checkBtn").onclick = async () => {
+  const h = document.getElementById("checkHashInput").value.trim();
+  const res = document.getElementById("checkResult");
+
+  if (!h.startsWith("0x") || h.length !== 66) {
+    res.innerHTML = "Invalid hash";
+    res.style.display = "block";
+    return;
+  }
+
+  try {
+    const [amt, t, claimed] = await pubShield.deposits(h);
+    if (amt.isZero()) {
+      res.innerHTML = "No deposit found";
+      res.style.display = "block";
+      return;
+    }
+
+    const amount = Number(ethers.utils.formatUnits(amt, 18)).toFixed(2);
+    const exp = Number(t) + 7 * 86400;
+    const days = Math.max(0, (exp - Date.now() / 1000) / 86400).toFixed(1);
+
+    let statusHTML;
+    if (claimed) {
+      statusHTML = `<span class='check-claimed'>Withdrawn</span>`;
+    } else if (days <= 0) {
+      statusHTML = `<span class='check-expired'>Reclaimable Now (5% bounty)</span>`;
+      lastReclaimableHash = h;
+    } else {
+      statusHTML = `<span class='check-active'>Active — ${days} days left</span>`;
+    }
+
+    res.innerHTML = `
+      <strong>${amount} PRIVX</strong><br>
+      Status: ${statusHTML}<br>
+      Expires: ${new Date(exp * 1000).toLocaleString()}
+    `;
+    res.style.display = "block";
+
+    // Auto-fill reclaim tab if reclaimable
+    if (days <= 0 && !claimed) autoFillReclaim(h);
+
+  } catch (e) {
+    res.innerHTML = "RPC error — try again";
+    res.style.display = "block";
+  }
 };
 
-async function loadReclaimTab(){
- const input=document.getElementById("reclaimInput");
- const s=document.getElementById("reclaimStatus");
- if(lastReclaimableHash){input.value=lastReclaimableHash;
-   s.textContent="Detected reclaimable deposit from last check.";}
- else{input.value="";s.textContent="";}
+// RECLAIM TAB LOADER (auto-fill if available)
+async function loadReclaimTab() {
+  const input = document.getElementById("reclaimInput");
+  const s = document.getElementById("reclaimStatus");
+  if (lastReclaimableHash) {
+    input.value = lastReclaimableHash;
+    s.textContent = "Detected reclaimable deposit from your last check.";
+  } else {
+    input.value = "";
+    s.textContent = "";
+  }
 }
-document.getElementById("claimBtn").onclick=async()=>{
- if(!provider||!signer)return alert("Connect wallet first.");
- const h=document.getElementById("reclaimInput").value.trim();
- if(!h.startsWith("0x")||h.length!==66)return alert("Invalid hash");
- const b=document.getElementById("claimBtn");
- b.disabled=true;document.getElementById("reclaimStatus").textContent="Claiming bounty...";
- try{
-  const tx=await shield.reclaim(h);
-  document.getElementById("reclaimStatus").innerHTML=`⏳ Waiting confirmation…<br>${tx.hash}`;
-  await tx.wait();
-  document.getElementById("reclaimStatus").innerHTML=`✅ Reclaim successful!<br>
-   <a href='https://scan.pulsechain.com/tx/${tx.hash}' target='_blank'>View Tx</a>`;
-  updateStats();
- }catch(e){document.getElementById("reclaimStatus").textContent="❌ Failed: "+e.message;}
- b.disabled=false;
-};
+
+// CLAIM FUNCTION (single definitive handler)
+async function reclaimDeposit(hash) {
+  if (!shield) return alert("Please connect your wallet first.");
+  const target = hash || document.getElementById("reclaimInput").value.trim();
+  if (!target.startsWith("0x") || target.length !== 66)
+    return alert("Invalid deposit hash.");
+
+  const btn = document.getElementById("claimBtn");
+  const s = document.getElementById("reclaimStatus");
+  btn.disabled = true;
+  s.textContent = "⏳ Claiming bounty...";
+
+  try {
+    const tx = await shield.reclaim(target);
+    s.innerHTML = `⏳ Waiting confirmation…<br>${tx.hash}`;
+    await tx.wait();
+    s.innerHTML = `✅ Reclaim successful!<br>
+      <a href='https://scan.pulsechain.com/tx/${tx.hash}' target='_blank'>
+        View Transaction
+      </a>`;
+    updateStats();
+  } catch (e) {
+    s.textContent = "❌ Failed: " + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// AUTO-FILL & NAVIGATE TO RECLAIM TAB
+function autoFillReclaim(hash) {
+  lastReclaimableHash = hash;
+  const input = document.getElementById("reclaimInput");
+  if (input) input.value = hash;
+  setMainTab('reclaim');
+  loadReclaimTab();
+}
 
 // Default startup
 setMainTab("shield");
