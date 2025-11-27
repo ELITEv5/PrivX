@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0f1117" />
+
 <title>PrivX Stealth Shield V13</title>
 <script src="./ethers.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -291,6 +293,53 @@
   0%   { box-shadow:0 0 0 rgba(167,139,250,0.0); }
   50%  { box-shadow:0 0 20px rgba(167,139,250,0.4); }
   100% { box-shadow:0 0 0 rgba(167,139,250,0.0); }
+}
+  /* === MOBILE OPTIMIZATION (PrivX V13) === */
+@media (max-width: 480px) {
+  .container {
+    max-width: 100%;
+    padding: 0.5rem;
+  }
+
+  header img {
+    height: 72px;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+  }
+
+  .card {
+    padding: 1.2rem;
+    margin: 1rem 0;
+  }
+
+  .btn, .btn-action {
+    font-size: 1rem;
+    padding: 0.9rem;
+  }
+
+  textarea, input {
+    font-size: 0.9rem;
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tab {
+    padding: 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  footer {
+    font-size: 0.8rem;
+    padding: 1.5rem;
+  }
+
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 </style>
 </head>
@@ -582,25 +631,49 @@ function setMode(m){
   document.getElementById(id).classList.toggle("active",id==="tab"+(m==="depositor"?"Depositor":"Receiver")));
 }
 
-// ───────────── WALLET CONNECT ─────────────
-async function connectWallet(){
- if(!window.ethereum) return alert("Install MetaMask first.");
- try{
-   await window.ethereum.request({method:"eth_requestAccounts"});
-   provider=new ethers.providers.Web3Provider(window.ethereum);
-   signer=provider.getSigner(); account=await signer.getAddress();
-   const net=await provider.getNetwork();
-   if(net.chainId!==369)
-     await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x171"}]});
-   document.getElementById("status").textContent=`Connected: ${account.slice(0,8)}…${account.slice(-6)}`;
-   document.getElementById("connect").style.display="none";
-   document.getElementById("disconnect").style.display="block";
-   shield=new ethers.Contract(SHIELD_CA,FULL_SHIELD_ABI,signer);
-   token=new ethers.Contract(TOKEN_CA,TOKEN_ABI,signer);
-   vault=new ethers.Contract(VAULT_CA,VAULT_ABI,signer);
-   document.getElementById("generateDepositBtn").disabled=false;
-   updateStats(); setInterval(updateStats,15000);
- }catch(e){alert("Wallet connect failed: "+e.message);}
+// ───────────── WALLET CONNECT (Mobile-Ready) ─────────────
+async function connectWallet() {
+  try {
+    if (window.ethereum) {
+      // MetaMask / Brave / Coinbase browser
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+    } else {
+      // WalletConnect fallback (for TrustWallet, OKX, etc.)
+      const wc = new WalletConnectProvider.default({
+        rpc: { 369: "https://rpc.pulsechain.com" },
+        chainId: 369
+      });
+      await wc.enable();
+      provider = new ethers.providers.Web3Provider(wc);
+    }
+
+    signer = provider.getSigner();
+    account = await signer.getAddress();
+    const net = await provider.getNetwork();
+
+    if (net.chainId !== 369) {
+      try {
+        await provider.send("wallet_switchEthereumChain", [{ chainId: "0x171" }]);
+      } catch (err) {
+        console.warn("⚠️ Chain switch failed", err);
+      }
+    }
+
+    shield = new ethers.Contract(SHIELD_CA, FULL_SHIELD_ABI, signer);
+    token  = new ethers.Contract(TOKEN_CA, TOKEN_ABI, signer);
+    vault  = new ethers.Contract(VAULT_CA, VAULT_ABI, signer);
+
+    document.getElementById("status").textContent = `Connected: ${account.slice(0,8)}…${account.slice(-6)}`;
+    document.getElementById("connect").style.display = "none";
+    document.getElementById("disconnect").style.display = "block";
+    document.getElementById("generateDepositBtn").disabled = false;
+
+    updateStats();
+    setInterval(updateStats, 15000);
+  } catch (e) {
+    alert("Wallet connection failed: " + e.message);
+  }
 }
 document.getElementById("connect").onclick=connectWallet;
 document.getElementById("disconnect").onclick=()=>location.reload();
@@ -811,5 +884,9 @@ function autoFillReclaim(hash) {
 // Default startup
 setMainTab("shield");
 </script>
+
+<!-- WalletConnect library -->
+<script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 </body>
 </html>
+
