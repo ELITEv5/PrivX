@@ -524,42 +524,88 @@
   </div>
 </div>
 
-  <!-- ───────────── ABOUT TAB ───────────── -->
-  <div id="aboutTab" style="display:none;">
-    <div class="card">
-      <h2 style="text-align:center; color:#a78bfa;">About PrivX Stealth Shield</h2>
-      <p style="text-align:center; line-height:1.8; font-size:0.95rem;">
-     <p>Every blockchain transaction is public. Every balance, every address, every connection —
-  all visible, forever. Transparency was meant for systems, not for people.</p>
+  <!-- ───────────── HOW TO TAB (Replaces About) ───────────── -->
+<div id="aboutTab" style="display:none;">
+  <div class="card">
+    <h2 style="text-align:center; color:#a78bfa;">How to Use PrivX Stealth Shield</h2>
 
-  <p><strong>PRIVX Stealth Shield</strong> exists to restore the human right to
-  transact privately. It’s not about hiding — it’s about <strong>freedom</strong>:
-  the ability to act without being profiled, tracked, or targeted. Just like cash,
-  your right to privacy in crypto should be unquestioned.</p>
+    <p style="line-height:1.8; font-size:0.95rem;">
+      <strong>Every blockchain transaction is public.</strong>  
+      Every balance, every address, every connection — all visible, forever.  
+      Transparency was meant for systems, not for people.
+    </p>
 
-  <p>When hundreds of users shield their funds together, something powerful happens:
-  <strong>statistical invisibility.</strong> Each new deposit adds noise, each withdrawal
-  blends deeper into the crowd. There is no single point of failure, no centralized mixer —
-  just math and participation. The more people who join, the stronger the privacy field becomes.</p>
+    <p>
+      <strong>PrivX Stealth Shield</strong> restores the human right to transact privately.
+      It’s not about hiding — it’s about <strong>freedom</strong>:  
+      the ability to act without being profiled, tracked, or targeted.
+    </p>
 
-  <p>Zero-knowledge systems try to hide each transaction individually.
-  PRIVX Shield achieves privacy through <strong>collective participation</strong> —
-  cheaper, faster, and infinitely scalable. It’s the power of many acting as one.
-  This is <em>mathematical privacy</em>, not secrecy: every deposit is an equation,
-  every withdrawal an anonymous solution.</p>
+    <p>
+      When hundreds of users shield funds together, something powerful happens:
+      <strong>statistical invisibility</strong>.  
+      Each deposit adds noise, each withdrawal blends deeper into the crowd.
+      There’s no centralized mixer — only math and participation.
+    </p>
 
-  <blockquote style="border-left:3px solid #8b5cf6;padding-left:1rem;margin:1rem 0;color:#ccc;">
-    “Cash doesn’t make you a criminal. It makes you free.  
-    Privacy on-chain should be no different.”
-  </blockquote>
+    <blockquote style="border-left:3px solid #8b5cf6;padding-left:1rem;margin:1rem 0;color:#ccc;">
+      “Cash doesn’t make you a criminal. It makes you free.  
+      Privacy on-chain should be no different.”
+    </blockquote>
 
-  <p>Each deposit is locked under a <code>keccak256(secret)</code> hash,
-  unlinking it from any future withdrawal. The Shield’s commit–reveal
-  mechanism ensures even your withdrawal intent remains hidden until
-  it’s safe to reveal — protecting you from mempool tracking and
-  front-running.</p>
-    </div>
+    <h3 style="margin-top:2rem;color:#a78bfa;">🧭 Step-by-Step Guide</h3>
+    <ol style="margin-left:1.2rem; line-height:1.8;">
+      <li><strong>Generate a Secret:</strong>  
+          Press <em>“Generate New Secret”</em>. This creates a random 64-character key and its hash.</li>
+      <li><strong>Backup Immediately:</strong>  
+          Download the backup .txt file before doing anything else.  
+          Losing your secret means losing your deposit forever — there is no recovery.</li>
+      <li><strong>Deposit PRIVX:</strong>  
+          Approve and deposit your chosen amount.  
+          The Shield takes a small <strong>0.3 % fee</strong> which is automatically burned and partially sent to the Mining Vault.</li>
+      <li><strong>Share the Secret:</strong>  
+          Send your secret string privately (never the hash) to your intended receiver.</li>
+      <li><strong>Receiver Commits:</strong>  
+          The receiver pastes the secret, generates a commit hash, and submits it on-chain.  
+          This locks the withdrawal window for ~13 minutes (≈ 100 blocks).</li>
+      <li><strong>Withdraw Privately:</strong>  
+          After the commit window, the receiver can withdraw to 1–3 new wallets.  
+          The Shield splits the amount randomly — unlinkable on-chain.</li>
+      <li><strong>Reclaim (optional):</strong>  
+          If a deposit is never withdrawn after 7 days, anyone can reclaim it.  
+          The original amount is burned minus a small <strong>5 % bounty</strong> to the reclaimer.</li>
+    </ol>
+
+    <h3 style="margin-top:2rem;color:#a78bfa;">🔐 Safety & Privacy Best Practices</h3>
+    <ul style="margin-left:1.2rem; line-height:1.8;">
+      <li>Always <strong>download your backup</strong> and store it offline.</li>
+      <li>Do <strong>not reuse wallets</strong> for withdrawals — use fresh addresses every time.</li>
+      <li>Never reveal your secret on-chain, in DMs, or screenshots.</li>
+      <li>Perform commits and withdrawals using different devices or IPs if possible.</li>
+      <li>Wait several minutes between transactions for maximum anonymity.</li>
+      <li>The Shield contract is <strong>immutable and non-custodial</strong>; no admin can help recover lost secrets.</li>
+    </ul>
+
+    <h3 style="margin-top:2rem;color:#a78bfa;">⚙️ How the Mining Vault Works</h3>
+    <p style="line-height:1.8;">
+      Every deposit and reclaim contributes a small <strong>0.3 % fee</strong>.  
+      80 % of this fee is permanently burned, and 20 % flows into the <strong>Mining Vault V13</strong>.  
+      The Vault continuously distributes <em>PRIVX mining rewards</em> to users who deposit or reclaim —  
+      rewarding participation in the Shield ecosystem.
+    </p>
+
+    <p>
+      The Vault’s reward rate adjusts automatically based on its balance and the total network activity.
+      Depositing when the Vault is full yields higher rewards; as it empties, rates normalize.
+      This creates a <strong>self-balancing, deflationary economy</strong> that rewards early privacy adopters.
+    </p>
+
+    <p style="margin-top:2rem; color:#94a3b8; text-align:center;">
+      <em>Mathematical privacy, automated rewards, and zero custodial risk —  
+      this is the PrivX Stealth Shield V13.</em>
+    </p>
   </div>
+</div>
 
 <footer>SHIELD_CA = 0x772Cc0a6AD3620447043b513717C4967b008D504
 PrivX_CA  = 0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986
