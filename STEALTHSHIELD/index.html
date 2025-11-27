@@ -272,13 +272,24 @@ document.getElementById("depositBtn").onclick = async () => {
   document.getElementById("generateCommitBtn").onclick = () => {
   rawSecret = document.getElementById("receiverSecret").value.trim().toLowerCase();
   
-  // FINAL CORRECT VERSION FOR YOUR DEPLOYED V13 CONTRACT
   commitHash = ethers.utils.keccak256(
     ethers.utils.solidityPack(
       ["address", "string"],
       [account.toLowerCase(), rawSecret]
     )
   );
+  
+  console.log("FINAL V13 COMMIT HASH →", commitHash);  // ← CHECK THIS IN CONSOLE (F12)
+  
+  document.getElementById("commitHashDisplay").innerHTML =
+    `Commit Hash Ready<br><small>${commitHash}</small>`;
+  document.getElementById("commitHashDisplay").style.display = "block";
+  document.getElementById("receiverOutput").style.display = "block";
+  
+  // FORCE ENABLE BUTTONS
+  document.getElementById("commitBtn").disabled = false;
+  document.getElementById("withdrawBtn").disabled = false;
+};
   
   document.getElementById("commitHashDisplay").innerHTML =
     `Commit Hash Ready<br><small style="font-size:0.7rem;word-break:break-all;">${commitHash}</small>`;
