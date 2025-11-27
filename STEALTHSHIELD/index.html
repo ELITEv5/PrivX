@@ -683,21 +683,28 @@ function setMode(m){
   document.getElementById(id).classList.toggle("active",id==="tab"+(m==="depositor"?"Depositor":"Receiver")));
 }
 
-// ───────────── WALLET CONNECT (Mobile-Ready) ─────────────
+// ───────────── WALLET CONNECT (Smart Mobile/Desktop Logic) ─────────────
 async function connectWallet() {
   try {
-    if (window.ethereum) {
-      // MetaMask / Brave / Coinbase browser
+    const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+
+    if (window.ethereum && (!isMobile || window.ethereum.isMetaMask || window.ethereum.isTrust)) {
+      // ✅ Use injected provider (MetaMask, Brave, Trust, etc.)
       await window.ethereum.request({ method: "eth_requestAccounts" });
       provider = new ethers.providers.Web3Provider(window.ethereum);
-    } else {
-      // WalletConnect fallback (for TrustWallet, OKX, etc.)
+    } else if (!isMobile) {
+      // ✅ Desktop fallback (WalletConnect QR)
       const wc = new WalletConnectProvider.default({
         rpc: { 369: "https://rpc.pulsechain.com" },
-        chainId: 369
+        chainId: 369,
+        qrcode: true
       });
       await wc.enable();
       provider = new ethers.providers.Web3Provider(wc);
+    } else {
+      // ❌ Mobile browser without injected wallet
+      alert("Please open this site inside your wallet browser (e.g. MetaMask or Trust Wallet).");
+      return;
     }
 
     signer = provider.getSigner();
@@ -716,7 +723,8 @@ async function connectWallet() {
     token  = new ethers.Contract(TOKEN_CA, TOKEN_ABI, signer);
     vault  = new ethers.Contract(VAULT_CA, VAULT_ABI, signer);
 
-    document.getElementById("status").textContent = `Connected: ${account.slice(0,8)}…${account.slice(-6)}`;
+    document.getElementById("status").textContent =
+      `Connected: ${account.slice(0,8)}…${account.slice(-6)}`;
     document.getElementById("connect").style.display = "none";
     document.getElementById("disconnect").style.display = "block";
     document.getElementById("generateDepositBtn").disabled = false;
