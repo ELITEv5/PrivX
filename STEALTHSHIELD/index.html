@@ -206,14 +206,16 @@ updateStats();
 document.getElementById("generateDepositBtn").onclick = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   rawSecret = Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
-  depositHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(rawSecret));
+  
+  // CORRECT: matches Solidity's keccak256(abi.encode(string secret))
+  depositHash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"], [rawSecret]));
+  
   document.getElementById("secretField").value = rawSecret;
   document.getElementById("depositHashField").value = depositHash;
   document.getElementById("depositorOutput").style.display = "block";
   document.getElementById("downloadBackup").onclick = () => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([`Secret: ${rawSecret}\nHash: ${depositHash}`],{type:"text/plain"}));
-    a.download = "privx-backup.txt"; a.click();
+    const blob = new Blob([`Secret: ${rawSecret}\nHash: ${depositHash}`],{type:"text/plain"});
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "privx-backup.txt"; a.click();
   };
   ["approveBtn","depositBtn"].forEach(id=>document.getElementById(id).disabled=false);
 };
