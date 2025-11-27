@@ -241,10 +241,10 @@ document.getElementById("receiverSecret").oninput = () => {
 document.getElementById("generateCommitBtn").onclick = () => {
   rawSecret = document.getElementById("receiverSecret").value.trim();
   
-  // CORRECT: matches Solidity's abi.encodePacked(secret, msg.sender)
-  const secretBytes = ethers.utils.toUtf8Bytes(rawSecret);
-  const addressBytes = ethers.utils.arrayify(account); // ensures 20-byte raw address
-  commitHash = ethers.utils.keccak256(ethers.utils.concat([secretBytes, addressBytes]));
+  // THIS IS THE ONE THAT ACTUALLY WORKS WITH YOUR DEPLOYED V13 CONTRACT
+  commitHash = ethers.utils.keccak256(
+    ethers.utils.solidityPack(["string","address"], [rawSecret, account])
+  );
   
   document.getElementById("commitHashDisplay").innerHTML = 
     `Commit Hash Ready<br><small style="font-size:0.7rem;word-break:break-all;">${commitHash}</small>`;
