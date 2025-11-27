@@ -295,6 +295,27 @@ async function reclaimDeposit(hash) {
 }
 
 // MINING TIERS + CHECK DEPOSIT + ALL OTHER LOGIC — unchanged and perfect
+// === UPDATE LIVE STATS ===
+async function updateStats() {
+  if (!pubShield) return;
+  try {
+    const [burned, vault] = await Promise.all([
+      pubShield.totalBurned(),
+      pubShield.vaultBalance()
+    ]);
+
+    const burnedDisplay = Number(ethers.utils.formatUnits(burned, 18)).toLocaleString(undefined, {maximumFractionDigits: 2});
+    const vaultDisplay = Number(ethers.utils.formatUnits(vault, 18)).toLocaleString(undefined, {maximumFractionDigits: 2});
+
+    document.getElementById("burnCounter").textContent = `${burnedDisplay} PRIVX`;
+    document.getElementById("shieldBalance").textContent = `${vaultDisplay} PRIVX`;
+    const vaultLive = document.getElementById("vaultLive");
+    if (vaultLive) vaultLive.textContent = vaultDisplay;
+
+  } catch (err) {
+    console.warn("updateStats failed:", err);
+  }
+}
 
 // INIT
 setMainTab('shield');
