@@ -3,55 +3,61 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PrivX Stealth Shield V13 — Immortal Vault Edition</title>
+<title>PrivX Stealth Shield V13 — Final Immortal Edition</title>
 <script src="./ethers.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg:#0f1117; --card:#171a21; --text:#e2e8f0; --muted:#94a3b8;
-    --primary:#a78bfa; --success:#22c55e; --gold:#fbbf24; --border:#2d3748;
+    --primary:#a78bfa; --success:#22c55e; --gold:#f59e0b;
+    --border:#2d3748; --danger:#ef4444;
   }
-  body { margin:0; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; line-height:1.6; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font-family:'Inter',sans-serif; line-height:1.6; }
   .container { max-width:460px; margin:2rem auto; padding:0 1rem; }
   header { text-align:center; padding:2.5rem 0 1.5rem; }
   header img { height:96px; border-radius:20px; box-shadow:0 10px 40px rgba(167,139,250,0.5); }
-  header h1 { font-size:2rem; margin:1rem 0 0.4rem; color:white; font-weight:700; background:linear-gradient(90deg,#a78bfa,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  header h1 { font-size:2rem; margin:1rem 0 0.4rem; font-weight:700;
+    background:linear-gradient(90deg,#a78bfa,#ec4899); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
   header p { color:var(--muted); font-size:1.05rem; }
 
-  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:1.6rem; margin:1.6rem 0; }
-
-  .btn {
-    background:var(--primary); color:white; border:none; border-radius:12px;
-    padding:1rem; width:100%; font-weight:600; cursor:pointer; transition:0.2s; font-size:1.05rem;
-  }
+  .card { background:var(--card); border:1px solid var(--border);
+    border-radius:16px; padding:1.6rem; margin:1.6rem 0; }
+  .btn, .btn-neutral { border:none; border-radius:12px; padding:1rem; width:100%;
+    font-weight:600; cursor:pointer; transition:0.2s; font-size:1.05rem; }
+  .btn { background:var(--primary); color:white; }
   .btn:hover { background:#8b5cf6; }
-  .btn:disabled { background:#334155; cursor:not-allowed; opacity:0.7; }
-  .btn-success { background:var(--success); }
+  .btn-success { background:var(--success); color:white; }
   .btn-gold { background:var(--gold); color:black; }
   .btn-neutral { background:#334155; color:white; }
-
+  .btn:disabled { opacity:0.6; cursor:not-allowed; }
   input, textarea {
-    width:100%; padding:1rem; border-radius:12px; border:1px solid var(--border);
-    background:#1e2533; color:white; font-size:1rem; margin:0.6rem 0;
-    box-sizing:border-box; font-family:monospace;
+    width:100%; padding:1rem; border-radius:12px;
+    border:1px solid var(--border); background:#1e2533;
+    color:white; font-size:1rem; margin:0.6rem 0;
+    font-family:monospace; box-sizing:border-box;
   }
-
-  .label { display:block; margin:1.4rem 0 0.5rem; font-size:1rem; color:var(--muted); font-weight:500; }
-  .critical { background:#7f1d1d; color:#fca5a5; padding:1.2rem; border-radius:12px; margin:1.4rem 0; font-weight:600; text-align:center; }
-  .warning { color:#f59e0b; font-size:0.95rem; margin-top:0.6rem; display:block; text-align:center; }
-
-  .tab { padding:1rem; background:#1e2533; border-radius:12px; cursor:pointer; text-align:center; margin:0.5rem 0; font-size:0.9rem; }
+  .label { display:block; margin:1.2rem 0 0.5rem; font-size:1rem;
+    color:var(--muted); font-weight:500; }
+  .critical { background:#7f1d1d; color:#fca5a5; padding:1.2rem;
+    border-radius:12px; margin:1.2rem 0; font-weight:600;
+    text-align:center; }
+  .tab { padding:1rem; background:#1e2533; border-radius:12px;
+    cursor:pointer; text-align:center; margin:0.4rem 0;
+    font-size:0.9rem; }
   .tab.active { background:var(--primary); color:white; font-weight:600; }
-
-  .highlight { background:#1e4d3d; color:#22c55e; padding:0.8rem; border-radius:8px; margin:1rem 0; font-family:monospace; font-weight:bold; text-align:center; }
-
-  .reclaim-item { background:#2d1b3a; padding:1rem; border-radius:12px; margin:0.8rem 0; border:1px solid #444; }
-
-  .tier { background:#1e2533; padding:1rem; border-radius:12px; margin:0.8rem 0; text-align:center; }
-  .tier-title { font-size:1rem; color:#a78bfa; }
-  .tier-reward { font-size:1.6rem; font-weight:800; color:#22c55e; margin:0.5rem 0; }
-
+  .highlight { background:#1e4d3d; color:#22c55e; padding:0.8rem;
+    border-radius:8px; margin:1rem 0; font-family:monospace;
+    font-weight:bold; text-align:center; }
+  .reclaim-item { background:#2d1b3a; padding:1rem;
+    border-radius:12px; margin:0.8rem 0; border:1px solid #444; }
   footer { text-align:center; padding:2.5rem; color:#475569; font-size:0.9rem; }
+
+  .stat-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; }
+  .stat { background:#1e2533; padding:1rem; border-radius:12px;
+    text-align:center; border:1px solid var(--border); }
+  .stat-label { color:var(--muted); font-size:0.85rem; margin-bottom:0.4rem; }
+  .stat-value { font-size:1rem; font-weight:600; color:var(--text); }
 </style>
 </head>
 <body>
@@ -62,16 +68,18 @@
     <p>Private • Instant • Immortal</p>
   </header>
 
+  <!-- MAIN NAV TABS -->
   <div class="card">
-    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:0.5rem;">
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:0.5rem;">
       <div class="tab active" id="tabShield" onclick="setMainTab('shield')">Shield</div>
       <div class="tab" id="tabVault" onclick="setMainTab('vault')">Mining</div>
       <div class="tab" id="tabReclaim" onclick="setMainTab('reclaim')">Reclaim</div>
       <div class="tab" id="tabAbout" onclick="setMainTab('about')">About</div>
     </div>
   </div>
-  <!-- Shield Tab -->
+  <!-- SHIELD TAB -->
   <div id="shieldTab">
+    <!-- Mode Tabs -->
     <div class="card">
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
         <div class="tab active" id="tabDepositor" onclick="setMode('depositor')">Depositor</div>
@@ -79,10 +87,12 @@
       </div>
     </div>
 
+    <!-- DEPOSITOR SECTION -->
     <div id="depositorSection">
       <div class="card">
         <div class="label">1. Generate Secret + Hash</div>
-        <button id="generateDepositBtn" class="btn">Generate New Secret</button>
+        <button id="generateDepositBtn" class="btn" disabled>Generate New Secret</button>
+
         <div id="depositorOutput" style="display:none; margin-top:1.5rem;">
           <div class="label">Your Secret (64 chars)</div>
           <textarea id="secretField" readonly rows="2"></textarea>
@@ -92,59 +102,60 @@
           <button id="downloadBackup" class="btn-success">Download Backup .txt (REQUIRED)</button>
         </div>
       </div>
+
       <div class="card">
         <div class="label">Amount to Deposit (PRIVX)</div>
         <input id="depositAmount" type="number" step="any" placeholder="e.g. 5000" />
-        <button id="approveBtn" class="btn" disabled>Approve PRIVX</button>
+        <button id="approveBtn" class="btn" disabled style="margin-top:1rem;">Approve PRIVX</button>
         <button id="depositBtn" class="btn" disabled style="margin-top:0.8rem;">Deposit + Mine Reward</button>
       </div>
     </div>
 
+    <!-- RECEIVER SECTION -->
     <div id="receiverSection" style="display:none;">
       <div class="card">
         <div class="label">1. Secret from Depositor</div>
         <textarea id="receiverSecret" rows="2" placeholder="Paste 64-char secret here"></textarea>
         <button id="generateCommitBtn" class="btn" disabled>Generate Commit Hash</button>
       </div>
+
       <div class="card">
         <div class="label">2. Commit (Privacy Lock)</div>
         <div id="commitHashDisplay" class="highlight" style="display:none;">Commit Hash Ready</div>
         <button id="commitBtn" class="btn" disabled>Commit (~13 min lock)</button>
       </div>
+
       <div class="card">
         <div class="label">3. Withdraw Privately</div>
         <input id="wallet1" placeholder="Fresh wallet 1" />
         <input id="wallet2" placeholder="Fresh wallet 2 (optional)" />
         <input id="wallet3" placeholder="Fresh wallet 3 (optional)" />
         <button id="withdrawBtn" class="btn" disabled>Withdraw (Random Split)</button>
-        <small class="warning">Use brand-new wallets only</small>
+        <small class="label" style="color:#f59e0b; text-align:center;">Use brand-new wallets only</small>
       </div>
     </div>
-  </div>
 
-  <!-- Mining Vault Tab -->
-  <div id="vaultTab" style="display:none;">
+    <!-- CHECK ANY DEPOSIT -->
     <div class="card">
-      <h2 style="text-align:center; color:#a78bfa; margin:0;">Mining Vault Rewards</h2>
-      <p style="text-align:center; color:var(--muted); font-size:0.9rem;">Deposit early → higher tier, greater yield</p>
-      <div id="tierList" style="margin-top:1rem;"></div>
-      <div class="highlight" style="margin-top:1.5rem; font-size:1.2rem;">
-        Current Vault: <span id="vaultLive">—</span> PRIVX
-      </div>
+      <div class="label">Check Any Deposit</div>
+      <input id="checkHashInput" placeholder="0x..." />
+      <button id="checkBtn" class="btn">Check Status</button>
+      <div id="checkResult" class="highlight" style="display:none; text-align:left; background:#1e2533;"></div>
     </div>
   </div>
 
-  <!-- Reclaim Tab -->
+  <!-- RECLAIM TAB -->
   <div id="reclaimTab" style="display:none;">
     <div class="card">
-      <h2 style="text-align:center; color:#fbbf24;">Reclaim Expired Deposits</h2>
-      <p style="text-align:center; color:var(--muted); font-size:0.9rem;">5% bounty • 0.3% fee • Live updates</p>
-      <button id="scanReclaimBtn" class="btn" onclick="scanReclaimable()">Scan Blockchain</button>
+      <h2 style="text-align:center; color:#f59e0b;">Reclaim Expired Deposits</h2>
+      <p style="text-align:center; color:var(--muted); font-size:0.9rem;">5% bounty • 0.3% fee • Auto-refresh</p>
+      <button id="scanReclaimBtn" class="btn">Scan Blockchain</button>
       <div id="reclaimStatus" style="margin-top:1rem; text-align:center; color:var(--muted);"></div>
       <div id="reclaimList" style="margin-top:1rem;"></div>
     </div>
   </div>
-  <!-- About Tab -->
+
+  <!-- ABOUT TAB -->
   <div id="aboutTab" style="display:none;">
     <div class="card">
       <h2 style="text-align:center; color:#a78bfa;">What is PrivX?</h2>
@@ -152,66 +163,58 @@
         <strong>PrivX is digital cash.</strong><br><br>
         In a world of transparent chains and surveillance finance, PrivX is the final stand.<br><br>
         Like cash in your hand — no one sees who you paid, no one sees what you own.<br><br>
-        The Stealth Shield is not a tool.<br>It is a declaration of financial sovereignty.<br><br>
+        The Stealth Shield is not a tool.<br>
+        It is a declaration of financial sovereignty.<br><br>
         <strong>We reject transparency when it means control.</strong><br>
         We choose freedom.
       </p>
+
       <div style="text-align:center; margin-top:2rem;">
         <button class="btn" onclick="window.open('https://app.pulsex.com/swap?outputCurrency=0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986','_blank')">
           Buy PRIVX on PulseX
         </button>
-        <button class="btn-neutral" style="margin-top:0.8rem;" onclick="navigator.clipboard.writeText('0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986');alert('CA Copied!')">
+        <button class="btn-neutral" style="margin-top:0.8rem;"
+          onclick="navigator.clipboard.writeText('0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986');alert('CA Copied!')">
           Copy PRIVX Contract
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Shared Wallet + Stats -->
+  <!-- SHARED WALLET + STATS -->
   <div class="card">
     <button id="connect" class="btn">Connect Wallet</button>
-    <button id="disconnect" class="btn" style="display:none; margin-top:0.6rem;">Disconnect</button>
+    <button id="disconnect" class="btn-neutral" style="display:none; margin-top:0.6rem;">Disconnect</button>
     <div id="status" style="margin-top:0.8rem; color:var(--muted); text-align:center;"></div>
   </div>
 
-  <div class="card">
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-      <div>
-        <div class="label">Total Burned</div>
-        <div id="burnCounter" class="highlight">—</div>
-      </div>
-      <div>
-        <div class="label">In Shield</div>
-        <div id="shieldBalance" class="highlight">—</div>
-      </div>
-    </div>
+  <!-- GLOBAL STATS -->
+  <div class="stat-grid">
+    <div class="stat"><div class="stat-label">Total Burned</div><div id="burnCounter" class="stat-value">—</div></div>
+    <div class="stat"><div class="stat-label">In Shield</div><div id="shieldBalance" class="stat-value">—</div></div>
+    <div class="stat"><div class="stat-label">Vault Balance</div><div id="vaultBalance" class="stat-value">—</div></div>
   </div>
 
-  <div class="card">
-    <div class="label">Check Any Deposit</div>
-    <input id="checkHashInput" placeholder="0x..." />
-    <button id="checkBtn" class="btn">Check Status</button>
-    <div id="checkResult" class="highlight" style="display:none;"></div>
-  </div>
-</div>
-
-<footer>PrivX Stealth Shield V13 — Freedom Is Not Transparent — Elite Team6 © 2025</footer>
-
+<footer>PrivX Stealth Shield V13 • Freedom Is Not Transparent • Elite Team6 © 2025</footer>
 <script>
-// === CONFIG ===
+// ========================= CONFIGURATION =========================
 const SHIELD_CA = "0x772Cc0a6AD3620447043b513717C4967b008D504";
-const TOKEN_CA = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-const RPCS = ["https://rpc.pulsechain.com","https://rpc-pulsechain.g4mm4.io"];
+const VAULT_CA  = "0x5F92468586044b55e251D5e5E4dFF8376A146dF1";
+const TOKEN_CA  = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+
+const RPCS = [
+  "https://rpc.pulsechain.com",
+  "https://rpc-pulsechain.g4mm4.io"
+];
 let currentRpc = 0;
 const getProvider = () => new ethers.providers.JsonRpcProvider(RPCS[currentRpc]);
 
-// === GLOBALS ===
-let provider, signer, account, shield, token, pubShield;
+let provider, signer, account, shield, vault, token, pubShield, pubVault;
 let rawSecret = "", depositHash = "", commitHash = "";
 let backupDownloaded = false;
 
-// === ABI DEFINITIONS ===
-const FULL_SHIELD_ABI = [
+// ========================= ABI DEFINITIONS =========================
+const SHIELD_ABI = [
   {"type":"constructor","inputs":[{"name":"_privx","type":"address"}]},
   {"name":"totalBurned","type":"function","outputs":[{"type":"uint256"}],"stateMutability":"view"},
   {"name":"vaultBalance","type":"function","outputs":[{"type":"uint256"}],"stateMutability":"view"},
@@ -220,86 +223,115 @@ const FULL_SHIELD_ABI = [
   {"name":"commit","type":"function","inputs":[{"type":"bytes32"}],"stateMutability":"nonpayable"},
   {"name":"withdraw","type":"function","inputs":[{"type":"string"},{"type":"address[]"}],"stateMutability":"nonpayable"},
   {"name":"reclaim","type":"function","inputs":[{"type":"bytes32"}],"stateMutability":"nonpayable"},
-  {"name":"Reclaimed","type":"event","inputs":[{"indexed":true,"name":"hash","type":"bytes32"},{"name":"burned","type":"uint256"},{"name":"bounty","type":"uint256"}]},
-  {"name":"Deposited","type":"event","inputs":[{"indexed":true,"name":"hash","type":"bytes32"},{"name":"amount","type":"uint256"},{"indexed":true,"name":"depositor","type":"address"}]}
+  {"name":"Deposited","type":"event","inputs":[{"indexed":true,"name":"hash","type":"bytes32"},{"name":"amount","type":"uint256"},{"indexed":true,"name":"depositor","type":"address"}]},
+  {"name":"Reclaimed","type":"event","inputs":[{"indexed":true,"name":"hash","type":"bytes32"},{"name":"burned","type":"uint256"},{"name":"bounty","type":"uint256"}]}
 ];
-pubShield = new ethers.Contract(SHIELD_CA, FULL_SHIELD_ABI, getProvider());
+const TOKEN_ABI = [
+  "function approve(address,uint256) returns(bool)",
+  "function allowance(address,address) view returns(uint256)"
+];
+const VAULT_ABI = [
+  "function vaultBalance() view returns(uint256)",
+  "function peakBalance() view returns(uint256)",
+  "function totalMined() view returns(uint256)",
+  "function currentRateBp() view returns(uint256)",
+  "function isSealed() view returns(bool)"
+];
 
-// === TAB SYSTEM ===
+// ========================= PUBLIC CONTRACTS =========================
+pubShield = new ethers.Contract(SHIELD_CA, SHIELD_ABI, getProvider());
+pubVault  = new ethers.Contract(VAULT_CA,  VAULT_ABI,  getProvider());
+
+// ========================= UI NAVIGATION =========================
 function setMainTab(tab) {
-  ["shieldTab","vaultTab","reclaimTab","aboutTab"].forEach(t=>document.getElementById(t).style.display="none");
-  document.getElementById(tab+"Tab").style.display="block";
-  ["tabShield","tabVault","tabReclaim","tabAbout"].forEach(t=>document.getElementById(t).classList.toggle("active",t==="tab"+tab.charAt(0).toUpperCase()+tab.slice(1)));
-  if(tab==="vault") { updateStats(); loadTiers(); }
-  if(tab==="reclaim") scanReclaimable();
+  ["shieldTab","vaultTab","reclaimTab","aboutTab"].forEach(t => {
+    document.getElementById(t).style.display = "none";
+  });
+  document.getElementById(tab + "Tab").style.display = "block";
+
+  ["tabShield","tabVault","tabReclaim","tabAbout"].forEach(t => {
+    document.getElementById(t).classList.toggle(
+      "active",
+      t === "tab" + tab.charAt(0).toUpperCase() + tab.slice(1)
+    );
+  });
+
+  if (tab === "vault") loadVaultStats();
+  if (tab === "reclaim") scanReclaimable();
 }
+
 function setMode(m) {
   document.getElementById("depositorSection").style.display = m==="depositor"?"block":"none";
   document.getElementById("receiverSection").style.display = m==="receiver"?"block":"none";
-  document.getElementById("tabDepositor").classList.toggle("active",m==="depositor");
-  document.getElementById("tabReceiver").classList.toggle("active",m==="receiver");
+  document.getElementById("tabDepositor").classList.toggle("active", m==="depositor");
+  document.getElementById("tabReceiver").classList.toggle("active", m==="receiver");
 }
 
-// === CONNECT WALLET ===
+// ========================= CONNECT WALLET =========================
 async function connectWallet() {
-  if (!window.ethereum) return alert("Please install MetaMask first.");
+  if (!window.ethereum) return alert("Install MetaMask first.");
   try {
     await window.ethereum.request({method:"eth_requestAccounts"});
     provider = new ethers.providers.Web3Provider(window.ethereum);
-    signer = provider.getSigner();
-    account = (await signer.getAddress()).toLowerCase();
+    signer   = provider.getSigner();
+    account  = (await signer.getAddress()).toLowerCase();
 
-    // Force PulseChain network
     const net = await provider.getNetwork();
-    if (net.chainId !== 369)
-      await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x171"}]});
+    if (net.chainId !== 369) {
+      await window.ethereum.request({
+        method:"wallet_switchEthereumChain",
+        params:[{chainId:"0x171"}]
+      });
+    }
 
-    document.getElementById("status").textContent = `Connected: ${account.slice(0,8)}…${account.slice(-6)}`;
-    document.getElementById("connect").style.display="none";
-    document.getElementById("disconnect").style.display="block";
+    shield = new ethers.Contract(SHIELD_CA, SHIELD_ABI, signer);
+    token  = new ethers.Contract(TOKEN_CA, TOKEN_ABI, signer);
+    vault  = new ethers.Contract(VAULT_CA,  VAULT_ABI,  signer);
 
-    // Initialize contracts
-    shield = new ethers.Contract(SHIELD_CA, FULL_SHIELD_ABI, signer);
-    token  = new ethers.Contract(TOKEN_CA, [
-      "function approve(address,uint256) returns(bool)",
-      "function allowance(address,address) view returns(uint256)"
-    ], signer);
-
+    document.getElementById("status").textContent =
+      `Connected: ${account.slice(0,8)}…${account.slice(-6)}`;
+    document.getElementById("connect").style.display = "none";
+    document.getElementById("disconnect").style.display = "block";
     document.getElementById("generateDepositBtn").disabled = false;
-    updateStats(); setInterval(updateStats,15000);
 
-    // === Reclaim Event Auto-Refresh ===
-    shield.on("Reclaimed", (hash, burned, bounty) => {
-      console.log("Reclaim event:", hash);
-      if (document.getElementById("reclaimTab").style.display !== "none") scanReclaimable();
+    updateStats();
+    setInterval(updateStats, 15000);
+
+    // Reclaim event listener (live refresh)
+    shield.on("Reclaimed", (hash,burned,bounty)=>{
+      console.log("Reclaim:", hash, "Bounty:", ethers.utils.formatUnits(bounty,18));
+      if (document.getElementById("reclaimTab").style.display!=="none") scanReclaimable();
     });
-  } catch(e){ alert("Connect failed: " + e.message); }
+
+  } catch(e) { alert("Wallet connect failed: "+e.message); }
 }
 document.getElementById("connect").onclick = connectWallet;
 document.getElementById("disconnect").onclick = ()=>location.reload();
 
-// === DEPOSITOR FLOW ===
-document.getElementById("generateDepositBtn").onclick = ()=>{
+// ========================= GENERATOR + DEPOSIT =========================
+document.getElementById("generateDepositBtn").onclick = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   rawSecret = Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");
   depositHash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["string"],[rawSecret]));
   document.getElementById("secretField").value = rawSecret;
   document.getElementById("depositHashField").value = depositHash;
-  document.getElementById("depositorOutput").style.display="block";
+  document.getElementById("depositorOutput").style.display = "block";
   backupDownloaded = false;
-  document.getElementById("approveBtn").disabled=true;
-  document.getElementById("depositBtn").disabled=true;
+  document.getElementById("approveBtn").disabled = true;
+  document.getElementById("depositBtn").disabled = true;
 };
 
-document.getElementById("downloadBackup").onclick = ()=>{
-  const blob = new Blob([`PRIVX V13 BACKUP\nSecret: ${rawSecret}\nHash: ${depositHash}\nDate: ${new Date().toLocaleString()}`],{type:"text/plain"});
+document.getElementById("downloadBackup").onclick = () => {
+  const blob = new Blob([
+    `PRIVX V13 BACKUP\nSecret: ${rawSecret}\nHash: ${depositHash}\nDate: ${new Date().toLocaleString()}`
+  ], {type:"text/plain"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "privx-v13-backup.txt";
   a.click();
   backupDownloaded = true;
-  document.getElementById("approveBtn").disabled=false;
-  document.getElementById("depositBtn").disabled=false;
+  document.getElementById("approveBtn").disabled = false;
+  document.getElementById("depositBtn").disabled = false;
   alert("Backup saved! You can now deposit.");
 };
 
@@ -307,27 +339,27 @@ document.getElementById("approveBtn").onclick = async()=>{
   try {
     await (await token.approve(SHIELD_CA, ethers.constants.MaxUint256)).wait();
     alert("PRIVX approved!");
-  } catch(e){ alert("Approval failed: " + e.message); }
+  } catch(e){ alert("Approve failed: "+e.message); }
 };
 
 document.getElementById("depositBtn").onclick = async()=>{
-  if(!backupDownloaded) return alert("Please download your backup first!");
+  if(!backupDownloaded) return alert("Download backup first!");
   const amt = document.getElementById("depositAmount").value;
-  if(!amt||!depositHash) return alert("Missing amount or hash");
+  if(!amt || !depositHash) return alert("Missing amount or hash");
   try {
     const tx = await shield.deposit(ethers.utils.parseUnits(amt,18), depositHash);
-    alert("Deposit sent!\nTx: " + tx.hash);
-  } catch(e){ alert("Deposit failed: " + e.message); }
+    alert(`Deposited successfully!\nTx: ${tx.hash}`);
+  } catch(e){ alert("Deposit failed: "+e.message); }
 };
 
-// === RECEIVER FLOW ===
+// ========================= RECEIVER FLOW =========================
 document.getElementById("receiverSecret").oninput = ()=>{
-  const s=document.getElementById("receiverSecret").value.trim();
-  document.getElementById("generateCommitBtn").disabled=s.length!==64;
+  const s = document.getElementById("receiverSecret").value.trim();
+  document.getElementById("generateCommitBtn").disabled = s.length!==64;
 };
 document.getElementById("generateCommitBtn").onclick = ()=>{
-  rawSecret=document.getElementById("receiverSecret").value.trim();
-  commitHash=ethers.utils.keccak256(ethers.utils.solidityPack(["string","address"],[rawSecret,account]));
+  rawSecret = document.getElementById("receiverSecret").value.trim();
+  commitHash = ethers.utils.keccak256(ethers.utils.solidityPack(["string","address"],[rawSecret,account]));
   document.getElementById("commitHashDisplay").innerHTML=`Commit Hash Ready<br><small>${commitHash}</small>`;
   document.getElementById("commitHashDisplay").style.display="block";
   document.getElementById("commitBtn").disabled=false;
@@ -336,35 +368,19 @@ document.getElementById("generateCommitBtn").onclick = ()=>{
 document.getElementById("commitBtn").onclick = async()=>{
   try {
     const tx = await shield.commit(commitHash);
-    alert("Commit successful!\nTx: " + tx.hash);
-  } catch(e){ alert("Commit failed: " + e.message); }
+    alert(`Commit successful!\nTx: ${tx.hash}`);
+  } catch(e){ alert("Commit failed: "+e.message); }
 };
 document.getElementById("withdrawBtn").onclick = async()=>{
   const wallets=["wallet1","wallet2","wallet3"].map(id=>document.getElementById(id).value.trim()).filter(a=>ethers.utils.isAddress(a));
-  if(!wallets.length)return alert("Enter at least one valid wallet.");
-  try {
-    const tx=await shield.withdraw(rawSecret, wallets);
-    alert("Withdraw complete!\nTx: " + tx.hash);
-  }catch(e){ alert("Withdraw failed: " + e.message); }
-};
-
-// === CHECK ANY DEPOSIT ===
-document.getElementById("checkBtn").onclick=async()=>{
-  const h=document.getElementById("checkHashInput").value.trim();
-  if(!h.startsWith("0x")||h.length!==66){document.getElementById("checkResult").innerHTML="Invalid hash";document.getElementById("checkResult").style.display="block";return;}
+  if(!wallets.length)return alert("Add at least one wallet");
   try{
-    const [amount,timestamp,claimed]=await pubShield.deposits(h);
-    if(amount.isZero()){document.getElementById("checkResult").innerHTML="No deposit found";document.getElementById("checkResult").style.display="block";return;}
-    const amt=Number(ethers.utils.formatUnits(amount,18)).toFixed(2);
-    const expires=Number(timestamp)+7*86400;
-    const daysLeft=Math.max(0,(expires-Date.now()/1000)/86400).toFixed(1);
-    const status=claimed?`<span style='color:#ef4444;'>Withdrawn</span>`:daysLeft<=0?`<span style='color:#f59e0b;'>Reclaimable Now (5% bounty)</span>`:`<span style='color:#22c55e;'>Active — ${daysLeft} days left</span>`;
-    document.getElementById("checkResult").innerHTML=`<strong>${amt} PRIVX</strong><br>Status: ${status}<br>Expires: ${new Date(expires*1000).toLocaleString()}`;
-    document.getElementById("checkResult").style.display="block";
-  }catch(e){document.getElementById("checkResult").innerHTML="Error reading deposit";document.getElementById("checkResult").style.display="block";}
+    const tx=await shield.withdraw(rawSecret, wallets);
+    alert(`Withdraw complete!\nTx: ${tx.hash}`);
+  }catch(e){ alert("Withdraw failed: "+e.message); }
 };
 
-// === RECLAIM LOGIC ===
+// ========================= RECLAIM SCAN =========================
 async function scanReclaimable(){
   if(!account)return alert("Connect wallet first");
   document.getElementById("reclaimStatus").textContent="Scanning...";
@@ -372,7 +388,8 @@ async function scanReclaimable(){
   try{
     const latest=await provider.getBlockNumber();
     const fromBlock=Math.max(0,latest-100000);
-    const events=await shield.queryFilter(shield.filters.Deposited(),fromBlock,latest);
+    const filter=shield.filters.Deposited();
+    const events=await shield.queryFilter(filter,fromBlock,latest);
     let found=0;
     for(const e of events){
       const hash=e.args.hash;
@@ -390,11 +407,12 @@ async function scanReclaimable(){
       div.innerHTML=`
         <div><strong>${hash.slice(0,10)}...${hash.slice(-8)}</strong></div>
         <div>${amt.toFixed(2)} PRIVX expired</div>
-        <div style="color:#fbbf24; margin:0.5rem 0;">Bounty: ${payout.toFixed(4)} PRIVX</div>
-        <button class="btn-gold" onclick="reclaimDeposit('${hash}')">Claim Now</button>`;
+        <div style="color:#f59e0b;margin:0.5rem 0;">Bounty: ${payout.toFixed(4)} PRIVX</div>
+        <button class="btn-gold" onclick="reclaimDeposit('${hash}')">Claim Now</button>
+      `;
       document.getElementById("reclaimList").appendChild(div);
     }
-    document.getElementById("reclaimStatus").textContent=found?`Found ${found} expired deposits!`:"No expired deposits.";
+    document.getElementById("reclaimStatus").textContent=found?`Found ${found} bounties!`:"No expired deposits.";
   }catch(e){document.getElementById("reclaimStatus").textContent="Scan failed";}
 }
 async function reclaimDeposit(hash){
@@ -403,52 +421,59 @@ async function reclaimDeposit(hash){
     const tx=await shield.reclaim(hash);
     alert("Claiming bounty...");
     await tx.wait();
-    alert("BOUNTY CLAIMED!");
-    scanReclaimable();
-  }catch(e){alert("Reclaim failed: "+e.message);}
+    alert("Bounty claimed!");
+  }catch(e){alert("Failed: "+e.message);}
 }
 
-// === MINING VAULT TIERS ===
-async function loadTiers(){
-  const tierList=document.getElementById("tierList");
-  const vaultLive=document.getElementById("vaultLive");
-  tierList.innerHTML="";
+// ========================= VAULT TAB (LIVE DATA) =========================
+async function loadVaultStats(){
+  const vaultTab=document.getElementById("vaultTab");
+  vaultTab.innerHTML=`
+    <div class="card">
+      <h2 style="text-align:center;color:#a78bfa;margin:0;">Mining Vault V13</h2>
+      <p style="text-align:center;color:var(--muted);font-size:0.9rem;">Dynamic, self-healing reward curve</p>
+      <div class="highlight" id="vaultData">Loading live data...</div>
+    </div>`;
   try{
-    const vault=await pubShield.vaultBalance();
-    vaultLive.textContent=Number(ethers.utils.formatUnits(vault,18)).toLocaleString(undefined,{maximumFractionDigits:2});
-  }catch{vaultLive.textContent="—";}
-  const tiers=[
-    {title:"Tier 1 — Pioneer",range:"< 10,000 PRIVX",reward:"1.2% / week"},
-    {title:"Tier 2 — Miner",range:"10,000 – 50,000 PRIVX",reward:"2.0% / week"},
-    {title:"Tier 3 — Validator",range:"50,000 – 100,000 PRIVX",reward:"3.5% / week"},
-    {title:"Tier 4 — Sentinel",range:"> 100,000 PRIVX",reward:"5.0% / week"}
-  ];
-  tiers.forEach(t=>{
-    const div=document.createElement("div");
-    div.className="tier";
-    div.innerHTML=`<div class='tier-title'>${t.title}</div><div style='color:#94a3b8;'>${t.range}</div><div class='tier-reward'>${t.reward}</div>`;
-    tierList.appendChild(div);
-  });
+    const [bal,peak,totalMined,rateBp,sealed]=await Promise.all([
+      pubVault.vaultBalance(),
+      pubVault.peakBalance(),
+      pubVault.totalMined(),
+      pubVault.currentRateBp(),
+      pubVault.isSealed()
+    ]);
+    const live=`<strong>Vault Balance:</strong> ${Number(ethers.utils.formatUnits(bal,18)).toFixed(2)} PRIVX<br>
+                <strong>Peak Balance:</strong> ${Number(ethers.utils.formatUnits(peak,18)).toFixed(2)} PRIVX<br>
+                <strong>Total Mined:</strong> ${Number(ethers.utils.formatUnits(totalMined,18)).toFixed(2)} PRIVX<br>
+                <strong>Current Rate:</strong> ${(rateBp/100).toFixed(2)} %<br>
+                <strong>Status:</strong> ${sealed?"<span style='color:#22c55e'>Sealed</span>":"<span style='color:#f59e0b'>Open</span>"}`;
+    document.getElementById("vaultData").innerHTML=live;
+  }catch(e){
+    document.getElementById("vaultData").innerHTML="Failed to load live data.";
+  }
 }
 
-// === LIVE STATS ===
+// ========================= GLOBAL STATS UPDATER =========================
 async function updateStats(){
-  if(!pubShield)return;
   try{
-    const[burned,vault]=await Promise.all([pubShield.totalBurned(),pubShield.vaultBalance()]);
-    const burnedDisplay=Number(ethers.utils.formatUnits(burned,18)).toLocaleString(undefined,{maximumFractionDigits:2});
-    const vaultDisplay=Number(ethers.utils.formatUnits(vault,18)).toLocaleString(undefined,{maximumFractionDigits:2});
-    document.getElementById("burnCounter").textContent=`${burnedDisplay} PRIVX`;
-    document.getElementById("shieldBalance").textContent=`${vaultDisplay} PRIVX`;
-    const vaultLive=document.getElementById("vaultLive");
-    if(vaultLive)vaultLive.textContent=vaultDisplay;
-  }catch(e){console.warn("updateStats failed:",e);}
+    const [burned,shieldBal,vaultBal]=await Promise.all([
+      pubShield.totalBurned(),
+      pubShield.vaultBalance(),
+      pubVault.vaultBalance()
+    ]);
+    document.getElementById("burnCounter").textContent=Number(ethers.utils.formatUnits(burned,18)).toFixed(2);
+    document.getElementById("shieldBalance").textContent=Number(ethers.utils.formatUnits(shieldBal,18)).toFixed(2);
+    document.getElementById("vaultBalance").textContent=Number(ethers.utils.formatUnits(vaultBal,18)).toFixed(2);
+  }catch(e){
+    console.warn("Stat update failed",e);
+    currentRpc=(currentRpc+1)%RPCS.length;
+    pubShield=new ethers.Contract(SHIELD_CA,SHIELD_ABI,getProvider());
+    pubVault =new ethers.Contract(VAULT_CA,VAULT_ABI,getProvider());
+  }
 }
 
-// === INIT ===
-setMainTab('shield');
-updateStats();
-setInterval(updateStats,15000);
+// ========================= INIT =========================
+setMainTab("shield");
 </script>
 </body>
 </html>
