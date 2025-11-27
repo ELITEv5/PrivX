@@ -1,11 +1,11 @@
 {
-  "name": "PrivX Shield Relay",
-  "short_name": "PrivX",
-  "description": "PrivX Shield Relay — Proof of Privacy Edition (V10)",
+  "name": "PrivX Stealth Shield V13",
+  "short_name": "PrivX Shield",
+  "description": "PrivX Stealth Shield V13 — Proof of Privacy • Mining Vault • Pulsechain Edition",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0ff1c0",
+  "background_color": "#0f1117",
+  "theme_color": "#a78bfa",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -20,3 +20,4 @@
     }
   ]
 }
+
