@@ -491,7 +491,7 @@
 
 <script>
 // ==========================================================
-//  PRIVX STEALTH SHIELD V13 — IMMORTAL BUILD FINAL
+//  PRIVX STEALTH SHIELD V13 — IMMORTAL BUILD FINAL (fixed)
 // ==========================================================
 const SHIELD_CA = "0x772Cc0a6AD3620447043b513717C4967b008D504";
 const TOKEN_CA  = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
@@ -505,9 +505,12 @@ const RPCS = [
 let currentRpc = 0;
 const getProvider = ()=>new ethers.providers.JsonRpcProvider(RPCS[currentRpc]);
 
+// ✅ Core state variables
 let provider, signer, account, shield, token, vault, pubShield, pubVault;
 let rawSecret="", depositHash="", commitHash="";
-let backupDownloaded=false, lastReclaimableHash="";
+let backupDownloaded=false; // <-- keep only this line, NOT lastReclaimableHash here
+
+console.log("✅ PrivX Stealth Shield init success (top section loaded)");
 
 // ───────────── ABIs ─────────────
 const FULL_SHIELD_ABI=[
@@ -519,6 +522,7 @@ const FULL_SHIELD_ABI=[
  {"name":"withdraw","type":"function","inputs":[{"type":"string"},{"type":"address[]"}],"stateMutability":"nonpayable"},
  {"name":"reclaim","type":"function","inputs":[{"type":"bytes32"}],"stateMutability":"nonpayable"}
 ];
+
 const TOKEN_ABI=[
  "function approve(address,uint256) returns(bool)",
  "function allowance(address,address) view returns(uint256)"
