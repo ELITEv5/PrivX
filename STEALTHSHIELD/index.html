@@ -259,18 +259,30 @@ pubShield = new ethers.Contract(SHIELD_CA, FULL_SHIELD_ABI, getProvider());
 pubVault  = new ethers.Contract(VAULT_CA,  VAULT_ABI,  getProvider());
 
 // ==========================================================
-//  TAB LOGIC
+//  FIXED TAB LOGIC — Correctly toggles visible sections
 // ==========================================================
 function setMainTab(tab) {
-  ["shieldTab","vaultTab","aboutTab"].forEach(id => {
-    document.getElementById(id).style.display = (id === tab + "Tab") ? "block" : "none";
-  });
+  const tabs = {
+    shield: document.getElementById("shieldTab"),
+    vault:  document.getElementById("vaultTab"),
+    about:  document.getElementById("aboutTab"),
+  };
 
-  ["tabShield","tabVault","tabAbout"].forEach(id => {
-    document.getElementById(id).classList.toggle("active", id === "tab" + tab.charAt(0).toUpperCase() + tab.slice(1));
-  });
+  // Hide all, then show selected
+  for (const key in tabs) {
+    if (tabs[key]) tabs[key].style.display = key === tab ? "block" : "none";
+  }
 
-  if (tab === "vault") loadVaultStats();  // load vault data only when opened
+  // Highlight the correct nav button
+  ["tabShield","tabVault","tabAbout"].forEach(id =>
+    document.getElementById(id).classList.toggle(
+      "active",
+      id === "tab" + tab.charAt(0).toUpperCase() + tab.slice(1)
+    )
+  );
+
+  // When opening vault tab, load fresh data
+  if (tab === "vault") loadVaultStats();
 }
 
 // Mode switching inside Shield tab
