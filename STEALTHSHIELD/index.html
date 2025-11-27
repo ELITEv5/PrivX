@@ -612,6 +612,10 @@ const VAULT_ABI=[
 
 pubShield=new ethers.Contract(SHIELD_CA,FULL_SHIELD_ABI,getProvider());
 pubVault=new ethers.Contract(VAULT_CA,VAULT_ABI,getProvider());
+const TOKEN_ABI_SIMPLE = ["function balanceOf(address) view returns (uint256)"];
+const pubToken = new ethers.Contract(TOKEN_CA, TOKEN_ABI_SIMPLE, getProvider());
+const BURN_ADDRESS = "0x000000000000000000000000000000000000dEaD";
+
 
 // ───────────── TAB CONTROL ─────────────
 function setMainTab(tab){
@@ -679,18 +683,33 @@ document.getElementById("connect").onclick=connectWallet;
 document.getElementById("disconnect").onclick=()=>location.reload();
 
 // ───────────── STATS ─────────────
-async function updateStats(){
- try{
-   const [burned,shieldBal,vaultBal]=await Promise.all([
-     pubShield.totalBurned(),pubShield.vaultBalance(),pubVault.vaultBalance()]);
-   document.getElementById("burnCounter").textContent=Number(ethers.utils.formatUnits(burned,18)).toLocaleString();
-   document.getElementById("shieldBalance").textContent=Number(ethers.utils.formatUnits(shieldBal,18)).toLocaleString();
-   document.getElementById("vaultBalance").textContent=Number(ethers.utils.formatUnits(vaultBal,18)).toLocaleString();
- }catch(e){
-   currentRpc=(currentRpc+1)%RPCS.length;
-   pubShield=new ethers.Contract(SHIELD_CA,FULL_SHIELD_ABI,getProvider());
-   pubVault=new ethers.Contract(VAULT_CA,VAULT_ABI,getProvider());
- }
+async function updateStats() {
+  try {
+    const [burnedFromContract, burnedFromAddress, shieldBal, vaultBal] = await Promise.all([
+      pubShield.totalBurned(),                  // internal reclaim burns
+      pubToken.balanceOf(BURN_ADDRESS),         // actual burn address balance
+      pubShield.vaultBalance(),                 // tokens held in Shield
+      pubVault.vaultBalance()                   // tokens held in Vault
+    ]);
+
+    // true burn = both contract-tracked + actual on-chain burns
+    const totalBurned = burnedFromContract.add(burnedFromAddress);
+
+    document.getElementById("burnCounter").textContent =
+      Number(ethers.utils.formatUnits(totalBurned, 18)).toLocaleString();
+
+    document.getElementById("shieldBalance").textContent =
+      Number(ethers.utils.formatUnits(shieldBal, 18)).toLocaleString();
+
+    document.getElementById("vaultBalance").textContent =
+      Number(ethers.utils.formatUnits(vaultBal, 18)).toLocaleString();
+
+  } catch (e) {
+    console.warn("⚠️ updateStats RPC issue", e.message);
+    currentRpc = (currentRpc + 1) % RPCS.length;
+    pubShield = new ethers.Contract(SHIELD_CA, FULL_SHIELD_ABI, getProvider());
+    pubVault  = new ethers.Contract(VAULT_CA, VAULT_ABI, getProvider());
+  }
 }
 
 // ───────────── VAULT STATS TAB ─────────────
