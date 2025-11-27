@@ -615,6 +615,8 @@ pubVault=new ethers.Contract(VAULT_CA,VAULT_ABI,getProvider());
 const TOKEN_ABI_SIMPLE = ["function balanceOf(address) view returns (uint256)"];
 const pubToken = new ethers.Contract(TOKEN_CA, TOKEN_ABI_SIMPLE, getProvider());
 const BURN_ADDRESS = "0x000000000000000000000000000000000000dEaD";
+const PULSECHAIN_BURN = "0x0000000000000000000000000000000000000369";
+
 
 
 // ───────────── TAB CONTROL ─────────────
@@ -682,18 +684,27 @@ async function connectWallet() {
 document.getElementById("connect").onclick=connectWallet;
 document.getElementById("disconnect").onclick=()=>location.reload();
 
-// ───────────── STATS ─────────────
+// ───────────── STATS (True Burn — All Known Burn Addresses) ─────────────
 async function updateStats() {
   try {
-    const [burnedFromContract, burnedFromAddress, shieldBal, vaultBal] = await Promise.all([
-      pubShield.totalBurned(),                  // internal reclaim burns
-      pubToken.balanceOf(BURN_ADDRESS),         // actual burn address balance
-      pubShield.vaultBalance(),                 // tokens held in Shield
-      pubVault.vaultBalance()                   // tokens held in Vault
+    const [
+      burnedFromContract,
+      burnedFromDead,
+      burnedFromPulseBurn,
+      shieldBal,
+      vaultBal
+    ] = await Promise.all([
+      pubShield.totalBurned(),                         // internal contract burns
+      pubToken.balanceOf(BURN_ADDRESS),                // main burn sink (0x...dEaD)
+      pubToken.balanceOf(PULSECHAIN_BURN),             // secondary Pulse burn sink (0x...0369)
+      pubShield.vaultBalance(),
+      pubVault.vaultBalance()
     ]);
 
-    // true burn = both contract-tracked + actual on-chain burns
-    const totalBurned = burnedFromContract.add(burnedFromAddress);
+    // True burn = all sinks + contract burns
+    const totalBurned = burnedFromContract
+      .add(burnedFromDead)
+      .add(burnedFromPulseBurn);
 
     document.getElementById("burnCounter").textContent =
       Number(ethers.utils.formatUnits(totalBurned, 18)).toLocaleString();
