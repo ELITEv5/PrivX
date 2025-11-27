@@ -269,16 +269,23 @@ document.getElementById("depositBtn").onclick = async () => {
   } catch(e) { alert(e.message.includes("Hash used")?"Hash already used — generate new":e.message); }
 };
 
-document.getElementById("commitBtn").onclick = async () => {
-  try { const tx = await shield.commit(commitHash); alert(`Committed! Wait ~13 min.\nTx: ${tx.hash}`); }
-  catch(e) { alert("Commit failed: "+e.message); }
-};
-
-document.getElementById("withdrawBtn").onclick = async () => {
-  const wallets = ["wallet1","wallet2","wallet3"].map(id=>document.getElementById(id).value.trim()).filter(a=>ethers.utils.isAddress(a));
-  if (!wallets.length) return alert("Add at least one fresh wallet");
-  try { const tx = await shield.withdraw(rawSecret, wallets); alert(`Withdrawn privately!\nTx: ${tx.hash}`); }
-  catch(e) { alert("Withdraw failed — did you wait 13 min after commit?"); }
+  document.getElementById("generateCommitBtn").onclick = () => {
+  rawSecret = document.getElementById("receiverSecret").value.trim().toLowerCase();
+  
+  // FINAL CORRECT VERSION FOR YOUR DEPLOYED V13 CONTRACT
+  commitHash = ethers.utils.keccak256(
+    ethers.utils.solidityPack(
+      ["address", "string"],
+      [account.toLowerCase(), rawSecret]
+    )
+  );
+  
+  document.getElementById("commitHashDisplay").innerHTML =
+    `Commit Hash Ready<br><small style="font-size:0.7rem;word-break:break-all;">${commitHash}</small>`;
+  document.getElementById("commitHashDisplay").style.display = "block";
+  document.getElementById("receiverOutput").style.display = "block";
+  document.getElementById("commitBtn").disabled = false;
+  document.getElementById("withdrawBtn").disabled = false;
 };
 
 document.getElementById("checkBtn").onclick = async () => {
