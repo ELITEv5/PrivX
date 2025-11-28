@@ -447,6 +447,20 @@
           <button id="downloadBackup" class="btn-success">
             Download Backup .txt (REQUIRED)
           </button>
+          <div style="margin-top:1.5rem; text-align:center;">
+  <button id="generateQrBtn" class="btn-success" style="width:100%;">
+    Generate QR Code (for Receiver)
+  </button>
+  <div id="qrContainer" style="margin-top:1rem; display:none;">
+    <canvas id="qrCanvas"></canvas>
+    <div style="margin-top:0.8rem;">
+      <button id="downloadQrBtn" class="btn" style="background:#8b5cf6;">
+        Download QR Code (.png)
+      </button>
+    </div>
+    <small style="color:#94a3b8; display:block; margin-top:0.6rem;">
+      Show this QR to receiver — they scan → auto-fill secret
+    </small>
         </div>
       </div>
 
@@ -943,27 +957,26 @@ async function reclaimDeposit(hash) {
   const target = hash || document.getElementById("reclaimInput").value.trim();
   if (!target.startsWith("0x") || target.length !== 66)
     return alert("Invalid deposit hash.");
-
   const btn = document.getElementById("claimBtn");
   const s = document.getElementById("reclaimStatus");
   btn.disabled = true;
-  s.textContent = "⏳ Claiming bounty...";
-
+  s.textContent = "Claiming bounty...";
   try {
     const tx = await shield.reclaim(target);
-    s.innerHTML = `⏳ Waiting confirmation…<br>${tx.hash}`;
+    s.innerHTML = `Waiting confirmation…<br>${tx.hash}`;
     await tx.wait();
-    s.innerHTML = `✅ Reclaim successful!<br>
-      <a href='https://scan.pulsechain.com/tx/${tx.hash}' target='_blank'>
+    s.innerHTML = `Reclaim successful!<br>
+      <a href='https://scan.pulsechain.com/tx/${tx.hash}' target='_blank' style='color:#a78bfa;'>
         View Transaction
       </a>`;
     updateStats();
   } catch (e) {
-    s.textContent = "❌ Failed: " + e.message;
+    s.textContent = "Failed: " + e.message;
   } finally {
     btn.disabled = false;
   }
 }
+
 // AUTO-FILL & NAVIGATE TO RECLAIM TAB
 function autoFillReclaim(hash) {
   lastReclaimableHash = hash;
@@ -977,20 +990,48 @@ function autoFillReclaim(hash) {
 setMainTab("shield");
 </script>
 
-<!-- WalletConnect library -->
+<!-- WalletConnect (desktop fallback) -->
 <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+
+<!-- QR Code Library (for Ghost Transfer) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+<!-- QR CODE GHOST TRANSFER — FINAL IMMORTAL SCRIPT -->
 <script>
-// PWA SERVICE WORKER — FINAL FIXED VERSION
+// Generate QR for secret (Depositor → Receiver)
+document.getElementById("generateQrBtn")?.addEventListener("click", () => {
+  if (!rawSecret) return alert("Generate a secret first!");
+  const container = document.getElementById("qrContainer");
+  const canvas = document.getElementById("qrCanvas");
+  container.style.display = "block";
+  QRCode.toCanvas(canvas, rawSecret, {
+    width: 340,
+    margin: 2,
+    color: { dark: "#a78bfa", light: "#0f1117" }
+  });
+  document.getElementById("downloadQrBtn").onclick = () => {
+    const link = document.createElement("a");
+    link.download = `privx-ghost-qr-${rawSecret.slice(0,10)}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+  };
+});
+</script>
+
+<!-- PWA SERVICE WORKER — BULLETPROOF REGISTRATION (FIXED PATH) -->
+<script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
+    navigator.serviceWorker.register('./sw.js')
       .then(reg => {
-        console.log('PrivX Shield PWA Active', reg.scope);
+        console.log('PrivX Shield PWA Active →', reg.scope);
       })
-      .catch(err => console.log('SW failed:', err));
+      .catch(err => {
+        console.warn('Service Worker failed:', err);
+      });
   });
 }
 </script>
+
 </body>
 </html>
-
