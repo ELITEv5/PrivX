@@ -11,6 +11,8 @@ const ASSETS = [
   "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
   "https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
+  "https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"
+
 
 ];
 
