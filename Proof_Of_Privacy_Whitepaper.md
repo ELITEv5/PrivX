@@ -1,4 +1,4 @@
-# 🕶️ **PrivX Stealth Shield V13 — Proof of Privacy (IMMORTAL BUILD)**  
+# 🕶️ **PrivX Stealth Shield V13 — Proof of Privacy**  
 ### *Mathematical Privacy • Automated Deflation • Zero Custody*
 
 ---
