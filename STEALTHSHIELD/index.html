@@ -978,72 +978,209 @@ async function reclaimDeposit(hash) {
   }
 }
 
-// AUTO-FILL & NAVIGATE TO RECLAIM TAB
-function autoFillReclaim(hash) {
-  lastReclaimableHash = hash;
-  const input = document.getElementById("reclaimInput");
-  if (input) input.value = hash;
-  setMainTab('reclaim');
-  loadReclaimTab();
-}
-
-// Default startup
-setMainTab("shield");
-</script>
-
 <!-- WalletConnect (desktop fallback) -->
 <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 
-<!-- QR Code Library (Google CDN fallback) -->
+<!-- QR Code & Snapshot Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+
+<!-- ✅ PRIVX V13 SMART QR CODE SYSTEM — FINAL VERSION -->
+<style>
+  #qrContainer {
+    margin-top: 1.5rem;
+    display: none;
+    padding: 1.8rem;
+    background: #1e2533;
+    border-radius: 16px;
+    border: 1px solid #2d3748;
+    text-align: center;
+  }
+  .qr-wrapper canvas {
+    border-radius: 12px;
+    box-shadow: 0 0 30px rgba(167,139,250,0.4);
+  }
+  .qr-wrapper {
+    display: inline-block;
+    margin: 0 auto;
+  }
+  #scannerContainer {
+    display: none;
+    background: #0f1117;
+    border-radius: 16px;
+    padding: 1rem;
+    text-align: center;
+    border: 1px solid #2d3748;
+    margin-top: 1.2rem;
+  }
+  #reader {
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  #closeScannerBtn {
+    margin-top: 1rem;
+    background: #a78bfa;
+    border: none;
+    color: white;
+    padding: 0.8rem 1.2rem;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+</style>
 
 <script>
-// QR CODE GHOST TRANSFER — BULLETPROOF (WORKS ON EVERY DEVICE)
+/* 🔮 PrivX Smart QR Code Generator — Secret + Hash Embedded */
 document.getElementById("generateQrBtn")?.addEventListener("click", () => {
-  if (!rawSecret) return alert("Generate a secret first!");
+  if (!rawSecret || !depositHash) return alert("Generate your secret and hash first!");
 
   const container = document.getElementById("qrContainer");
-  const canvas = document.getElementById("qrCanvas");
-
-  // FORCE SIZE (the magic fix)
-  canvas.width = 320;
-  canvas.height = 320;
-
   container.style.display = "block";
 
-  // Clear canvas
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#0f1117";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Remove old QR codes
+  container.querySelectorAll("div.qr-wrapper").forEach(el => el.remove());
 
-  // Check if QRCode is loaded
-  if (typeof QRCode === 'undefined') {
-    alert("QR library not loaded — reload page and try again");
+  // Data payload (compact JSON)
+  const qrData = JSON.stringify({ secret: rawSecret, hash: depositHash });
+
+  // Create new wrapper
+  const qrDiv = document.createElement("div");
+  qrDiv.className = "qr-wrapper";
+  container.prepend(qrDiv);
+
+  try {
+    new QRCode(qrDiv, {
+      text: qrData,
+      width: 280,
+      height: 280,
+      colorDark: "#a78bfa",
+      colorLight: "#0f1117",
+      correctLevel: QRCode.CorrectLevel.H
+    });
+    console.log("✅ Smart QR Generated:", qrData);
+  } catch (err) {
+    console.error("QR generation failed:", err);
+    alert("QR generation failed — reload and try again");
     return;
   }
 
-  // Generate QR
-  QRCode.toCanvas(canvas, rawSecret, {
-    width: 320,
-    margin: 3,
-    color: { dark: "#a78bfa", light: "#0f1117" }
-  }, (error) => {
-    if (error) {
-      console.error("QR Error:", error);
-      alert("QR generation failed — check console (F12)");
-    } else {
-      console.log("QR Generated Successfully");
+  // 💾 Download QR Snapshot (PNG)
+  document.getElementById("downloadQrBtn").onclick = async () => {
+    try {
+      const canvas = await html2canvas(qrDiv, { backgroundColor: "#0f1117" });
+      const link = document.createElement("a");
+      link.download = `privx-secret-${rawSecret.slice(0,10)}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      console.log("💾 QR downloaded successfully");
+    } catch (e) {
+      alert("Download failed — check console");
+      console.error("Download error:", e);
     }
-  });
-
-  // Download
-  document.getElementById("downloadQrBtn").onclick = () => {
-    const link = document.createElement("a");
-    link.download = `privx-secret-${rawSecret.slice(0,10)}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-    console.log("QR Downloaded");
   };
+});
+
+/* 🔓 Receiver Auto-Fill Parser (Smart QR JSON Support) */
+document.getElementById("receiverSecret")?.addEventListener("input", (e) => {
+  const val = e.target.value.trim();
+
+  if (val.startsWith("{") && val.includes("secret") && val.includes("hash")) {
+    try {
+      const data = JSON.parse(val);
+      if (data.secret && data.hash) {
+        document.getElementById("receiverSecret").value = data.secret;
+        document.getElementById("checkHashInput").value = data.hash;
+        document.getElementById("generateCommitBtn").disabled = false;
+
+        e.target.style.background = "#162d20";
+        e.target.style.borderColor = "#22c55e";
+        e.target.style.color = "#22c55e";
+        setTimeout(() => {
+          e.target.style.background = "#1e2533";
+          e.target.style.borderColor = "#2d3748";
+          e.target.style.color = "white";
+        }, 2000);
+
+        console.log("✅ Smart QR parsed successfully:", data);
+      }
+    } catch (err) {
+      console.warn("Invalid JSON payload");
+    }
+  }
+});
+
+/* 🔍 Smart QR Camera Scanner for PrivX Stealth Shield V13 */
+let qrScanner;
+
+async function openQrScanner() {
+  const container = document.getElementById("scannerContainer");
+  container.style.display = "block";
+
+  if (!qrScanner) {
+    qrScanner = new Html5Qrcode("reader");
+  }
+
+  try {
+    await qrScanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      (decoded) => {
+        console.log("📸 QR Detected:", decoded);
+        handleScannedData(decoded);
+        closeQrScanner();
+      },
+      (err) => {}
+    );
+  } catch (e) {
+    alert("Camera access denied or unavailable.");
+    console.error(e);
+  }
+}
+
+function closeQrScanner() {
+  if (qrScanner) {
+    qrScanner.stop().then(() => {
+      document.getElementById("scannerContainer").style.display = "none";
+    });
+  }
+}
+
+function handleScannedData(decoded) {
+  try {
+    const data = JSON.parse(decoded);
+    if (data.secret && data.hash) {
+      document.getElementById("receiverSecret").value = data.secret;
+      document.getElementById("checkHashInput").value = data.hash;
+      document.getElementById("generateCommitBtn").disabled = false;
+      alert("✅ Smart QR scanned successfully!");
+    } else {
+      alert("Invalid QR content.");
+    }
+  } catch (err) {
+    console.warn("QR parse failed:", err);
+    alert("Invalid or corrupted QR code.");
+  }
+}
+
+// 👁️ Add “Scan QR Code” button dynamically
+window.addEventListener("DOMContentLoaded", () => {
+  const receiverCard = document.querySelector("#receiverSection .card");
+  if (receiverCard) {
+    const scanBtn = document.createElement("button");
+    scanBtn.textContent = "📷 Scan QR Code";
+    scanBtn.className = "btn";
+    scanBtn.style.marginTop = "0.6rem";
+    scanBtn.onclick = openQrScanner;
+    receiverCard.appendChild(scanBtn);
+
+    const scannerHTML = `
+      <div id="scannerContainer">
+        <div id="reader"></div>
+        <button id="closeScannerBtn" onclick="closeQrScanner()">Close Scanner</button>
+      </div>`;
+    receiverCard.insertAdjacentHTML("beforeend", scannerHTML);
+  }
 });
 </script>
 
@@ -1060,3 +1197,5 @@ if ('serviceWorker' in navigator) {
 
 </body>
 </html>
+
+
