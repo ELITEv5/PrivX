@@ -1098,104 +1098,100 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   });
 
-  /* 🔍 PrivX Smart QR Scanner — Auto-fills Receiver Inputs */
-  let qrScanner;
+  <!-- ✅ PrivX Smart QR Code System (Auto-Attach + Working Save) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-  function handleScannedData(decoded) {
-    try {
-      const data = JSON.parse(decoded);
-      if (data.secret && data.hash) {
-        const secretInput = document.getElementById("receiverSecret");
-        const hashInput = document.getElementById("checkHashInput");
-        const commitBtn = document.getElementById("generateCommitBtn");
-
-        secretInput.value = data.secret;
-        hashInput.value = data.hash;
-        commitBtn.disabled = false;
-
-        // 🌈 Nice feedback glow
-        secretInput.style.boxShadow = "0 0 15px rgba(34,197,94,0.6)";
-        hashInput.style.boxShadow = "0 0 15px rgba(34,197,94,0.6)";
-        setTimeout(() => {
-          secretInput.style.boxShadow = "";
-          hashInput.style.boxShadow = "";
-        }, 1500);
-
-        alert("✅ Secret and hash imported successfully!");
-        closeQrScanner();
-      } else {
-        alert("Invalid QR data — please try again.");
-      }
-    } catch (err) {
-      alert("Invalid or corrupted QR code.");
-      console.warn("QR parse failed:", err);
-    }
+<style>
+  #qrContainer {
+    margin-top: 1.5rem;
+    display: none;
+    padding: 1.8rem;
+    background: #1e2533;
+    border-radius: 16px;
+    border: 1px solid #2d3748;
+    text-align: center;
   }
-
-  async function openQrScanner() {
-  const container = document.getElementById("scannerContainer");
-  container.style.display = "block";
-
-  // Ensure reader div is ready
-  await new Promise(r => setTimeout(r, 300)); // small delay fixes race condition
-
-  if (!qrScanner) {
-    try {
-      qrScanner = new Html5Qrcode("reader");
-    } catch (e) {
-      alert("Failed to initialize QR scanner.");
-      console.error(e);
-      return;
-    }
+  .qr-wrapper canvas {
+    border-radius: 12px;
+    box-shadow: 0 0 30px rgba(167,139,250,0.4);
   }
-
-  try {
-    await qrScanner.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 250 },
-      (decoded) => handleScannedData(decoded),
-      (err) => console.log("scan error:", err)
-    );
-    console.log("✅ Camera started for scanning");
-  } catch (e) {
-    console.error("🚫 Camera start failed:", e);
-    if (location.protocol !== "https:") {
-      alert("Camera access requires HTTPS or localhost.");
-    } else {
-      alert("Camera access denied or unavailable.");
-    }
-    container.style.display = "none";
+  .qr-wrapper {
+    display: inline-block;
+    margin: 0 auto;
   }
+</style>
+
+<script>
+function attachQrUi() {
+  const depositorOutput = document.getElementById("depositorOutput");
+  if (!depositorOutput) return;
+
+  // Only add once
+  if (document.getElementById("qrContainer")) return;
+
+  const qrContainer = document.createElement("div");
+  qrContainer.id = "qrContainer";
+  qrContainer.innerHTML = `
+    <button id="generateQrBtn" class="btn-success" style="width:100%; margin-top:1rem;">
+      Generate QR Code (for Receiver)
+    </button>
+    <div id="qrWrapperHolder"></div>
+    <div style="margin-top:1rem;">
+      <button id="downloadQrBtn" class="btn-action" style="width:100%;">
+        Download QR Code (.png)
+      </button>
+    </div>
+    <small style="color:#94a3b8; display:block; margin-top:0.8rem;">
+      Show this QR — receiver scans → secret auto-fills
+    </small>
+  `;
+  depositorOutput.appendChild(qrContainer);
 }
 
-async function closeQrScanner() {
-  if (qrScanner) {
-    try {
-      await qrScanner.stop();
-      console.log("📷 Scanner stopped cleanly");
-    } catch (e) {
-      console.warn("Scanner stop error:", e);
-    }
-    document.getElementById("scannerContainer").style.display = "none";
+// ✅ Attach QR UI each time user generates a new secret
+document.getElementById("generateDepositBtn").addEventListener("click", () => {
+  setTimeout(attachQrUi, 200); // small delay ensures #depositorOutput is visible
+});
+
+// ✅ Generate QR + Save
+document.addEventListener("click", (e) => {
+  if (e.target.id === "generateQrBtn") {
+    if (!rawSecret || !depositHash)
+      return alert("Generate your secret and hash first!");
+
+    const holder = document.getElementById("qrWrapperHolder");
+    holder.innerHTML = ""; // clear old QR
+
+    const qrData = JSON.stringify({ secret: rawSecret, hash: depositHash });
+
+    const qrDiv = document.createElement("div");
+    qrDiv.className = "qr-wrapper";
+    holder.appendChild(qrDiv);
+
+    new QRCode(qrDiv, {
+      text: qrData,
+      width: 280,
+      height: 280,
+      colorDark: "#a78bfa",
+      colorLight: "#0f1117",
+      correctLevel: QRCode.CorrectLevel.H,
+    });
+
+    document.getElementById("qrContainer").style.display = "block";
+    console.log("✅ Smart QR Generated:", qrData);
   }
-}
 
-  // 👁️ Add “Scan QR Code” button dynamically inside Receiver section
-  const receiverCard = document.querySelector("#receiverSection .card");
-  if (receiverCard && !document.getElementById("scannerContainer")) {
-    const scanBtn = document.createElement("button");
-    scanBtn.textContent = "📷 Scan QR Code";
-    scanBtn.className = "btn";
-    scanBtn.style.marginTop = "0.6rem";
-    scanBtn.onclick = openQrScanner;
-    receiverCard.appendChild(scanBtn);
-
-    const scannerHTML = `
-      <div id="scannerContainer">
-        <div id="reader"></div>
-        <button id="closeScannerBtn" onclick="closeQrScanner()">Close Scanner</button>
-      </div>`;
-    receiverCard.insertAdjacentHTML("beforeend", scannerHTML);
+  if (e.target.id === "downloadQrBtn") {
+    const qrDiv = document.querySelector("#qrWrapperHolder div");
+    if (!qrDiv) return alert("No QR code found — generate one first!");
+    html2canvas(qrDiv, { backgroundColor: "#0f1117" }).then((canvas) => {
+      const link = document.createElement("a");
+      link.download = `privx-secret-${rawSecret.slice(0, 10)}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      console.log("💾 QR downloaded successfully");
+    });
   }
 });
 </script>
