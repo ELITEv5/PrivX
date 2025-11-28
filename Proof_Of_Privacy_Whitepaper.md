@@ -1,4 +1,4 @@
-# 🕶️ **PrivX Stealth Shield V13 — Proof of Privacy**  
+# 🕶️ **PrivX Stealth Shield V13 — Proof of Privacy (IMMORTAL BUILD)**  
 ### *Mathematical Privacy • Automated Deflation • Zero Custody*
 
 ---
@@ -91,6 +91,7 @@ Each deposit pays a **0.3% privacy fee**, automatically divided as:
 - 20% → **Vault reserves**
 
 ### ⚙️ Dynamic Reward Formula
+
 ```solidity
 currentRateBp = baseRate + dynamicBoost;
 dynamicBoost = vaultBalance / totalSupply * 10000;
