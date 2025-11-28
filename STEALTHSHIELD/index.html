@@ -1133,31 +1133,52 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function openQrScanner() {
-    const container = document.getElementById("scannerContainer");
-    container.style.display = "block";
+  const container = document.getElementById("scannerContainer");
+  container.style.display = "block";
 
-    if (!qrScanner) qrScanner = new Html5Qrcode("reader");
+  // Ensure reader div is ready
+  await new Promise(r => setTimeout(r, 300)); // small delay fixes race condition
 
+  if (!qrScanner) {
     try {
-      await qrScanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        (decoded) => handleScannedData(decoded),
-        (err) => {}
-      );
+      qrScanner = new Html5Qrcode("reader");
     } catch (e) {
-      alert("Camera access denied or unavailable.");
+      alert("Failed to initialize QR scanner.");
       console.error(e);
+      return;
     }
   }
 
-  function closeQrScanner() {
-    if (qrScanner) {
-      qrScanner.stop().then(() => {
-        document.getElementById("scannerContainer").style.display = "none";
-      });
+  try {
+    await qrScanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      (decoded) => handleScannedData(decoded),
+      (err) => console.log("scan error:", err)
+    );
+    console.log("✅ Camera started for scanning");
+  } catch (e) {
+    console.error("🚫 Camera start failed:", e);
+    if (location.protocol !== "https:") {
+      alert("Camera access requires HTTPS or localhost.");
+    } else {
+      alert("Camera access denied or unavailable.");
     }
+    container.style.display = "none";
   }
+}
+
+async function closeQrScanner() {
+  if (qrScanner) {
+    try {
+      await qrScanner.stop();
+      console.log("📷 Scanner stopped cleanly");
+    } catch (e) {
+      console.warn("Scanner stop error:", e);
+    }
+    document.getElementById("scannerContainer").style.display = "none";
+  }
+}
 
   // 👁️ Add “Scan QR Code” button dynamically inside Receiver section
   const receiverCard = document.querySelector("#receiverSection .card");
