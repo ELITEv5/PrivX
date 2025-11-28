@@ -134,8 +134,7 @@ Guarantees one-time anonymity per transaction.
 🌌 Reclaim Mechanics (Proof of Expiry)
 Unclaimed deposits become reclaimable after 7 days.
 
-solidity
-Copy code
+
 require(block.timestamp > deposit.timestamp + 7 days);
 Anyone may call reclaim(hash)
 
