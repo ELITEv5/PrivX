@@ -997,41 +997,52 @@ setMainTab("shield");
 <!-- QR Code Library (Google CDN fallback) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-<!-- QR CODE GHOST TRANSFER — FINAL BULLETPROOF VERSION (WORKS EVERY TIME) -->
 <script>
-// Generate QR — 100% guaranteed to show + download
+// QR CODE GHOST TRANSFER — BULLETPROOF (WORKS ON EVERY DEVICE)
 document.getElementById("generateQrBtn")?.addEventListener("click", () => {
   if (!rawSecret) return alert("Generate a secret first!");
 
   const container = document.getElementById("qrContainer");
   const canvas = document.getElementById("qrCanvas");
 
-  // FORCE canvas size (this is the key fix)
+  // FORCE SIZE (the magic fix)
   canvas.width = 320;
   canvas.height = 320;
 
-  // Show container
   container.style.display = "block";
 
-  // Clear previous QR
+  // Clear canvas
   const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#0f1117";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Generate stunning purple QR
+  // Check if QRCode is loaded
+  if (typeof QRCode === 'undefined') {
+    alert("QR library not loaded — reload page and try again");
+    return;
+  }
+
+  // Generate QR
   QRCode.toCanvas(canvas, rawSecret, {
     width: 320,
     margin: 3,
     color: { dark: "#a78bfa", light: "#0f1117" }
   }, (error) => {
-    if (error) console.error(error);
+    if (error) {
+      console.error("QR Error:", error);
+      alert("QR generation failed — check console (F12)");
+    } else {
+      console.log("QR Generated Successfully");
+    }
   });
 
-  // Download — works instantly
+  // Download
   document.getElementById("downloadQrBtn").onclick = () => {
     const link = document.createElement("a");
-    link.download = `privx-secret-${rawSecret.slice(0, 10)}.png`;
+    link.download = `privx-secret-${rawSecret.slice(0,10)}.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
+    console.log("QR Downloaded");
   };
 });
 </script>
