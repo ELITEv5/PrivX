@@ -3,15 +3,20 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>PrivX Stealth Shield</title>
+
+<!-- PWA META -->
 <meta name="theme-color" content="#0f1117" />
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="icon-512.png">
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="PrivX Shield" />
 
+<!-- ICONS -->
+<link rel="icon" href="icon-512.png" sizes="512x512" />
+<link rel="apple-touch-icon" href="icon-512.png" />
+<link rel="manifest" href="manifest.json" />
 
-<title>PrivX Stealth Shield V13</title>
-<script src="./ethers.umd.min.js"></script>
+<script src="ethers.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -975,19 +980,18 @@ setMainTab("shield");
 
 <!-- WalletConnect library -->
 <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
-
-<!-- PWA Service Worker Registration -->
 <script>
+// PWA SERVICE WORKER — FINAL FIXED VERSION
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/PrivX/STEALTHSHIELD/sw.js', { scope: '/PrivX/STEALTHSHIELD/' })
-      .then(reg => console.log('✅ PWA active:', reg.scope))
-      .catch(err => console.warn('❌ SW registration failed:', err));
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => {
+        console.log('PrivX Shield PWA Active', reg.scope);
+      })
+      .catch(err => console.log('SW failed:', err));
   });
 }
 </script>
-
 </body>
 </html>
 
