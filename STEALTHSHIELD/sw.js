@@ -9,7 +9,9 @@ const ASSETS = [
   "/icon-512.png",
   "/PRIVX.png",
   "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
-  "https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"
+  "https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
+
 ];
 
 self.addEventListener("install", e => {
