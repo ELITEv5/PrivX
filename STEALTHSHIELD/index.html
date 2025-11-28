@@ -447,22 +447,8 @@
           <button id="downloadBackup" class="btn-success">
             Download Backup .txt (REQUIRED)
           </button>
-          <div style="margin-top:1.5rem; text-align:center;">
-  <button id="generateQrBtn" class="btn-success" style="width:100%;">
-    Generate QR Code (for Receiver)
-  </button>
-
-  <div id="qrContainer" style="margin-top:1.5rem; display:none; padding:1.8rem; background:#1e2533; border-radius:16px; border:1px solid #2d3748;">
-    <div style="margin-top:1rem;">
-      <button id="downloadQrBtn" class="btn-action" style="width:100%;">
-        Download QR Code (.png)
-      </button>
-    </div>
-    <small style="color:#94a3b8; display:block; margin-top:0.8rem;">
-      Show this QR — receiver scans → secret auto-fills
-    </small>
-  </div>
-</div>
+        </div>
+      </div>
 
       <div class="card">
         <div class="label">Amount to Deposit (PRIVX)</div>
@@ -957,242 +943,53 @@ async function reclaimDeposit(hash) {
   const target = hash || document.getElementById("reclaimInput").value.trim();
   if (!target.startsWith("0x") || target.length !== 66)
     return alert("Invalid deposit hash.");
+
   const btn = document.getElementById("claimBtn");
   const s = document.getElementById("reclaimStatus");
   btn.disabled = true;
-  s.textContent = "Claiming bounty...";
+  s.textContent = "⏳ Claiming bounty...";
+
   try {
     const tx = await shield.reclaim(target);
-    s.innerHTML = `Waiting confirmation…<br>${tx.hash}`;
+    s.innerHTML = `⏳ Waiting confirmation…<br>${tx.hash}`;
     await tx.wait();
-    s.innerHTML = `Reclaim successful!<br>
-      <a href='https://scan.pulsechain.com/tx/${tx.hash}' target='_blank' style='color:#a78bfa;'>
+    s.innerHTML = `✅ Reclaim successful!<br>
+      <a href='https://scan.pulsechain.com/tx/${tx.hash}' target='_blank'>
         View Transaction
       </a>`;
     updateStats();
   } catch (e) {
-    s.textContent = "Failed: " + e.message;
+    s.textContent = "❌ Failed: " + e.message;
   } finally {
     btn.disabled = false;
   }
 }
+// AUTO-FILL & NAVIGATE TO RECLAIM TAB
+function autoFillReclaim(hash) {
+  lastReclaimableHash = hash;
+  const input = document.getElementById("reclaimInput");
+  if (input) input.value = hash;
+  setMainTab('reclaim');
+  loadReclaimTab();
+}
+
+// Default startup
+setMainTab("shield");
 </script>
 
-<!-- QR Code & Snapshot Libraries -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
-
-<!-- ✅ PRIVX V13 SMART QR CODE SYSTEM — FINAL VERSION -->
-<style>
-  #qrContainer {
-    margin-top: 1.5rem;
-    display: none;
-    padding: 1.8rem;
-    background: #1e2533;
-    border-radius: 16px;
-    border: 1px solid #2d3748;
-    text-align: center;
-  }
-  .qr-wrapper canvas {
-    border-radius: 12px;
-    box-shadow: 0 0 30px rgba(167,139,250,0.4);
-  }
-  .qr-wrapper {
-    display: inline-block;
-    margin: 0 auto;
-  }
-  #scannerContainer {
-    display: none;
-    background: #0f1117;
-    border-radius: 16px;
-    padding: 1rem;
-    text-align: center;
-    border: 1px solid #2d3748;
-    margin-top: 1.2rem;
-  }
-  #reader {
-    width: 100%;
-    border-radius: 12px;
-    overflow: hidden;
-  }
-  #closeScannerBtn {
-    margin-top: 1rem;
-    background: #a78bfa;
-    border: none;
-    color: white;
-    padding: 0.8rem 1.2rem;
-    border-radius: 10px;
-    cursor: pointer;
-  }
-</style>
-
+<!-- WalletConnect library -->
+<script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
 <script>
-/* 🔮 PrivX Smart QR Code Generator — Secret + Hash Embedded */
-document.getElementById("generateQrBtn")?.addEventListener("click", () => {
-  if (!rawSecret || !depositHash) return alert("Generate your secret and hash first!");
-
-  const container = document.getElementById("qrContainer");
-  container.style.display = "block";
-
-  // Remove old QR codes
-  container.querySelectorAll("div.qr-wrapper").forEach(el => el.remove());
-
-  // Data payload (compact JSON)
-  const qrData = JSON.stringify({ secret: rawSecret, hash: depositHash });
-
-  // Create new wrapper
-  const qrDiv = document.createElement("div");
-  qrDiv.className = "qr-wrapper";
-  container.prepend(qrDiv);
-
-  try {
-    new QRCode(qrDiv, {
-      text: qrData,
-      width: 280,
-      height: 280,
-      colorDark: "#a78bfa",
-      colorLight: "#0f1117",
-      correctLevel: QRCode.CorrectLevel.H
-    });
-    console.log("✅ Smart QR Generated:", qrData);
-  } catch (err) {
-    console.error("QR generation failed:", err);
-    alert("QR generation failed — reload and try again");
-    return;
-  }
-
-  // 💾 Download QR Snapshot (PNG)
-  document.getElementById("downloadQrBtn").onclick = async () => {
-    try {
-      const canvas = await html2canvas(qrDiv, { backgroundColor: "#0f1117" });
-      const link = document.createElement("a");
-      link.download = `privx-secret-${rawSecret.slice(0,10)}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-      console.log("💾 QR downloaded successfully");
-    } catch (e) {
-      alert("Download failed — check console");
-      console.error("Download error:", e);
-    }
-  };
-});
-
-/* 🔓 Receiver Auto-Fill Parser (Smart QR JSON Support) */
-document.getElementById("receiverSecret")?.addEventListener("input", (e) => {
-  const val = e.target.value.trim();
-
-  if (val.startsWith("{") && val.includes("secret") && val.includes("hash")) {
-    try {
-      const data = JSON.parse(val);
-      if (data.secret && data.hash) {
-        document.getElementById("receiverSecret").value = data.secret;
-        document.getElementById("checkHashInput").value = data.hash;
-        document.getElementById("generateCommitBtn").disabled = false;
-
-        e.target.style.background = "#162d20";
-        e.target.style.borderColor = "#22c55e";
-        e.target.style.color = "#22c55e";
-        setTimeout(() => {
-          e.target.style.background = "#1e2533";
-          e.target.style.borderColor = "#2d3748";
-          e.target.style.color = "white";
-        }, 2000);
-
-        console.log("✅ Smart QR parsed successfully:", data);
-      }
-    } catch (err) {
-      console.warn("Invalid JSON payload");
-    }
-  }
-});
-
-/* 🔍 Smart QR Camera Scanner for PrivX Stealth Shield V13 */
-let qrScanner;
-
-async function openQrScanner() {
-  const container = document.getElementById("scannerContainer");
-  container.style.display = "block";
-
-  if (!qrScanner) {
-    qrScanner = new Html5Qrcode("reader");
-  }
-
-  try {
-    await qrScanner.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: 250 },
-      (decoded) => {
-        console.log("📸 QR Detected:", decoded);
-        handleScannedData(decoded);
-        closeQrScanner();
-      },
-      (err) => {}
-    );
-  } catch (e) {
-    alert("Camera access denied or unavailable.");
-    console.error(e);
-  }
-}
-
-function closeQrScanner() {
-  if (qrScanner) {
-    qrScanner.stop().then(() => {
-      document.getElementById("scannerContainer").style.display = "none";
-    });
-  }
-}
-
-function handleScannedData(decoded) {
-  try {
-    const data = JSON.parse(decoded);
-    if (data.secret && data.hash) {
-      document.getElementById("receiverSecret").value = data.secret;
-      document.getElementById("checkHashInput").value = data.hash;
-      document.getElementById("generateCommitBtn").disabled = false;
-      alert("✅ Smart QR scanned successfully!");
-    } else {
-      alert("Invalid QR content.");
-    }
-  } catch (err) {
-    console.warn("QR parse failed:", err);
-    alert("Invalid or corrupted QR code.");
-  }
-}
-
-// 👁️ Add “Scan QR Code” button dynamically
-window.addEventListener("DOMContentLoaded", () => {
-  const receiverCard = document.querySelector("#receiverSection .card");
-  if (receiverCard) {
-    const scanBtn = document.createElement("button");
-    scanBtn.textContent = "📷 Scan QR Code";
-    scanBtn.className = "btn";
-    scanBtn.style.marginTop = "0.6rem";
-    scanBtn.onclick = openQrScanner;
-    receiverCard.appendChild(scanBtn);
-
-    const scannerHTML = `
-      <div id="scannerContainer">
-        <div id="reader"></div>
-        <button id="closeScannerBtn" onclick="closeQrScanner()">Close Scanner</button>
-      </div>`;
-    receiverCard.insertAdjacentHTML("beforeend", scannerHTML);
-  }
-});
-</script>
-
-<!-- PWA SERVICE WORKER — FINAL -->
-<script>
+// PWA SERVICE WORKER — FINAL FIXED VERSION
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('PrivX Shield PWA Active →', reg.scope))
-      .catch(err => console.warn('SW failed:', err));
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => {
+        console.log('PrivX Shield PWA Active', reg.scope);
+      })
+      .catch(err => console.log('SW failed:', err));
   });
 }
 </script>
-
 </body>
 </html>
-
-
