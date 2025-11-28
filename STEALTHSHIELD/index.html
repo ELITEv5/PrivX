@@ -633,7 +633,6 @@ const VAULT_CA  = "0x5F92468586044b55e251D5e5E4dFF8376A146dF1";
 const RPCS = [
   "https://rpc.pulsechain.com",
   "https://rpc-pulsechain.g4mm4.io",
-  "https://rpc.v4.testnet.pulsechain.com"
 ];
 let currentRpc = 0;
 const getProvider = ()=>new ethers.providers.JsonRpcProvider(RPCS[currentRpc]);
