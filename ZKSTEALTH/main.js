@@ -44,6 +44,8 @@ document.getElementById("connect-wallet").onclick = async () => {
 document.getElementById("deposit-btn").onclick = async () => {
   if (!signer) return alert("Connect wallet first!");
 
+  document.getElementById("deposit-status").textContent = "Generating commitment...";
+
   const idx = document.getElementById("denom-select").value;
   const amount = DENOMS[idx];
   const fee = amount.mul(30).div(10000);
@@ -52,19 +54,30 @@ document.getElementById("deposit-btn").onclick = async () => {
   const identity = Semaphore.genIdentity();
   const commitment = Semaphore.genIdentityCommitment(identity);
 
-  // Approve if needed
+  document.getElementById("deposit-status").textContent = "Checking/approving PRIVX spend...";
+
   const allowance = await privxContract.allowance(userAddress, SHIELD_ADDRESS);
   if (allowance.lt(total)) {
-    const tx = await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256);
-    await tx.wait();
+    const approveTx = await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256);
+    await approveTx.wait();
+    document.getElementById("deposit-status").textContent = "Approval confirmed! Sending deposit...";
   }
 
-  const tx = await shieldContract.deposit(idx, commitment, "0x0");
-  await tx.wait();
+  document.getElementById("deposit-status").textContent = "Sending deposit transaction...";
 
-  const note = `privx-${amount}-${identity.secret.join("-")}`;
-  document.getElementById("note-output").value = note;
-  document.getElementById("deposit-status").textContent = "DEPOSIT SUCCESS! Note saved above ↑";
+  try {
+    const tx = await shieldContract.deposit(idx, commitment, "0x0");
+    await tx.wait();
+
+    const note = `privx-${amount}-${identity.secret.join("-")}`;
+    document.getElementById("note-output").value = note;
+    document.getElementById("deposit-status").innerHTML = 
+      "<span style='color:lime'>DEPOSIT SUCCESS!</span><br>Note saved above — KEEP IT SAFE!";
+  } catch (err) {
+    console.error(err);
+    document.getElementById("deposit-status").textContent = 
+      "Failed: " + (err.message || "Transaction rejected");
+  }
 };
 
 async function updateStats() {
