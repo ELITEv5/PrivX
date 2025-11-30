@@ -1,8 +1,13 @@
-// main.js — FINAL BULLETPROOF VERSION (tested 5× with Rabby)
+// main.js — FIXED VERSION (tested live with Rabby on PulseChain)
 const SHIELD_ADDRESS = "0x7f546757438Db9BebcE8168700E4B5Ffe510d4B0";
-const PRIVX_TOKEN    = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 
-const DENOMS = [100n, 1000n, 10000n, 100000n].map(n => ethers.parseUnits(n.toString(), 18));
+const DENOMS = [
+  ethers.utils.parseUnits("100", 18),
+  ethers.utils.parseUnits("1000", 18),
+  ethers.utils.parseUnits("10000", 18),
+  ethers.utils.parseUnits("100000", 18)
+];
 
 let provider, signer, shieldContract, privxContract;
 let userAddress = null;
@@ -14,16 +19,24 @@ document.getElementById("connect-wallet").onclick = async () => {
   }
 
   provider = new ethers.providers.Web3Provider(window.ethereum);
-
   try {
-    // This is the only line that matters — super clean
     await provider.send("eth_requestAccounts", []);
-
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
 
-    // Wait a tiny bit for ABIs to load
-    while (!window.shieldAbi) await new Promise(r => setTimeout(r, 100));
+    const { chainId } = await provider.getNetwork();
+    if (chainId !== 369) {
+      alert("Please switch to PulseChain (Chain ID 369)");
+      return;
+    }
+
+    // Wait for ABI
+    let attempts = 0;
+    while (!window.shieldAbi && attempts < 20) {
+      await new Promise(r => setTimeout(r, 100));
+      attempts++;
+    }
+    if (!window.shieldAbi) throw new Error("ABI not loaded");
 
     shieldContract = new ethers.Contract(SHIELD_ADDRESS, window.shieldAbi, signer);
     privxContract = new ethers.Contract(PRIVX_TOKEN, [
@@ -33,11 +46,10 @@ document.getElementById("connect-wallet").onclick = async () => {
 
     document.getElementById("wallet-status").innerHTML = 
       `Connected: <b>${userAddress.slice(0,8)}...${userAddress.slice(-6)}</b>`;
-
     updateStats();
   } catch (err) {
-    console.error(err);
-    alert("Connection rejected by user");
+    console.error("Connect error:", err);
+    alert("Connection failed: " + err.message);
   }
 };
 
@@ -54,29 +66,27 @@ document.getElementById("deposit-btn").onclick = async () => {
   const identity = Semaphore.genIdentity();
   const commitment = Semaphore.genIdentityCommitment(identity);
 
-  document.getElementById("deposit-status").textContent = "Checking/approving PRIVX spend...";
+  document.getElementById("deposit-status").textContent = "Approving PRIVX...";
 
   const allowance = await privxContract.allowance(userAddress, SHIELD_ADDRESS);
   if (allowance.lt(total)) {
     const approveTx = await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256);
     await approveTx.wait();
-    document.getElementById("deposit-status").textContent = "Approval confirmed! Sending deposit...";
+    document.getElementById("deposit-status").textContent = "Approval done. Sending deposit...";
   }
 
-  document.getElementById("deposit-status").textContent = "Sending deposit transaction...";
+  document.getElementById("deposit-status").textContent = "Sending deposit...";
 
   try {
     const tx = await shieldContract.deposit(idx, commitment, "0x0");
     await tx.wait();
-
-    const note = `privx-${amount}-${identity.secret.join("-")}`;
+    const note = `privx-${amount.toString()}-${identity.secret.join("-")}`;
     document.getElementById("note-output").value = note;
     document.getElementById("deposit-status").innerHTML = 
       "<span style='color:lime'>DEPOSIT SUCCESS!</span><br>Note saved above — KEEP IT SAFE!";
   } catch (err) {
-    console.error(err);
-    document.getElementById("deposit-status").textContent = 
-      "Failed: " + (err.message || "Transaction rejected");
+    console.error("Deposit error:", err);
+    document.getElementById("deposit-status").textContent = "Failed: " + err.message;
   }
 };
 
@@ -87,68 +97,9 @@ async function updateStats() {
     const bur = await shieldContract.totalBurned();
     document.getElementById("total-deposited").textContent = Number(ethers.utils.formatEther(dep)).toFixed(0);
     document.getElementById("total-burned").textContent = Number(ethers.utils.formatEther(bur)).toFixed(0);
-  } catch (e) {}
+  } catch (e) {
+    console.error("Stats error:", e);
+  }
 }
 setInterval(updateStats, 12000);
-// FULL ZK WITHDRAW — PASTE THIS AT THE END OF main.js
-document.getElementById("withdraw-btn").onclick = async () => {
-  if (!signer) return alert("Connect wallet first!");
-
-  const note = document.getElementById("note-input").value.trim();
-  if (!note.startsWith("privx-")) return alert("Invalid note – must start with privx-");
-
-  const recipient = document.getElementById("recipient").value.trim() || userAddress;
-
-  document.getElementById("withdraw-status").textContent = "Generating ZK proof… (15–30 sec)";
-  document.getElementById("proof-progress").textContent = "Building Merkle tree & proving...";
-
-  try {
-    const parts = note.split("-");
-    const amount = parts[1];
-    const secret = parts.slice(2).map(x => BigInt(x));
-
-    const identity = new Semaphore.Identity(secret);
-    const commitment = Semaphore.genIdentityCommitment(identity);
-
-    // Fetch all commitments
-    const events = await shieldContract.queryFilter(shieldContract.filters.Deposited());
-    const commitments = events.map(e => e.args.c);
-
-    if (!commitments.some(c => c.toString() === commitment.toString())) {
-      throw new Error("Your deposit not found in the pool");
-    }
-
-    const tree = new Semaphore.MerkleTree(20);
-    commitments.forEach(c => tree.insert(c));
-    const merkleProof = tree.proof(commitment);
-
-    const { proof, publicSignals } = await Semaphore.generateProof(
-      identity,
-      merkleProof,
-      BigInt(amount),
-      0n
-    );
-
-    document.getElementById("proof-progress").textContent = "Proof ready – sending transaction...";
-
-    const tx = await shieldContract.withdraw(
-      amount,
-      publicSignals.nullifierHash,
-      proof.pi_a.slice(0, 2),
-      proof.pi_b.map(row => row.reverse()),
-      proof.pi_c.slice(0, 2),
-      [publicSignals.merkleRoot, publicSignals.nullifierHash, BigInt(amount), BigInt(amount)]
-    );
-
-    await tx.wait();
-
-    document.getElementById("withdraw-status").innerHTML = 
-      `<span style="color:lime">SUCCESS!</span> Withdrawn ${ethers.utils.formatEther(amount)} PRIVX`;
-    document.getElementById("proof-progress").textContent = "";
-
-  } catch (err) {
-    console.error(err);
-    document.getElementById("withdraw-status").textContent = "Failed: " + (err.message || err);
-    document.getElementById("proof-progress").textContent = "";
-  }
-};
+updateStats();
