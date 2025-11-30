@@ -56,47 +56,37 @@ document.getElementById("connect-wallet").onclick = async () => {
 document.getElementById("deposit-btn").onclick = async () => {
   if (!signer) return alert("Connect wallet first!");
 
-  document.getElementById("deposit-status").textContent = "Loading crypto lib...";
-
-  // Wait max 5 seconds for circomlib
-  let attempts = 0;
-  while (!window.circomlib && attempts < 50) {
-    await new Promise(r => setTimeout(r, 100));
-    attempts++;
-  }
-  if (!window.circomlib) {
-    return alert("Crypto lib failed — hard refresh once more");
-  }
-
   document.getElementById("deposit-status").textContent = "Generating commitment...";
 
   const idx = document.getElementById("denom-select").value;
   const amount = DENOMS[idx];
-  const total = amount.mul(1030).div(10000);
+  const total = amount.mul(1030).div(10000); // +0.3% fee
 
-  const privKey = circomlib.babyJub.genKeyPair().privKey;
-  const pubKey = circomlib.babyJub.prv2pub(privKey);
-  const commitment = circomlib.poseidon([privKey, pubKey[0], pubKey[1]]);
+  // Real 32-byte commitment using ethers (no external libs)
+  const secret = ethers.utils.randomBytes(32);
+  const commitment = ethers.utils.keccak256(secret);
+  const h = ethers.utils.keccak256(ethers.utils.concat([secret, amount]));
 
-  document.getElementById("deposit-status").textContent = "Approve + Deposit in Rabby";
+  document.getElementById("deposit-status").textContent = "Approving PRIVX...";
 
   try {
-    // One-time unlimited approve
     const allowance = await privxContract.allowance(userAddress, SHIELD_ADDRESS);
     if (allowance.lt(total)) {
       await (await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256)).wait();
     }
 
-    const tx = await shieldContract.deposit(idx, commitment, ethers.constants.HashZero);
-    document.getElementById("deposit-status").textContent = "Confirming...";
+    document.getElementById("deposit-status").textContent = "Sending deposit...";
+
+    const tx = await shieldContract.deposit(idx, commitment, h);
     await tx.wait();
 
-    const note = `privx-${amount.toString()}-${Array.from(privKey).map(b=>b.toString(16).padStart(2,'0')).join('')}`;
+    const note = `privx-${amount.toString()}-${ethers.utils.hexlify(secret).slice(2)}`;
     document.getElementById("note-output").value = note;
     document.getElementById("deposit-status").innerHTML = 
-      '<span style="color:lime;font-size:22px">DEPOSIT SUCCESS!</span><br><br>YOUR NOTE:<br><b>' + note + '</b>';
-  } catch (e) {
-    document.getElementById("deposit-status").textContent = "Failed: " + e.message;
+      "<span style='color:lime;font-size:22px'>DEPOSIT SUCCESS!</span><br><br>YOUR NOTE:<br><b>" + note + "</b>";
+  } catch (err) {
+    console.error(err);
+    document.getElementById("deposit-status").textContent = "Failed: " + (err.message || "Check console");
   }
 };
 
