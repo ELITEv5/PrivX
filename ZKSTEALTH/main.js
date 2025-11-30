@@ -123,54 +123,51 @@ function parseNote(note) {
 }
 
 document.getElementById("withdraw-btn").onclick = async () => {
-  const noteStr = document.getElementById("note-input").value.trim();
-  const recipient = document.getElementById("recipient").value.trim();
-  const status = document.getElementById("withdraw-status");
-  const progress = document.getElementById("proof-progress");
+  if (!signer) return alert("Connect wallet first!");
 
+  const noteStr = document.getElementById("note-input").value.trim();
   if (!noteStr) return alert("Paste your note first");
 
+  const status = document.getElementById("withdraw-status");
+  const progress = document.getElementById("proof-progress");
+  status.textContent = "";
+  progress.textContent = "Parsing note...";
+
   try {
-    progress.textContent = "Parsing note...";
-    const { amount, secret, nullifier } = parseNote(noteStr);
+    const parts = noteStr.split("-");
+    if (parts.length !== 3 || parts[0] !== "privx") throw "Invalid note format";
 
-    const input = {
-      root: "0",  // no Merkle tree
-      nullifierHash: BigInt(nullifier).toString(),
-      signalHash: "0",
-      externalNullifier: amount.toString(),
-      secret: Array.from(secret).map(b => b.toString())
-    };
+    const amount = BigInt(parts[1]);
+    const secret = ethers.utils.arrayify("0x" + parts[2]);
 
-    progress.textContent = "Generating ZK proof...";
+    // Reconstruct the exact h used in deposit
+    const amountPadded = ethers.utils.zeroPadValue(ethers.toBeHex(amount), 32);
+    const h = ethers.utils.keccak256(ethers.utils.concat([secret, amountPadded]));
 
-    const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-      input,
-      "withdraw.wasm",
-      "withdraw_final.zkey"
+    progress.textContent = "Verifying nullifier...";
+
+    const recipient = document.getElementById("recipient").value.trim() || userAddress;
+
+    const tx = await shieldContract.withdraw(
+      amount.toString(),
+      h,
+      recipient,
+      { gasLimit: 500000 }
     );
 
-    progress.textContent = "Preparing transaction...";
-
-    const callData = await snarkjs.groth16.exportSolidityCallData(proof, publicSignals);
-    const argv = JSON.parse("[" + callData + "]");
-
-    const [a, b, c, p] = argv;
-    const d = amount.toString(); // denomination
-
-    if (!signer) {
-      alert("Connect wallet first");
-      return;
-    }
-
-    const tx = await shieldContract.withdraw(d, nullifier, a, b, c, p);
+    progress.textContent = "Transaction sent — waiting...";
     await tx.wait();
 
-    status.innerHTML = `<span style='color:lime'>✅ Withdraw successful</span>`;
+    status.innerHTML = `
+      <span style="color:lime;font-size:28px">WITHDRAW SUCCESS!</span><br><br>
+      ${ethers.utils.formatEther(amount)} PRIVX sent to<br>
+      <b>${recipient}</b>
+    `;
     progress.textContent = "";
+
   } catch (err) {
     console.error(err);
-    status.textContent = "Withdraw failed: " + (err.message || "Check console");
+    status.innerHTML = `<span style="color:red">FAILED:</span> ${err.message || err}`;
     progress.textContent = "";
   }
 };
