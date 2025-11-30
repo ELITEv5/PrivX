@@ -108,6 +108,72 @@ document.getElementById("deposit-btn").onclick = async () => {
   }
 };
 
+function parseNote(note) {
+  // Format: privx-100000000000000000000-<hex_secret>
+  if (!note.startsWith("privx-")) throw new Error("Invalid note format");
+  const parts = note.split("-");
+  if (parts.length !== 3) throw new Error("Malformed note");
+
+  const amount = BigInt(parts[1]);
+  const secretHex = "0x" + parts[2];
+  const secret = ethers.utils.arrayify(secretHex);
+  const nullifier = ethers.utils.keccak256(secret);
+
+  return { amount, secret, nullifier };
+}
+
+document.getElementById("withdraw-btn").onclick = async () => {
+  const noteStr = document.getElementById("note-input").value.trim();
+  const recipient = document.getElementById("recipient").value.trim();
+  const status = document.getElementById("withdraw-status");
+  const progress = document.getElementById("proof-progress");
+
+  if (!noteStr) return alert("Paste your note first");
+
+  try {
+    progress.textContent = "Parsing note...";
+    const { amount, secret, nullifier } = parseNote(noteStr);
+
+    const input = {
+      root: "0",  // no Merkle tree
+      nullifierHash: BigInt(nullifier).toString(),
+      signalHash: "0",
+      externalNullifier: amount.toString(),
+      secret: Array.from(secret).map(b => b.toString())
+    };
+
+    progress.textContent = "Generating ZK proof...";
+
+    const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+      input,
+      "withdraw.wasm",
+      "withdraw_final.zkey"
+    );
+
+    progress.textContent = "Preparing transaction...";
+
+    const callData = await snarkjs.groth16.exportSolidityCallData(proof, publicSignals);
+    const argv = JSON.parse("[" + callData + "]");
+
+    const [a, b, c, p] = argv;
+    const d = amount.toString(); // denomination
+
+    if (!signer) {
+      alert("Connect wallet first");
+      return;
+    }
+
+    const tx = await shieldContract.withdraw(d, nullifier, a, b, c, p);
+    await tx.wait();
+
+    status.innerHTML = `<span style='color:lime'>✅ Withdraw successful</span>`;
+    progress.textContent = "";
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Withdraw failed: " + (err.message || "Check console");
+    progress.textContent = "";
+  }
+};
 
 async function updateStats() {
   if (!shieldContract) return;
