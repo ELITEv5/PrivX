@@ -138,13 +138,13 @@ document.getElementById("withdraw-btn").onclick = async () => {
     if (parts.length !== 3 || parts[0] !== "privx") throw "Invalid note format";
 
     const amount = BigInt(parts[1]);
-    const secret = ethers.utils.arrayify("0x" + parts[2]);
+    const secret = ethers.getBytes("0x" + parts[2]);
 
-    // FIXED LINE — ethers v6 syntax
-    const amountPadded = ethers.zeroPadValue(ethers.toBeHex(amount), 32);
-    const h = ethers.utils.keccak256(ethers.utils.concat([secret, amountPadded]));
+    // Ethers v6 CORRECT WAY to pad amount to 32 bytes
+    const amountPadded = ethers.zeroPadBytes(ethers.getBytes(ethers.toQuantity(amount)), 32);
+    const h = ethers.keccak256(ethers.concat([secret, amountPadded]));
 
-    progress.textContent = "Verifying nullifier...";
+    progress.textContent = "Sending withdraw...";
 
     const recipient = document.getElementById("recipient").value.trim() || userAddress;
 
@@ -155,12 +155,12 @@ document.getElementById("withdraw-btn").onclick = async () => {
       { gasLimit: 500000 }
     );
 
-    progress.textContent = "Transaction sent — waiting...";
+    progress.textContent = "Waiting for confirmation...";
     await tx.wait();
 
     status.innerHTML = `
       <span style="color:lime;font-size:28px">WITHDRAW SUCCESS!</span><br><br>
-      ${ethers.utils.formatEther(amount)} PRIVX sent to<br>
+      ${ethers.formatEther(amount)} PRIVX sent to<br>
       <b>${recipient}</b>
     `;
     progress.textContent = "";
