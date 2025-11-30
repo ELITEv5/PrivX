@@ -18,11 +18,17 @@ let userAddress = null;
 document.getElementById("connect-wallet").onclick = async () => {
   if (!window.ethereum) return alert("No wallet detected!");
 
-  provider = new ethers.providers.Web3Provider(window.ethereum, 369);
   try {
-    await window.ethereum.request({ method: "eth_requestAccounts" });
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
+
+    const { chainId } = await provider.getNetwork();
+    if (chainId !== 369) {
+      alert("Please switch to PulseChain (Chain ID 369)");
+      return;
+    }
 
     shieldContract = new ethers.Contract(SHIELD_ADDRESS, shieldAbi, signer);
     privxContract = new ethers.Contract(PRIVX_TOKEN, [
@@ -32,9 +38,11 @@ document.getElementById("connect-wallet").onclick = async () => {
 
     document.getElementById("wallet-status").innerHTML = 
       `Connected: <b>${userAddress.slice(0,8)}...${userAddress.slice(-6)}</b>`;
+    
     updateStats();
   } catch (e) {
-    alert("Connection rejected or failed");
+    console.error(e);
+    alert("Connection failed or rejected.");
   }
 };
 
