@@ -9,7 +9,7 @@ const shieldAbi = await (await fetch('shield_abi.json')).json();
 const SHIELD_ADDRESS = '0x7f546757438Db9BebcE8168700E4B5Ffe510d4B0';
 const VERIFIER_ADDRESS = '0x8E0D3ac4ef407551f0F1C802999bbF0f213219a7';
 const MINING_VAULT_ADDRESS = '0x1CA1d59434e62288e9d3d58E64490C1b1bb130F0';
-const PRIVX_ADDRESS = '0xYourPrivxTokenAddressHere'; // Replace with actual PRIVX token address
+const PRIVX_ADDRESS = '0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986'; // Replace with actual PRIVX token address
 
 const provider = new ethers.providers.Web3Provider(window.ethereum);
 const shieldContract = new ethers.Contract(SHIELD_ADDRESS, shield_abi, provider.getSigner());
