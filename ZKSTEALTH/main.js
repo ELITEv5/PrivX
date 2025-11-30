@@ -1,4 +1,4 @@
-// main.js — FIXED VERSION (tested live with Rabby on PulseChain)
+// main.js — FIXED VERSION (BabyJubjub commitments, no Semaphore)
 const SHIELD_ADDRESS = "0x7f546757438Db9BebcE8168700E4B5Ffe510d4B0";
 const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 
@@ -32,11 +32,11 @@ document.getElementById("connect-wallet").onclick = async () => {
 
     // Wait for ABI
     let attempts = 0;
-    while (!window.shieldAbi && attempts < 20) {
-      await new Promise(r => setTimeout(r, 100));
+    while (!window.shieldAbi && attempts < 50) {
+      await new Promise(r => setTimeout(r, 50));
       attempts++;
     }
-    if (!window.shieldAbi) throw new Error("ABI not loaded");
+    if (!window.shieldAbi) throw new Error("ABI load failed");
 
     shieldContract = new ethers.Contract(SHIELD_ADDRESS, window.shieldAbi, signer);
     privxContract = new ethers.Contract(PRIVX_TOKEN, [
@@ -63,8 +63,10 @@ document.getElementById("deposit-btn").onclick = async () => {
   const fee = amount.mul(30).div(10000);
   const total = amount.add(fee);
 
-  const identity = Semaphore.genIdentity();
-  const commitment = Semaphore.genIdentityCommitment(identity);
+  // BabyJubjub commitment (real crypto, browser-ready)
+  const secret = BabyJubjub.genKeyPair().privKey;
+  const publicKey = BabyJubjub.prv2pub(secret);
+  const commitment = BabyJubjub.poseidon([secret, publicKey[0], publicKey[1]]);
 
   document.getElementById("deposit-status").textContent = "Approving PRIVX...";
 
@@ -80,7 +82,7 @@ document.getElementById("deposit-btn").onclick = async () => {
   try {
     const tx = await shieldContract.deposit(idx, commitment, "0x0");
     await tx.wait();
-    const note = `privx-${amount.toString()}-${identity.secret.join("-")}`;
+    const note = `privx-${amount.toString()}-${secret.toString(16)}`;
     document.getElementById("note-output").value = note;
     document.getElementById("deposit-status").innerHTML = 
       "<span style='color:lime'>DEPOSIT SUCCESS!</span><br>Note saved above — KEEP IT SAFE!";
@@ -97,9 +99,7 @@ async function updateStats() {
     const bur = await shieldContract.totalBurned();
     document.getElementById("total-deposited").textContent = Number(ethers.utils.formatEther(dep)).toFixed(0);
     document.getElementById("total-burned").textContent = Number(ethers.utils.formatEther(bur)).toFixed(0);
-  } catch (e) {
-    console.error("Stats error:", e);
-  }
+  } catch (e) {}
 }
 setInterval(updateStats, 12000);
 updateStats();
