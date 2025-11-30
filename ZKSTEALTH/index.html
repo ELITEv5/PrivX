@@ -19,30 +19,40 @@
   </header>
 
   <main>
-    <section id="wallet-section">
-      <button id="connect-wallet">Connect Wallet</button>
-      <p id="wallet-status">Wallet not connected</p>
-    </section>
+  <section id="wallet-section">
+    <button id="connect-wallet">Connect Wallet</button>
+    <p id="wallet-status">Wallet not connected</p>
+  </section>
 
-    <section id="deposit-section">
-      <h2>Deposit PRIVX</h2>
-      <select id="denom-select">
-        <option value="0">100 PRIVX</option>
-        <option value="1">1,000 PRIVX</option>
-        <option value="2">10,000 PRIVX</option>
-        <option value="3">100,000 PRIVX</option>
-      </select>
-      <button id="deposit-btn">Deposit</button>
-      <p id="deposit-status"></p>
-      <textarea id="note-output" rows="4" readonly placeholder="Your note appears here after deposit..."></textarea>
-    </section>
+  <section id="deposit-section">
+    <h2>Deposit PRIVX</h2>
+    <select id="denom-select">
+      <option value="0">100 PRIVX</option>
+      <option value="1">1,000 PRIVX</option>
+      <option value="2">10,000 PRIVX</option>
+      <option value="3">100,000 PRIVX</option>
+    </select>
+    <button id="deposit-btn">Deposit</button>
+    <p id="deposit-status"></p>
+    <textarea id="note-output" rows="4" readonly placeholder="Your note appears here after deposit..."></textarea>
+  </section>
 
-    <section id="stats-section">
-      <h2>Shield Stats</h2>
-      <p>Total Deposited: <span id="total-deposited">0</span> PRIVX</p>
-      <p>Total Burned: <span id="total-burned">0</span> PRIVX</p>
-    </section>
-  </main>
+  <!-- FULL WITHDRAW SECTION — ADD THIS -->
+  <section id="withdraw-section">
+    <h2>Withdraw PRIVX</h2>
+    <textarea id="note-input" rows="4" placeholder="Paste your full note here (privx-100000...-...-...)"></textarea>
+    <input type="text" id="recipient" placeholder="Recipient address (optional – defaults to your wallet)" style="width:100%; margin:8px 0; padding:8px;">
+    <button id="withdraw-btn">Generate ZK Proof & Withdraw</button>
+    <p id="withdraw-status">Status: Ready</p>
+    <div id="proof-progress" style="margin-top:8px; color:#00ffcc; font-family:monospace;"></div>
+  </section>
+
+  <section id="stats-section">
+    <h2>Shield Stats</h2>
+    <p>Total Deposited: <span id="total-deposited">0</span> PRIVX</p>
+    <p>Total Burned: <span id="total-burned">0</span> PRIVX</p>
+  </section>
+</main>
 
   <footer>
     <p>Powered by xAI & Elite Team6 • PulseChain 2025</p>
