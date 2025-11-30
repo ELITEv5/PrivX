@@ -60,35 +60,54 @@ document.getElementById("deposit-btn").onclick = async () => {
 
   const idx = document.getElementById("denom-select").value;
   const amount = DENOMS[idx];
-  const total = amount.mul(1030).div(10000); // +0.3% fee
+  const total = amount.mul(1030).div(10000); // 0.3% fee included
 
-  // Real 32-byte commitment using ethers (no external libs)
+  // 1. Generate a random secret
   const secret = ethers.utils.randomBytes(32);
+  
+  // 2. Derive the commitment from just the secret (can match your ZK circuit later)
   const commitment = ethers.utils.keccak256(secret);
+
+  // 3. Create the commit hash — used for front-running protection
   const h = ethers.utils.keccak256(ethers.utils.concat([secret, amount]));
+
+  document.getElementById("deposit-status").textContent = "Committing hash...";
+
+  // 4. Call commit(h) before deposit (required!)
+  try {
+    const commitTx = await shieldContract.commit(h);
+    await commitTx.wait();
+  } catch (err) {
+    console.error(err);
+    document.getElementById("deposit-status").textContent = "Commit failed: " + err.message;
+    return;
+  }
 
   document.getElementById("deposit-status").textContent = "Approving PRIVX...";
 
   try {
     const allowance = await privxContract.allowance(userAddress, SHIELD_ADDRESS);
     if (allowance.lt(total)) {
-      await (await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256)).wait();
+      const approveTx = await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256);
+      await approveTx.wait();
     }
 
     document.getElementById("deposit-status").textContent = "Sending deposit...";
 
+    // 5. Now you can deposit with the same h
     const tx = await shieldContract.deposit(idx, commitment, h);
     await tx.wait();
 
     const note = `privx-${amount.toString()}-${ethers.utils.hexlify(secret).slice(2)}`;
     document.getElementById("note-output").value = note;
-    document.getElementById("deposit-status").innerHTML = 
-      "<span style='color:lime;font-size:22px'>DEPOSIT SUCCESS!</span><br><br>YOUR NOTE:<br><b>" + note + "</b>";
+    document.getElementById("deposit-status").innerHTML =
+      "<span style='color:lime;font-size:22px'>✅ DEPOSIT SUCCESS!</span><br><br>🔒 YOUR NOTE:<br><b>" + note + "</b>";
   } catch (err) {
     console.error(err);
     document.getElementById("deposit-status").textContent = "Failed: " + (err.message || "Check console");
   }
 };
+
 
 async function updateStats() {
   if (!shieldContract) return;
