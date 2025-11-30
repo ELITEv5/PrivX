@@ -1,0 +1,575 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_privx",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_verifier",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "SafeERC20FailedOperation",
+    "type": "error",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "name": "CommitMade",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "h",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "Deposited",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "d",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "c",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "i",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "MiningVaultSet",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "v",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "Reclaimed",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "n",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "burned",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "bounty",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "ShieldSealed",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "sealer",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "Withdrawn",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "d",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "n",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "BP_DENOMINATOR",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "BURN_ADDRESS",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "BURN_RATIO_BP",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "COMMIT_WINDOW",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "DENOM_100",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "DENOM_100K",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "DENOM_10K",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "DENOM_1K",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "FEE_BP",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "PRIVX",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IERC20"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "VERIFIER",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract ISemaphoreVerifier"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "commit",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "h",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "commitments",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "commits",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "deposit",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "idx",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "c",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "h",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "isSealed",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "miningVault",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IProofOfPrivacyMiningVaultV13"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "nextIndex",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "noteCreatedAt",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "nullifierToDenom",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "nullifierUsed",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "reclaim",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "n",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "sealShield",
+    "type": "function",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "setMiningVault",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "v",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "name": "totalBurned",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "totalDeposited",
+    "type": "function",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "withdraw",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "d",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "n",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "a",
+        "type": "uint256[2]",
+        "internalType": "uint256[2]"
+      },
+      {
+        "name": "b",
+        "type": "uint256[2][2]",
+        "internalType": "uint256[2][2]"
+      },
+      {
+        "name": "c",
+        "type": "uint256[2]",
+        "internalType": "uint256[2]"
+      },
+      {
+        "name": "p",
+        "type": "uint256[4]",
+        "internalType": "uint256[4]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+]
