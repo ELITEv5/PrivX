@@ -2,7 +2,7 @@
 const SHIELD_ADDRESS = "0x7f546757438Db9BebcE8168700E4B5Ffe510d4B0";
 const PRIVX_TOKEN    = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 
-const DENOMS = [100, 1000, 10000, 100000].map(n => ethers.utils.parseEther(n.toString()));
+const DENOMS = [100n, 1000n, 10000n, 100000n].map(n => ethers.parseUnits(n.toString(), 18));
 
 let provider, signer, shieldContract, privxContract;
 let userAddress = null;
