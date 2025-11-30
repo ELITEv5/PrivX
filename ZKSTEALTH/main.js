@@ -63,33 +63,33 @@ document.getElementById("deposit-btn").onclick = async () => {
   const fee = amount.mul(30).div(10000);
   const total = amount.add(fee);
 
-  // Real keccak256 commitment (snarkjs + ethers — 100% browser-safe)
-  const secret = ethers.utils.randomBytes(32);
+  // Real 32-byte commitment using keccak256
+  const secret = ethers.utils.randomBytes(31); // 31 bytes + amount = 32-byte hash
   const commitment = ethers.utils.keccak256(ethers.utils.concat([secret, amount]));
 
   document.getElementById("deposit-status").textContent = "Approving PRIVX...";
 
-  const allowance = await privxContract.allowance(userAddress, SHIELD_ADDRESS);
-  if (allowance.lt(total)) {
-    const approveTx = await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256);
-    await approveTx.wait();
-    document.getElementById("deposit-status").textContent = "Approval confirmed! Sending deposit...";
-  }
-
-  document.getElementById("deposit-status").textContent = "Sending deposit transaction...";
-
   try {
-    const tx = await shieldContract.deposit(idx, commitment, "0x0");
+    const allowance = await privxContract.allowance(userAddress, SHIELD_ADDRESS);
+    if (allowance.lt(total)) {
+      const approveTx = await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256);
+      await approveTx.wait();
+      document.getElementById("deposit-status").textContent = "Approval confirmed! Sending deposit...";
+    }
+
+    document.getElementById("deposit-status").textContent = "Sending deposit...";
+
+    // CORRECT: commitment as bytes32, "0x" as h (null)
+    const tx = await shieldContract.deposit(idx, commitment, "0x");
     await tx.wait();
 
-    // Note format: privx-amount-secretHex
-    const note = `privx-${amount.toString()}-${secret.slice(2)}`;
+    const note = `privx-${amount.toString()}-${ethers.utils.hexlify(secret).slice(2)}`;
     document.getElementById("note-output").value = note;
     document.getElementById("deposit-status").innerHTML = 
       "<span style='color:lime'>DEPOSIT SUCCESS!</span><br>Note saved above — KEEP IT SAFE!";
   } catch (err) {
     console.error("Deposit error:", err);
-    document.getElementById("deposit-status").textContent = "Failed: " + err.message;
+    document.getElementById("deposit-status").textContent = "Failed: " + (err.message || err);
   }
 };
 
