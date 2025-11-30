@@ -56,17 +56,21 @@ document.getElementById("connect-wallet").onclick = async () => {
 document.getElementById("deposit-btn").onclick = async () => {
   if (!signer) return alert("Connect wallet first!");
 
-  document.getElementById("deposit-status").textContent = "Generating commitment...";
+  document.getElementById("deposit-status").textContent = "Generating Semaphore commitment...";
 
   const idx = document.getElementById("denom-select").value;
   const amount = DENOMS[idx];
-  const fee = amount.mul(30).div(10000);
-  const total = amount.add(fee);
+  const total = amount.mul(1030).div(10000);
 
-  // Generate real 32-byte secret + commitment + h
-  const secret = ethers.utils.randomBytes(32);
-  const commitment = ethers.utils.keccak256(secret);
-  const h = ethers.utils.keccak256(ethers.utils.concat([secret, amount])); // 32-byte h
+  // Wait for circomlibjs
+  while (!window.circomlib) await new Promise(r => setTimeout(r, 100));
+
+  const { poseidon, babyjub } = circomlib;
+
+  // Real Semaphore identity
+  const privKey = babyjub.genKeyPair().privKey;
+  const pubKey = babyjub.prv2pub(privKey);
+  const commitment = poseidon([privKey, pubKey[0], pubKey[1]]);
 
   document.getElementById("deposit-status").textContent = "Approving PRIVX...";
 
@@ -78,16 +82,19 @@ document.getElementById("deposit-btn").onclick = async () => {
 
     document.getElementById("deposit-status").textContent = "Sending deposit...";
 
-    // THIS LINE IS CRITICAL — h is now a full 32-byte hash
-    const tx = await shieldContract.deposit(idx, commitment, h);
+    const tx = await shieldContract.deposit(
+      idx,
+      "0x" + commitment.toString(16).padStart(64, "0"),
+      ethers.constants.HashZero  // h = 0
+    );
     await tx.wait();
 
-    const note = `privx-${amount.toString()}-${ethers.utils.hexlify(secret)}`;
+    const note = `privx-${amount}-${Array.from(privKey).map(b => b.toString(16).padStart(2,"0")).join("")}`;
     document.getElementById("note-output").value = note;
     document.getElementById("deposit-status").innerHTML = 
-      "<span style='color:lime'>DEPOSIT SUCCESS!</span><br>Note saved above — KEEP IT SAFE!";
+      "<span style='color:lime'>DEPOSIT SUCCESS!</span><br>Note saved — KEEP IT SAFE!";
   } catch (err) {
-    console.error("Deposit error:", err);
+    console.error(err);
     document.getElementById("deposit-status").textContent = "Failed: " + err.message;
   }
 };
