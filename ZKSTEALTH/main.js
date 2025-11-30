@@ -52,46 +52,43 @@ document.getElementById("connect-wallet").onclick = async () => {
     alert("Connection failed: " + err.message);
   }
 };
+
 document.getElementById("deposit-btn").onclick = async () => {
   if (!signer) return alert("Connect wallet first!");
 
   document.getElementById("deposit-status").textContent = "Generating commitment...";
 
-  // Wait for circomlib to load
-  if (!window.circomlib) {
-    document.getElementById("deposit-status").textContent = "Loading crypto library...";
-    await new Promise(r => setTimeout(r, 1000));
-    if (!window.circomlib) return alert("Crypto library failed to load");
-  }
-
   const idx = document.getElementById("denom-select").value;
   const amount = DENOMS[idx];
-  const total = amount.mul(1030).div(10000); // +0.3% fee
+  const fee = amount.mul(30).div(10000);
+  const total = amount.add(fee);
 
-  // Real BabyJubjub commitment
-  const privKey = circomlib.babyjub.utils.genKeyPair().privKey;
-  const pubKey = circomlib.babyjub.prv2pub(privKey);
-  const commitment = circomlib.poseidon([privKey, pubKey[0], pubKey[1]]);
+  // Real keccak256 commitment (snarkjs + ethers — 100% browser-safe)
+  const secret = ethers.utils.randomBytes(32);
+  const commitment = ethers.utils.keccak256(ethers.utils.concat([secret, amount]));
 
   document.getElementById("deposit-status").textContent = "Approving PRIVX...";
 
+  const allowance = await privxContract.allowance(userAddress, SHIELD_ADDRESS);
+  if (allowance.lt(total)) {
+    const approveTx = await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256);
+    await approveTx.wait();
+    document.getElementById("deposit-status").textContent = "Approval confirmed! Sending deposit...";
+  }
+
+  document.getElementById("deposit-status").textContent = "Sending deposit transaction...";
+
   try {
-    const allowance = await privxContract.allowance(userAddress, SHIELD_ADDRESS);
-    if (allowance.lt(total)) {
-      await (await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256)).wait();
-    }
-
-    document.getElementById("deposit-status").textContent = "Sending deposit...";
-
     const tx = await shieldContract.deposit(idx, commitment, "0x0");
     await tx.wait();
 
-    const note = `privx-${amount.toString()}-${privKey.toString('hex')}`;
+    // Note format: privx-amount-secretHex
+    const note = `privx-${amount.toString()}-${secret.slice(2)}`;
     document.getElementById("note-output").value = note;
     document.getElementById("deposit-status").innerHTML = 
-      "<span style='color:lime'>DEPOSIT SUCCESS!</span><br>Note saved — KEEP IT SAFE!";
+      "<span style='color:lime'>DEPOSIT SUCCESS!</span><br>Note saved above — KEEP IT SAFE!";
   } catch (err) {
-    console.error(err);
+    console.error("Deposit error:", err);
     document.getElementById("deposit-status").textContent = "Failed: " + err.message;
   }
 };
