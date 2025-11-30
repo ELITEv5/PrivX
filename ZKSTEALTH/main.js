@@ -138,10 +138,12 @@ document.getElementById("withdraw-btn").onclick = async () => {
     if (parts.length !== 3 || parts[0] !== "privx") throw "Invalid note format";
 
     const amount = BigInt(parts[1]);
-    const secret = ethers.getBytes("0x" + parts[2]);
+    const secret = ethers.getBytes("0x" + parts[2]);  // v6 correct
 
-    // Ethers v6 CORRECT WAY to pad amount to 32 bytes
-    const amountPadded = ethers.zeroPadBytes(ethers.getBytes(ethers.toQuantity(amount)), 32);
+    // v6 correct way to pad amount to 32 bytes
+    const amountPadded = ethers.zeroPadValue(ethers.toBeHex(amount), 32);
+
+    // v6 correct keccak256 + concat
     const h = ethers.keccak256(ethers.concat([secret, amountPadded]));
 
     progress.textContent = "Sending withdraw...";
