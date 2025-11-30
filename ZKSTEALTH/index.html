@@ -9,8 +9,7 @@
   <meta name="theme-color" content="#0a0a0a">
   <link rel="stylesheet" href="style.css">
   <script src="ethers.umd.min.js"></script>
-  <script type="module" src="main.js"></script>
-  <script src="https://unpkg.com/@semaphore-protocol/proof"></script>
+  <script src="https://unpkg.com/@semaphore-protocol/proof@2"></script>
 </head>
 <body>
   <header>
@@ -35,12 +34,14 @@
       </select>
       <button id="deposit-btn">Deposit</button>
       <p id="deposit-status"></p>
+      <textarea id="note-output" placeholder="Your note will appear here..." readonly></textarea>
     </section>
 
     <section id="withdraw-section">
       <h2>Withdraw PRIVX</h2>
-      <input type="text" id="nullifier-input" placeholder="Nullifier Hash (from your note)">
-      <button id="withdraw-btn">Withdraw</button>
+      <textarea id="note-input" placeholder="Paste your full note here (from deposit)"></textarea>
+      <input type="text" id="recipient" placeholder="Recipient address (optional - defaults to your wallet)">
+      <button id="withdraw-btn">Generate Proof & Withdraw</button>
       <p id="withdraw-status"></p>
     </section>
 
@@ -55,6 +56,7 @@
     <p>Powered by xAI & Elite Team6 • PulseChain Mainnet • V14 Final</p>
   </footer>
 
+  <script type="module" src="main.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js');
