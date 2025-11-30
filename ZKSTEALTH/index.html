@@ -8,8 +8,6 @@
   <link rel="apple-touch-icon" href="icon-512.png">
   <meta name="theme-color" content="#0a0a0a">
   <link rel="stylesheet" href="style.css">
-
-  <!-- 1. Ethers + Semaphore first -->
   <script src="ethers.umd.min.js"></script>
   <script src="https://unpkg.com/@semaphore-protocol/proof@2"></script>
 </head>
@@ -36,12 +34,7 @@
       </select>
       <button id="deposit-btn">Deposit</button>
       <p id="deposit-status"></p>
-      <textarea id="note-output" rows="4" readonly placeholder="Your secret note appears here after deposit..."></textarea>
-    </section>
-
-    <section id="withdraw-section">
-      <h2>Withdraw PRIVX (soon)</h2>
-      <p>Full ZK withdraw coming in the next message</p>
+      <textarea id="note-output" rows="4" readonly placeholder="Your note appears here after deposit..."></textarea>
     </section>
 
     <section id="stats-section">
@@ -52,16 +45,12 @@
   </main>
 
   <footer>
-    <p>Powered by xAI & Elite Team6 • PulseChain • 2025</p>
+    <p>Powered by xAI & Elite Team6 • PulseChain 2025</p>
   </footer>
 
-  <!-- 2. Load ABIs as global variables -->
   <script>
-    fetch('shield_abi.json').then(r => r.json()).then(data => window.shieldAbi = data);
-    fetch('mining_abi.json').then(r => r.json()).then(data => window.miningAbi = data);
+    fetch('shield_abi.json').then(r => r.json()).then(d => window.shieldAbi = d);
   </script>
-
-  <!-- 3. Main script last -->
   <script src="main.js"></script>
 </body>
 </html>
