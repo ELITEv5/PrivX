@@ -60,18 +60,20 @@ document.getElementById("deposit-btn").onclick = async () => {
 
   const idx = document.getElementById("denom-select").value;
   const amount = DENOMS[idx];
-  const total = amount.mul(1030).div(10000); // +0.3% fee
+  const total = amount.mul(1030).div(10000);
 
   // Wait for circomlib to be ready
- 100%
   while (!window.circomlib || !circomlib.poseidon) {
     await new Promise(r => setTimeout(r, 100));
   }
 
-  // REAL Semaphore identity commitment (exactly what your contract expects)
-  const privKey = circomlib.babyJub.genKeyPair().privKey;
-  const pubKey = circomlib.babyJub.prv2pub(privKey);
-  const commitment = circomlib.poseidon([privKey, pubKey[0], pubKey[1]]);
+  const { poseidon, babyJub } = circomlib;
+
+  // REAL Semaphore identity commitment — this is what your contract accepts
+  const keypair = babyJub.genKeyPair();
+  const privKey = keypair.privKey;
+  const pubKey = babyJub.prv2pub(privKey);
+  const commitment = poseidon([privKey, pubKey[0], pubKey[1]]);
 
   document.getElementById("deposit-status").textContent = "Approving PRIVX...";
 
@@ -83,18 +85,19 @@ document.getElementById("deposit-btn").onclick = async () => {
 
     document.getElementById("deposit-status").textContent = "Sending deposit...";
 
-    await shieldContract.deposit(
+    const tx = await shieldContract.deposit(
       idx,
       "0x" + commitment.toString(16).padStart(64, "0"),
       "0x0000000000000000000000000000000000000000000000000000000000000000"
     );
+    await tx.wait();
 
     const note = `privx-${amount.toString()}-${Array.from(privKey).map(b => b.toString(16).padStart(2,"0")).join("")}`;
     document.getElementById("note-output").value = note;
     document.getElementById("deposit-status").innerHTML = 
-      "<span style='color:lime'>DEPOSIT SUCCESS!</span><br>Note saved above — KEEP IT SAFE!";
+      "<span style='color:lime'>DEPOSIT SUCCESS!</span><br>Note saved — KEEP IT SAFE!";
   } catch (err) {
-    console.error(err);
+    console.error("Deposit error:", err);
     document.getElementById("deposit-status").textContent = "Failed: " + (err.message || "Check console");
   }
 };
