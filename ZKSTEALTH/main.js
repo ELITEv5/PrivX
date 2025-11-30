@@ -63,7 +63,7 @@ document.getElementById("deposit-btn").onclick = async () => {
   const fee = amount.mul(30).div(10000);
   const total = amount.add(fee);
 
-  // Real 32-byte commitment + nullifier hash
+  // Generate real 32-byte secret + commitment + h
   const secret = ethers.utils.randomBytes(32);
   const commitment = ethers.utils.keccak256(secret);
   const h = ethers.utils.keccak256(ethers.utils.concat([secret, amount])); // 32-byte h
@@ -73,14 +73,13 @@ document.getElementById("deposit-btn").onclick = async () => {
   try {
     const allowance = await privxContract.allowance(userAddress, SHIELD_ADDRESS);
     if (allowance.lt(total)) {
-      const approveTx = await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256);
-      await approveTx.wait();
-      document.getElementById("deposit-status").textContent = "Approval confirmed! Sending deposit...";
+      await (await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256)).wait();
     }
 
     document.getElementById("deposit-status").textContent = "Sending deposit...";
 
-    const tx = await shieldContract.deposit(idx, commitment, h); // h is now 32-byte
+    // THIS LINE IS CRITICAL — h is now a full 32-byte hash
+    const tx = await shieldContract.deposit(idx, commitment, h);
     await tx.wait();
 
     const note = `privx-${amount.toString()}-${ethers.utils.hexlify(secret)}`;
@@ -89,7 +88,7 @@ document.getElementById("deposit-btn").onclick = async () => {
       "<span style='color:lime'>DEPOSIT SUCCESS!</span><br>Note saved above — KEEP IT SAFE!";
   } catch (err) {
     console.error("Deposit error:", err);
-    document.getElementById("deposit-status").textContent = "Failed: " + (err.message || "Unknown error");
+    document.getElementById("deposit-status").textContent = "Failed: " + err.message;
   }
 };
 
