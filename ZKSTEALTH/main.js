@@ -56,49 +56,56 @@ document.getElementById("connect-wallet").onclick = async () => {
 document.getElementById("deposit-btn").onclick = async () => {
   if (!signer) return alert("Connect wallet first!");
 
-  document.getElementById("deposit-status").textContent = "Generating real Semaphore commitment...";
+  document.getElementById("deposit-status").textContent = "Generating commitment...";
 
   const idx = document.getElementById("denom-select").value;
   const amount = DENOMS[idx];
   const total = amount.mul(1030).div(10000);
 
-  // Wait for circomlib to be ready
-  while (!window.circomlib || !circomlib.poseidon) {
+  // Force wait until circomlib is fully loaded
+  for (let i = 0; i < 50; i++) {
+    if (window.circomlib?.poseidon && window.circomlib?.babyJub) break;
     await new Promise(r => setTimeout(r, 100));
   }
+  if (!window.circomlib?.poseidon) {
+    return alert("Crypto library failed to load — hard refresh the page");
+  }
 
-  const { poseidon, babyJub } = circomlib;
-
-  // REAL Semaphore identity commitment — this is what your contract accepts
-  const keypair = babyJub.genKeyPair();
-  const privKey = keypair.privKey;
-  const pubKey = babyJub.prv2pub(privKey);
-  const commitment = poseidon([privKey, pubKey[0], pubKey[1]]);
+  const privKey = circomlib.babyJub.genKeyPair().privKey;
+  const pubKey = circomlib.babyJub.prv2pub(privKey);
+  const commitment = circomlib.poseidon([privKey, pubKey[0], pubKey[1]]);
 
   document.getElementById("deposit-status").textContent = "Approving PRIVX...";
 
   try {
     const allowance = await privxContract.allowance(userAddress, SHIELD_ADDRESS);
     if (allowance.lt(total)) {
-      await (await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256)).wait();
+      const atx = await privxContract.approve(SHIELD_ADDRESS, ethers.constants.MaxUint256);
+      document.getElementById("deposit-status").textContent = "→ Confirm approval in Rabby";
+      await atx.wait();
     }
 
-    document.getElementById("deposit-status").textContent = "Sending deposit...";
+    document.getElementById("deposit-status").textContent = "→ Confirm deposit in Rabby";
 
     const tx = await shieldContract.deposit(
       idx,
-      "0x" + commitment.toString(16).padStart(64, "0"),
-      "0x0000000000000000000000000000000000000000000000000000000000000000"
+      commitment,   // circomlib returns uint256 automatically
+      ethers.constants.HashZero
     );
+
+    document.getElementById("deposit-status").textContent = "Waiting for block...";
+
     await tx.wait();
 
-    const note = `privx-${amount.toString()}-${Array.from(privKey).map(b => b.toString(16).padStart(2,"0")).join("")}`;
+    const note = `privx-${amount.toString()}-${Array.from(privKey).map(b => b.toString(16).padStart(2,'0')).join('')}`;
     document.getElementById("note-output").value = note;
     document.getElementById("deposit-status").innerHTML = 
-      "<span style='color:lime'>DEPOSIT SUCCESS!</span><br>Note saved — KEEP IT SAFE!";
-  } catch (err) {
-    console.error("Deposit error:", err);
-    document.getElementById("deposit-status").textContent = "Failed: " + (err.message || "Check console");
+      '<span style="color:lime;font-size:20px">DEPOSIT SUCCESS!</span><br><br>YOUR NOTE (SAVE IT):<br><b>' + note + '</b>';
+
+  } catch (e) {
+    console.error(e);
+    document.getElementById("deposit-status").innerHTML = 
+      '<span style="color:red">FAILED:</span> ' + (e.message || e);
   }
 };
 
