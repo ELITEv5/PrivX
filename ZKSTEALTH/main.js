@@ -140,8 +140,8 @@ document.getElementById("withdraw-btn").onclick = async () => {
     const amount = BigInt(parts[1]);
     const secret = ethers.utils.arrayify("0x" + parts[2]);
 
-    // Reconstruct the exact h used in deposit
-    const amountPadded = ethers.utils.zeroPadValue(ethers.toBeHex(amount), 32);
+    // FIXED LINE — ethers v6 syntax
+    const amountPadded = ethers.zeroPadValue(ethers.toBeHex(amount), 32);
     const h = ethers.utils.keccak256(ethers.utils.concat([secret, amountPadded]));
 
     progress.textContent = "Verifying nullifier...";
