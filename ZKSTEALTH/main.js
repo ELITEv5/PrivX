@@ -77,67 +77,65 @@ async function updateStats() {
   } catch (e) {}
 }
 setInterval(updateStats, 12000);
-// FULL BROWSER ZK WITHDRAW — ADD THIS TO THE BOTTOM OF main.js
+// FULL ZK WITHDRAW — PASTE THIS AT THE END OF main.js
 document.getElementById("withdraw-btn").onclick = async () => {
   if (!signer) return alert("Connect wallet first!");
 
-  const note = document.getElementById("note-input")?.value.trim() || prompt("Paste your full note:");
-  if (!note || !note.startsWith("privx-")) return alert("Invalid note format");
+  const note = document.getElementById("note-input").value.trim();
+  if (!note.startsWith("privx-")) return alert("Invalid note – must start with privx-");
 
-  const recipient = document.getElementById("recipient")?.value.trim() || userAddress;
+  const recipient = document.getElementById("recipient").value.trim() || userAddress;
 
-  document.getElementById("withdraw-status").textContent = "Generating ZK proof... (15–25 sec)";
-  document.getElementById("proof-progress").innerHTML = "Working...";
+  document.getElementById("withdraw-status").textContent = "Generating ZK proof… (15–30 sec)";
+  document.getElementById("proof-progress").textContent = "Building Merkle tree & proving...";
 
   try {
     const parts = note.split("-");
-    const amountRaw = parts[1];
-    const secretNums = parts.slice(2).map(x => BigInt(x));
+    const amount = parts[1];
+    const secret = parts.slice(2).map(x => BigInt(x));
 
-    const identity = new Semaphore.Identity(secretNums);
+    const identity = new Semaphore.Identity(secret);
     const commitment = Semaphore.genIdentityCommitment(identity);
 
-    // Get all commitments from on-chain events
+    // Fetch all commitments
     const events = await shieldContract.queryFilter(shieldContract.filters.Deposited());
-    const allCommitments = events.map(e => e.args.c);
+    const commitments = events.map(e => e.args.c);
 
-    if (!allCommitments.includes(commitment)) {
+    if (!commitments.some(c => c.toString() === commitment.toString())) {
       throw new Error("Your deposit not found in the pool");
     }
 
-    // Build Merkle tree & proof
     const tree = new Semaphore.MerkleTree(20);
-    allCommitments.forEach(c => tree.insert(c));
+    commitments.forEach(c => tree.insert(c));
     const merkleProof = tree.proof(commitment);
 
-    // Generate real Groth16 proof
     const { proof, publicSignals } = await Semaphore.generateProof(
       identity,
       merkleProof,
-      BigInt(amountRaw),  // external nullifier = amount
-      0n                  // signal
+      BigInt(amount),
+      0n
     );
 
-    document.getElementById("withdraw-status").textContent = "Proof ready! Sending tx...";
+    document.getElementById("proof-progress").textContent = "Proof ready – sending transaction...";
 
     const tx = await shieldContract.withdraw(
-      amountRaw,
+      amount,
       publicSignals.nullifierHash,
       proof.pi_a.slice(0, 2),
       proof.pi_b.map(row => row.reverse()),
       proof.pi_c.slice(0, 2),
-      [publicSignals.merkleRoot, publicSignals.nullifierHash, BigInt(amountRaw), BigInt(amountRaw)]
+      [publicSignals.merkleRoot, publicSignals.nullifierHash, BigInt(amount), BigInt(amount)]
     );
 
     await tx.wait();
 
     document.getElementById("withdraw-status").innerHTML = 
-      `<span style="color:lime">SUCCESS!</span> Withdrawn ${ethers.utils.formatEther(amountRaw)} PRIVX`;
+      `<span style="color:lime">SUCCESS!</span> Withdrawn ${ethers.utils.formatEther(amount)} PRIVX`;
     document.getElementById("proof-progress").textContent = "";
 
   } catch (err) {
     console.error(err);
-    document.getElementById("withdraw-status").textContent = "Failed: " + (err.message || "Unknown error");
+    document.getElementById("withdraw-status").textContent = "Failed: " + (err.message || err);
     document.getElementById("proof-progress").textContent = "";
   }
 };
