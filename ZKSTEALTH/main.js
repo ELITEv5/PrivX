@@ -122,15 +122,6 @@ function parseNote(note) {
   return { amount, secret, nullifier };
 }
 
-document.getElementById("withdraw-btn").onclick = async () => {
-  if (!signer) return alert("Connect wallet first!");
-
-  const note = document.getElementById("note-input").value.trim();
-  if (note !== "privx-100000000000000000000-64a70b95556b88cedbca3dc889ddb8dfdfb12bb330ff5a6d9a47b97efa0de2ac") {
-    alert("Paste your exact note first");
-    return;
-  }
-
   document.getElementById("withdraw-btn").onclick = async () => {
   if (!signer) return alert("Connect wallet first!");
 
