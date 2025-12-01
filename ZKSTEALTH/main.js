@@ -140,7 +140,7 @@ document.getElementById("withdraw-btn").onclick = async () => {
     const amount = BigInt(parts[1]);
     const secret = ethers.utils.arrayify("0x" + parts[2]);
 
-    // Find correct index
+    // Find correct index (0-3)
     const idx = DENOMS.findIndex(d => d.toString() === amount.toString());
     if (idx === -1) throw "Invalid amount";
 
@@ -151,22 +151,24 @@ document.getElementById("withdraw-btn").onclick = async () => {
 
     progress.textContent = "Sending withdraw...";
 
+    // FINAL CORRECT CALL — 4 input values
     const tx = await shieldContract.withdraw(
-      idx,                     // ← correct: index 0-3
-      h,                       // ← correct nullifier
-      ["0", "0"],              // a
-      [["0", "0"], ["0", "0"]], // b
-      ["0", "0"],              // c
-      ["0", "0", "0", "0", "0", "0", "0", "0"], // ← 8 zeros, not 4
-      { gasLimit: 900000 }
+      idx,                     // 1. denomination index
+      h,                       // 2. nullifier hash
+      [0, 0],                  // 3. a
+      [[0, 0], [0, 0]],        // 4. b
+      [0, 0],                  // 5. c
+      [0, 0, 0, 0],            // 6. input — 4 zeros
+      { gasLimit: 800000 }
     );
 
-    progress.textContent = "Confirming on chain...";
+    progress.textContent = "Confirming...";
     await tx.wait();
 
     status.innerHTML = `
       <span style="color:lime;font-size:36px">WITHDRAW SUCCESS!</span><br><br>
-      ${ethers.utils.formatEther(amount)} PRIVX → ${recipient}
+      ${ethers.utils.formatEther(amount)} PRIVX sent to<br>
+      <b>${recipient}</b>
     `;
     progress.textContent = "";
 
