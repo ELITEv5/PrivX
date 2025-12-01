@@ -140,9 +140,9 @@ document.getElementById("withdraw-btn").onclick = async () => {
     const amount = BigInt(parts[1]);
     const secret = ethers.utils.arrayify("0x" + parts[2]);
 
-    // Find the correct index (0,1,2,3) from the amount
+    // Find correct index
     const idx = DENOMS.findIndex(d => d.toString() === amount.toString());
-    if (idx === -1) throw "Invalid denomination — use 100, 1k, 10k, or 100k PRIVX";
+    if (idx === -1) throw "Invalid amount";
 
     const amountPadded = ethers.utils.hexZeroPad(ethers.utils.hexlify(amount), 32);
     const h = ethers.utils.keccak256(ethers.utils.concat([secret, amountPadded]));
@@ -151,24 +151,22 @@ document.getElementById("withdraw-btn").onclick = async () => {
 
     progress.textContent = "Sending withdraw...";
 
-    // FINAL CORRECT CALL — index first, then h, then dummy proof
     const tx = await shieldContract.withdraw(
-      idx,                     // ← THIS IS THE FIX (index, not amount)
-      h,
-      [0, 0],
-      [[0, 0], [0, 0]],
-      [0, 0],
-      [0, 0, 0, 0],
-      { gasLimit: 800000 }
+      idx,                     // ← correct: index 0-3
+      h,                       // ← correct nullifier
+      ["0", "0"],              // a
+      [["0", "0"], ["0", "0"]], // b
+      ["0", "0"],              // c
+      ["0", "0", "0", "0", "0", "0", "0", "0"], // ← 8 zeros, not 4
+      { gasLimit: 900000 }
     );
 
-    progress.textContent = "Confirming on-chain...";
+    progress.textContent = "Confirming on chain...";
     await tx.wait();
 
     status.innerHTML = `
-      <span style="color:lime;font-size:32px">WITHDRAW SUCCESS!</span><br><br>
-      ${ethers.utils.formatEther(amount)} PRIVX sent to<br>
-      <b>${recipient}</b>
+      <span style="color:lime;font-size:36px">WITHDRAW SUCCESS!</span><br><br>
+      ${ethers.utils.formatEther(amount)} PRIVX → ${recipient}
     `;
     progress.textContent = "";
 
