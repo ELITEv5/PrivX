@@ -138,12 +138,11 @@ document.getElementById("withdraw-btn").onclick = async () => {
     if (parts.length !== 3 || parts[0] !== "privx") throw "Invalid note format";
 
     const amount = BigInt(parts[1]);
-    const secretHex = "0x" + parts[2];
-    const secret = ethers.getBytes(secretHex);  // v6: ethers.getBytes (no .utils)
+    const secret = ethers.utils.arrayify("0x" + parts[2]);  // v5 correct
 
-    // v6: ethers.zeroPadValue + ethers.toBeHex
-    const amountPadded = ethers.zeroPadValue(ethers.toBeHex(amount), 32);
-    const h = ethers.keccak256(ethers.concat([secret, amountPadded]));  // v6: ethers.keccak256 + ethers.concat
+    // v5 correct padding
+    const amountPadded = ethers.utils.zeroPad(ethers.utils.arrayify(amount), 32);
+    const h = ethers.utils.keccak256(ethers.utils.concat([secret, amountPadded]));
 
     progress.textContent = "Sending withdraw...";
 
@@ -161,7 +160,7 @@ document.getElementById("withdraw-btn").onclick = async () => {
 
     status.innerHTML = `
       <span style="color:lime;font-size:28px">WITHDRAW SUCCESS!</span><br><br>
-      ${ethers.formatEther(amount)} PRIVX sent to<br>
+      ${ethers.utils.formatEther(amount)} PRIVX sent to<br>
       <b>${recipient}</b>
     `;
     progress.textContent = "";
