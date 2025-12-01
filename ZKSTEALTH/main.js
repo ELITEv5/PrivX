@@ -138,10 +138,11 @@ document.getElementById("withdraw-btn").onclick = async () => {
     if (parts.length !== 3 || parts[0] !== "privx") throw "Invalid note format";
 
     const amount = BigInt(parts[1]);
-    const secret = ethers.utils.arrayify("0x" + parts[2]);  // v5 correct
+    const secret = ethers.utils.arrayify("0x" + parts[2]);
 
-    // v5 correct padding
-    const amountPadded = ethers.utils.zeroPad(ethers.utils.arrayify(amount), 32);
+    // THIS IS THE CORRECT LINE FOR v5
+    const amountPadded = ethers.utils.hexZeroPad(ethers.utils.hexlify(amount), 32);
+
     const h = ethers.utils.keccak256(ethers.utils.concat([secret, amountPadded]));
 
     progress.textContent = "Sending withdraw...";
@@ -152,10 +153,10 @@ document.getElementById("withdraw-btn").onclick = async () => {
       amount.toString(),
       h,
       recipient,
-      { gasLimit: 500000 }
+      { gasLimit: 600000 }
     );
 
-    progress.textContent = "Waiting for confirmation...";
+    progress.textContent = "Confirming on-chain...";
     await tx.wait();
 
     status.innerHTML = `
