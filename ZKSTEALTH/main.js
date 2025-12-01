@@ -124,24 +124,28 @@ function parseNote(note) {
 
 document.getElementById("withdraw-btn").onclick = async () => {
   if (!signer) return alert("Connect wallet first!");
-  if (!window.ethersReady) return alert("ethers not ready — refresh page");
 
   const noteStr = document.getElementById("note-input").value.trim();
-  if (!noteStr) return alert("Paste note");
+  if (!noteStr) return alert("Paste your note first");
 
   const status = document.getElementById("withdraw-status");
   const progress = document.getElementById("proof-progress");
-  status.textContent = ""; progress.textContent = "Working...";
+  status.textContent = "";
+  progress.textContent = "Parsing note...";
 
   try {
-    const p = noteStr.split("-");
-    if (p.length !== 3 || p[0] !== "privx") throw "Bad note";
+    const parts = noteStr.split("-");
+    if (parts.length !== 3 || parts[0] !== "privx") throw "Invalid note format";
 
-    const amount = BigInt(p[1]);
-    const secret = ethers.getBytes("0x" + p[2]);
+    const amount = BigInt(parts[1]);
+    const secretHex = "0x" + parts[2];
+    const secret = ethers.getBytes(secretHex);  // v6: ethers.getBytes (no .utils)
 
+    // v6: ethers.zeroPadValue + ethers.toBeHex
     const amountPadded = ethers.zeroPadValue(ethers.toBeHex(amount), 32);
-    const h = ethers.keccak256(ethers.concat([secret, amountPadded]));
+    const h = ethers.keccak256(ethers.concat([secret, amountPadded]));  // v6: ethers.keccak256 + ethers.concat
+
+    progress.textContent = "Sending withdraw...";
 
     const recipient = document.getElementById("recipient").value.trim() || userAddress;
 
@@ -149,16 +153,22 @@ document.getElementById("withdraw-btn").onclick = async () => {
       amount.toString(),
       h,
       recipient,
-      { gasLimit: 600000 }
+      { gasLimit: 500000 }
     );
-    progress.textContent = "Confirming...";
+
+    progress.textContent = "Waiting for confirmation...";
     await tx.wait();
 
-    status.innerHTML = `<span style="color:lime;font-size:28px">WITHDRAW SUCCESS!</span><br>${ethers.formatEther(amount)} PRIVX → ${recipient}`;
+    status.innerHTML = `
+      <span style="color:lime;font-size:28px">WITHDRAW SUCCESS!</span><br><br>
+      ${ethers.formatEther(amount)} PRIVX sent to<br>
+      <b>${recipient}</b>
+    `;
     progress.textContent = "";
-  } catch (e) {
-    console.error(e);
-    status.innerHTML = `<span style="color:red">FAILED:</span> ${e.message}`;
+
+  } catch (err) {
+    console.error(err);
+    status.innerHTML = `<span style="color:red">FAILED:</span> ${err.message || err}`;
     progress.textContent = "";
   }
 };
