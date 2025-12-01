@@ -143,18 +143,21 @@ document.getElementById("withdraw-btn").onclick = async () => {
     const amountPadded = ethers.utils.hexZeroPad(ethers.utils.hexlify(amount), 32);
     const h = ethers.utils.keccak256(ethers.utils.concat([secret, amountPadded]));
 
+    // THIS IS THE FIX — find original index
+    const idx = DENOMS.findIndex(d => d.toString() === amount.toString());
+    if (idx === -1) throw "Invalid denomination";
+
     const recipient = document.getElementById("recipient").value.trim() || userAddress;
 
     progress.textContent = "Sending withdraw...";
 
-    // 6 arguments — exactly what your contract expects
     const tx = await shieldContract.withdraw(
-      amount.toString(),     // d
-      h,                     // nullifierHash
-      [0, 0],                // a
-      [[0, 0], [0, 0]],      // b
-      [0, 0],                // c
-      [0, 0, 0, 0],          // input (we don't use Merkle path)
+      idx,                   // ← send index, not amount
+      h,
+      [0, 0],
+      [[0, 0], [0, 0]],
+      [0, 0],
+      [0, 0, 0, 0],
       { gasLimit: 800000 }
     );
 
