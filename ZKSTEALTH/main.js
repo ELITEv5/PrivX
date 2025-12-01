@@ -135,28 +135,30 @@ document.getElementById("withdraw-btn").onclick = async () => {
 
   try {
     const parts = noteStr.split("-");
-    if (parts.length !== 3 || parts[0] !== "privx") throw "Invalid note format";
+    if (parts.length !== 3 || parts[0] !== "privx") throw "Invalid note";
 
     const amount = BigInt(parts[1]);
     const secret = ethers.utils.arrayify("0x" + parts[2]);
 
-    // THIS IS THE CORRECT LINE FOR v5
     const amountPadded = ethers.utils.hexZeroPad(ethers.utils.hexlify(amount), 32);
-
     const h = ethers.utils.keccak256(ethers.utils.concat([secret, amountPadded]));
-
-    progress.textContent = "Sending withdraw...";
 
     const recipient = document.getElementById("recipient").value.trim() || userAddress;
 
+    progress.textContent = "Sending withdraw...";
+
+    // 6 arguments — exactly what your contract expects
     const tx = await shieldContract.withdraw(
-      amount.toString(),
-      h,
-      recipient,
-      { gasLimit: 600000 }
+      amount.toString(),     // d
+      h,                     // nullifierHash
+      [0, 0],                // a
+      [[0, 0], [0, 0]],      // b
+      [0, 0],                // c
+      [0, 0, 0, 0],          // input (we don't use Merkle path)
+      { gasLimit: 800000 }
     );
 
-    progress.textContent = "Confirming on-chain...";
+    progress.textContent = "Confirming...";
     await tx.wait();
 
     status.innerHTML = `
