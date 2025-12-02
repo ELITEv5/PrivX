@@ -53,6 +53,37 @@
     .vault-display{margin-top:30px;padding:20px;background:rgba(138,43,226,0.2);border-radius:14px;text-align:center;border:1px solid var(--primary)}
     .vault-display span{color:var(--accent);font-size:1.4em;font-weight:900}
     .hidden { display: none !important; }
+    .logo-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.privx-logo {
+  max-width: 260px;
+  width: 100%;
+  height: auto;
+  margin: 0 auto 10px auto;
+  display: block;
+  filter: drop-shadow(0 0 20px var(--glow));
+  transition: transform 0.3s ease;
+}
+
+.privx-logo:hover {
+  transform: scale(1.05);
+}
+
+/* Responsive logo adjustments */
+@media (max-width: 768px) {
+  .privx-logo {
+    max-width: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .privx-logo {
+    max-width: 160px;
+  }
+}
 
     /* 📱 Responsive Mobile Tweaks */
     @media (max-width: 768px) {
@@ -86,8 +117,10 @@
   </div>
 
   <div class="container">
-    <h1>PrivX Hurricane Shield</h1>
-    <p class="subtitle">Privacy Exchange Token + Instant 2% Proof-of-Privacy Rewards</p>
+    <div class="logo-header">
+  <img src="privx_logo.png" alt="PrivX Hurricane" class="privx-logo">
+  <p class="subtitle">Privacy Exchange Token + Instant 2% Proof-of-Privacy Rewards</p>
+</div>
 
     <div class="tabs">
       <div class="tab active" onclick="switchTab('deposit')">Deposit</div>
