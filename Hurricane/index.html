@@ -113,7 +113,7 @@
         </div>
     </div>
 
-           <!-- Universal Wallet Connector + PrivX Engine -->
+              <!-- Core PrivX Hurricane Engine – FINAL WORKING ORDER -->
     <script src="web3.min.js"></script>
     <script src="config-all-denominations.js"></script>
     <script src="tornado-api.js"></script>
@@ -121,120 +121,72 @@
     <script src="deposit-tracker.js"></script>
     <script src="fast-stats.js"></script>
 
+    <!-- Universal Wallet Connector (clean version) -->
     <script>
-        // Universal Wallet Connector – Works with MetaMask, Rabby, Coinbase, WalletConnect, etc.
-        let web3;
-        let userAccount;
-        let selectedDenomination;
+        let web3, userAccount;
 
-        // Detect ANY ethereum provider
-        function detectWallets() {
-            if (typeof window.ethereum !== 'undefined') {
-                // MetaMask, Rabby, Coinbase – all use window.ethereum
-                web3 = new Web3(window.ethereum);
-                return true;
-            } else if (typeof window.web3 !== 'undefined') {
-                // Legacy Mist/BitPay
-                web3 = new Web3(window.web3.currentProvider);
-                return true;
-            } else {
-                return false;
-            }
-        }
-
-        // Universal connect function
         window.toggleWallet = async function() {
-            const button = document.getElementById('walletButton');
-            const text = document.getElementById('walletButtonText');
-
-            if (!detectWallets()) {
-                alert('No wallet detected! Install MetaMask or Rabby.');
-                return;
-            }
+            if (!window.ethereum) return alert('Wallet not found!');
 
             try {
-                // Request accounts – works with all EIP-1193 providers (Rabby, MetaMask, etc.)
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 userAccount = accounts[0];
 
-                // Switch to PulseChain mainnet (chainId 369)
+                // Auto-switch to PulseChain
                 try {
                     await window.ethereum.request({
                         method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: '0x171' }] // 369 in hex
+                        params: [{ chainId: '0x171' }]
                     });
-                } catch (switchError) {
-                    // If chain not added, add it
-                    if (switchError.code === 4902) {
+                } catch (e) {
+                    if (e.code === 4902) {
                         await window.ethereum.request({
                             method: 'wallet_addEthereumChain',
                             params: [{
                                 chainId: '0x171',
                                 chainName: 'PulseChain',
                                 rpcUrls: ['https://rpc.pulsechain.com'],
-                                nativeCurrency: { name: 'Pulse', symbol: 'PLS', decimals: 18 },
+                                nativeCurrency: { name: 'PLS', symbol: 'PLS', decimals: 18 },
                                 blockExplorerUrls: ['https://scan.pulsechain.com']
                             }]
                         });
                     }
                 }
 
-                // Update UI
-                button.classList.add('connected');
-                text.textContent = userAccount.slice(0,6) + '...' + userAccount.slice(-4);
-                button.onclick = () => { /* Disconnect logic if needed */ };
+                document.getElementById('walletButtonText').textContent = userAccount.slice(0,6)+'...'+userAccount.slice(-4);
+                document.getElementById('walletButton').classList.add('connected');
+                web3 = new Web3(window.ethereum);
+                window.userAccount = userAccount;  // ← critical for app-complete.js
+                window.web3 = web3;
 
-                // Load balance and update button
-                loadBalance();
+                // Let app-complete.js take over from here
+                if (typeof initApp === 'function') initApp();
                 if (typeof updateDepositButton === 'function') updateDepositButton();
-
-                console.log('Connected:', userAccount);
-            } catch (error) {
-                console.error('Connection failed:', error);
-                alert('Connection rejected. Try again?');
+            } catch (err) {
+                console.error(err);
             }
         };
 
-        // Load PRIVX balance
-        async function loadBalance() {
-            if (!userAccount || !web3) return;
-            const privxABI = [{'constant':true,'inputs':[{'name':'_owner','type':'address'}],'name':'balanceOf','outputs':[{'name':'balance','type':'uint256'}],'type':'function'}];
-            const privxContract = new web3.eth.Contract(privxABI, window.PRIVX_TOKEN);
-            try {
-                const balance = await privxContract.methods.balanceOf(userAccount).call();
-                const formatted = web3.utils.fromWei(balance, 'ether');
-                // Update balance display if exists
-                const balanceEl = document.getElementById('balanceDisplay');
-                if (balanceEl) balanceEl.textContent = `Balance: ${formatted} PRIVX`;
-            } catch (e) {
-                console.log('Balance load failed:', e);
-            }
+        // Auto-connect if already authorized
+        if (window.ethereum) {
+            window.ethereum.request({ method: 'eth_accounts' }).then(accs => {
+                if (accs.length > 0) toggleWallet();
+            });
         }
+    </script>
 
-        // Update deposit button for any wallet
-        window.updateDepositButton = function() {
-            const btn = document.getElementById('depositBtn');
-            if (!userAccount) {
-                btn.textContent = 'Connect Wallet First';
-                btn.disabled = true;
-            } else if (!selectedDenomination) {
-                btn.textContent = 'Select Amount';
-                btn.disabled = true;
-            } else {
-                btn.textContent = `Deposit ${selectedDenomination} PRIVX`;
-                btn.disabled = false;
-            }
-        };
-        
-                        // FINAL BULLETPROOF SELECT FUNCTION – ONLY ONE COPY ALLOWED
+    <!-- THE REAL DEPOSIT ENGINE – MUST LOAD LAST -->
+    <script src="app-complete.js"></script>
+
+    <!-- Final bulletproof selection (no conflicts) -->
+    <script>
         window.selectDenomination = function(denom) {
-            const clean = denom.replace(/,/g, '');           // "100", "1000", "10000", "100000"
+            const clean = denom.replace(/,/g, '');
             window.selectedDenomination = clean;
 
             document.querySelectorAll('.denomination-card').forEach(card => {
                 card.classList.remove('selected');
-                const cardText = card.querySelector('.denomination-amount').textContent;
-                if (cardText.includes(clean + ' PRIVX')) {     // ← exact match, no overlap
+                if (card.querySelector('.denomination-amount').textContent.includes(clean + ' PRIVX')) {
                     card.classList.add('selected');
                 }
             });
@@ -245,68 +197,15 @@
                 btn.disabled = false;
             }
         };
-
-        // Copy note function
-        window.copyNote = function() {
-            const note = document.getElementById('noteText').textContent;
-            navigator.clipboard.writeText(note).then(() => {
-                alert('Note copied! Keep it safe.');
-            });
-        };
-
-        // Tab switching
-        window.switchTab = function(tab) {
-            document.getElementById('depositTab').classList.toggle('hidden', tab !== 'deposit');
-            document.getElementById('withdrawTab').classList.toggle('hidden', tab !== 'withdraw');
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-        };
-
-        // Load on startup
-        window.addEventListener('load', () => {
-            if (detectWallets()) {
-                // Auto-connect if already authorized
-                window.ethereum.request({ method: 'eth_accounts' }).then(accounts => {
-                    if (accounts.length > 0) {
-                        userAccount = accounts[0];
-                        toggleWallet(); // Reuse for UI update
-                    }
-                });
-            }
-            loadBalance();
-            updateDepositButton();
-        });
-
-        // Listen for account changes (Rabby/MetaMask)
-        if (window.ethereum) {
-            window.ethereum.on('accountsChanged', accounts => {
-                if (accounts.length === 0) {
-                    // Disconnected
-                    userAccount = null;
-                    document.getElementById('walletButtonText').textContent = 'Connect Wallet';
-                    document.getElementById('walletButton').classList.remove('connected');
-                    updateDepositButton();
-                } else {
-                    userAccount = accounts[0];
-                    loadBalance();
-                    updateDepositButton();
-                }
-            });
-
-            window.ethereum.on('chainChanged', () => location.reload());
-        }
     </script>
 
-    <!-- Load app-complete.js LAST – it now uses our universal web3 -->
-    <script src="app-complete.js"></script>
-
-    <!-- PrivX Matrix Rain – Purple Edition -->
+    <!-- Matrix Rain -->
     <script>
         const canvas = document.getElementById('matrix-bg');
         const ctx = canvas.getContext('2d');
         canvas.width = innerWidth; canvas.height = innerHeight;
         addEventListener('resize', () => { canvas.width = innerWidth; canvas.height = innerHeight; });
-        const chars = '01PRIVXHURRICANE🌀⚡🔒';
+        const chars = '01PRIVXHURRICANE';
         const drops = [];
         for(let i = 0; i < canvas.width/14; i++) drops[i] = 1;
         function draw() {
