@@ -225,18 +225,16 @@
                 btn.disabled = false;
             }
         };
-
-        // Final PrivX Selection Logic
-                window.selectDenomination = function(denom) {
-            // denom comes in as '100' or '1,000' or '100,000' etc.
-            const clean = denom.replace(/,/g, '');           // → "100", "1000", "100000"
+        
+                        // FINAL BULLETPROOF SELECT FUNCTION – ONLY ONE COPY ALLOWED
+        window.selectDenomination = function(denom) {
+            const clean = denom.replace(/,/g, '');           // "100", "1000", "10000", "100000"
             window.selectedDenomination = clean;
 
             document.querySelectorAll('.denomination-card').forEach(card => {
                 card.classList.remove('selected');
                 const cardText = card.querySelector('.denomination-amount').textContent;
-                // Exact match on the number part only
-                if (cardText.includes(clean + ' PRIVX')) {
+                if (cardText.includes(clean + ' PRIVX')) {     // ← exact match, no overlap
                     card.classList.add('selected');
                 }
             });
