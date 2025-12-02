@@ -1,64 +1,46 @@
-// fast-stats.js – PRIVX Hurricane Edition
+// fast-stats.js – works on any GitHub Pages site
 async function updateFastStats() {
-  if (!window.web3 || !window.POOLS) return;
+  if (!window.web3 || !window.POOLS || !window.userAccount) {
+    setTimeout(updateFastStats, 10000);
+    return;
+  }
 
-  const statsContainer = document.getElementById('statsContainer');
-  if (!statsContainer) return;
-
-  let totalTVL = 0;
+  let totalTVL = 0n;
   let totalDeposits = 0;
 
-  for (let pool of window.POOLS) {
+  for (const pool of window.POOLS) {
     try {
-      const contract = new window.web3.eth.Contract([
-        { "constant": true, "inputs": [], "name": "getDenomination", "outputs": [{"name": "", "type": "uint256"}], "type": "function" },
-        { "constant": true, "inputs": [], "name": "nextIndex", "outputs": [{"name": "", "type": "uint32"}], "type": "function" }
-      ], pool.contract);
+      const abi = [{"inputs":[],"name":"denomination","outputs":[{"type":"uint256"}],"type":"function"},{"inputs":[],"name":"nextLeafIdx","outputs":[{"type":"uint32"}],"type":"function"}];
+      const contract = new web3.eth.Contract(abi, pool.contract);
 
-      const denomination = await contract.methods.getDenomination().call();
-      const deposits = await contract.methods.nextIndex().call();
+      const [denom, deposits] = await Promise.all([
+        contract.methods.denomination().call(),
+        contract.methods.nextLeafIdx().call()
+      ]);
 
-      const tvl = Number(denomination) * deposits;
+      const tvl = BigInt(denom) * BigInt(deposits);
       totalTVL += tvl;
       totalDeposits += Number(deposits);
 
-      // Update row for this pool
-      const row = document.querySelector(`[data-pool="${pool.denomination}"]`) || createStatRow(pool.denomination);
-      row.querySelector('.stat-deposits').textContent = deposits;
-      row.querySelector('.stat-balance').textContent = web3.utils.fromWei(tvl.toString(), 'ether') + ' PRIVX';
-    } catch (e) {
-      console.log(`Stats failed for ${pool.denomination}:`, e);
-    }
+      // Update UI row
+      let row = document.querySelector(`[data-denom="${pool.denomination}"]`);
+      if (!row) {
+        row = document.createElement('div');
+        row.className = 'stat-row';
+        row.dataset.denom = pool.denomination;
+        row.innerHTML = `<div>${pool.denomination} PRIVX</div><div><span class="deposits">${deposits}</span> deposits · <span class="tvl">0</span> PRIVX</span></div>`;
+        document.getElementById('statsContainer')?.appendChild(row);
+      }
+      row.querySelector('.deposits').textContent = deposits;
+      row.querySelector('.tvl').textContent = Number(tvl / 1_000_000_000_000_000_000n).toLocaleString();
+    } catch (e) {}
   }
 
   // Total row
-  const totalRow = document.querySelector('.stat-row.total');
-  if (totalRow) {
-    totalRow.querySelector('.stat-deposits').textContent = totalDeposits;
-    totalRow.querySelector('.stat-balance').textContent = web3.utils.fromWei(totalTVL.toString(), 'ether') + ' PRIVX';
-  }
+  const totalEl = document.getElementById('totalTVL');
+  if (totalEl) totalEl.textContent = Number(totalTVL / 1_000_000_000_000_000_000n).toLocaleString();
 
-  setTimeout(updateFastStats, 30000); // Refresh every 30s
+  setTimeout(updateFastStats, 30000);
 }
 
-function createStatRow(denom) {
-  const row = document.createElement('div');
-  row.className = 'stat-row';
-  row.dataset.pool = denom;
-  row.innerHTML = `
-    <div class="stat-denomination">${denom} PRIVX</div>
-    <div class="stat-info">
-      <span class="stat-deposits">Loading...</span>
-      <span class="stat-balance">-</span>
-    </div>
-  `;
-  document.getElementById('statsContainer').appendChild(row);
-  return row;
-}
-
-// Start on load
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', updateFastStats);
-} else {
-  updateFastStats();
-}
+updateFastStats();
