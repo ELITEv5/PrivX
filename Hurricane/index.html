@@ -59,29 +59,30 @@
 }
 
 .privx-logo {
-  max-width: 260px;
+  max-width: 340px; /* 🔥 Bigger default size */
   width: 100%;
   height: auto;
-  margin: 0 auto 10px auto;
+  margin: 0 auto 12px auto;
   display: block;
-  filter: drop-shadow(0 0 20px var(--glow));
-  transition: transform 0.3s ease;
+  filter: drop-shadow(0 0 25px var(--glow));
+  transition: transform 0.3s ease, filter 0.3s ease;
 }
 
 .privx-logo:hover {
-  transform: scale(1.05);
+  transform: scale(1.07);
+  filter: drop-shadow(0 0 40px var(--accent));
 }
 
 /* Responsive logo adjustments */
 @media (max-width: 768px) {
   .privx-logo {
-    max-width: 200px;
+    max-width: 260px; /* tablet */
   }
 }
 
 @media (max-width: 480px) {
   .privx-logo {
-    max-width: 160px;
+    max-width: 200px; /* mobile */
   }
 }
 
