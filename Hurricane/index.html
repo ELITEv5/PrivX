@@ -111,6 +111,11 @@
             <span id="vaultBalance">Loading...</span> PRIVX Available<br>
             <small>Rewards paid instantly on every shielded withdrawal</small>
         </div>
+        <div class="vault-display">
+    <div>🔥 Total PRIVX Burned</div>
+    <span id="burnedBalance">Loading...</span> PRIVX<br>
+    <small>Across all shields – updated live from burn address</small>
+</div>
 
         <div class="stats-list" id="statsContainer">
             <!-- Stats populated by fast-stats.js -->
@@ -238,6 +243,45 @@ function switchTab(tab) {
     document.getElementById(tab + 'Tab').classList.remove('hidden');
 }
 window.addEventListener('load', () => switchTab('deposit'));
+</script>
+   <script>
+const BURN_ADDRESS = "0x000000000000000000000000000000000000dEaD";
+const PULSECHAIN_BURN = "0x0000000000000000000000000000000000000369";
+const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";  // <-- Replace with actual CA
+
+const PRIVX_ABI = [
+    { "constant": true, "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
+    { "constant": true, "inputs": [], "name": "decimals", "outputs": [{ "name": "", "type": "uint8" }], "type": "function" }
+];
+
+async function updateBurnedBalance() {
+    if (!window.web3) return;
+    const burnElem = document.getElementById("burnedBalance");
+    burnElem.textContent = "...";
+
+    try {
+        const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
+        const decimals = await token.methods.decimals().call();
+
+        const deadBal = await token.methods.balanceOf(BURN_ADDRESS).call();
+        const chainBal = await token.methods.balanceOf(PULSECHAIN_BURN).call();
+
+        const totalBurned =
+            (BigInt(deadBal) + BigInt(chainBal)) / BigInt(10 ** decimals);
+
+        burnElem.textContent = Number(totalBurned).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    } catch (err) {
+        console.error("Error loading burn balance:", err);
+        burnElem.textContent = "Error";
+    }
+}
+
+// Auto-update every 30 seconds
+setInterval(updateBurnedBalance, 30000);
+window.addEventListener("load", updateBurnedBalance);
 </script>
 </body>
 </html>
