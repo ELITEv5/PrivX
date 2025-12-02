@@ -7,8 +7,7 @@
     <link rel="icon" href="privx-shield.png" type="image/png">
     <meta name="description" content="The world's first fully on-chain, ownerless, immutable privacy protocol. Instant 2% Proof-of-Privacy rewards.">
     <meta property="og:title" content="PrivX Hurricane – Privacy That Pays">
-    <meta property="og:description" content="Anonymous PRIVX transfers + instant 2% rewards. ELITE Team6 – November 7, 2025">
-    <meta property="og:image" content="https://i.ibb.co/9y3vJ3q/privx-shield.png">
+    <meta property="og:description" content="Anonymous PRIVX transfers + instant 1-2% rewards. ELITE Team6 – November 7, 2025">
     <meta name="theme-color" content="#8A2BE2">
     <style>
         :root {
@@ -192,10 +191,13 @@
             });
 
             const btn = document.getElementById('depositBtn');
-            if (userAccount) {
-                btn.textContent = `Deposit ${denom} PRIVX`;
-                btn.disabled = false;
-            }
+            if (window.userAccount) {
+    btn.textContent = `Deposit ${denom} PRIVX`;
+    btn.disabled = false;
+} else {
+    btn.textContent = "Connect Wallet First";
+    btn.disabled = true;
+}
         };
     </script>
 
@@ -220,5 +222,15 @@
         }
         setInterval(draw, 33);
     </script>
+    <script>
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#depositTab, #withdrawTab').forEach(el => el.classList.add('hidden'));
+
+    document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+    document.getElementById(tab + 'Tab').classList.remove('hidden');
+}
+window.addEventListener('load', () => switchTab('deposit'));
+</script>
 </body>
 </html>
