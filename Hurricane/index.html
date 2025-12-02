@@ -1,302 +1,262 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PrivX Hurricane – Privacy That Pays</title>
-    <link rel="icon" href="privx-shield.png" type="image/png">
-    <meta property="og:image" content="https://github.com/ELITEv5/PrivX/Hurricane/privx-shield.png">
-<meta property="og:type" content="website">
-<meta name="robots" content="index,follow">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrivX Hurricane – Privacy That Pays</title>
+  <link rel="icon" href="privx-shield.png" type="image/png">
+  <meta property="og:image" content="https://github.com/ELITEv5/PrivX/Hurricane/privx-shield.png">
+  <meta property="og:type" content="website">
+  <meta name="robots" content="index,follow">
+  <meta name="description" content="The world's first fully on-chain, ownerless, immutable privacy protocol. Instant 2% Proof-of-Privacy rewards.">
+  <meta property="og:title" content="PrivX Hurricane – Privacy That Pays">
+  <meta property="og:description" content="Anonymous PRIVX transfers + instant 1-2% rewards. ELITE Team6 – November 7, 2025">
+  <meta name="theme-color" content="#8A2BE2">
 
-    <meta name="description" content="The world's first fully on-chain, ownerless, immutable privacy protocol. Instant 2% Proof-of-Privacy rewards.">
-    <meta property="og:title" content="PrivX Hurricane – Privacy That Pays">
-    <meta property="og:description" content="Anonymous PRIVX transfers + instant 1-2% rewards. ELITE Team6 – November 7, 2025">
-    <meta name="theme-color" content="#8A2BE2">
-    <style>
-        :root {
-            --primary: #8A2BE2;
-            --accent: #00ffea;
-            --bg: #000;
-            --card: rgba(138,43,226,0.15);
-            --glow: rgba(138,43,226,0.6);
-        }
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:#fff;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;overflow-x:hidden}
-        canvas#matrix-bg{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
-        .container{background:rgba(10,10,10,0.7);backdrop-filter:blur(20px);border-radius:24px;padding:40px 30px;max-width:620px;width:100%;border:1px solid var(--primary);box-shadow:0 0 80px var(--glow),inset 0 0 40px rgba(138,43,226,0.1);position:relative;z-index:10}
-        h1{font-size:3.2em;background:linear-gradient(90deg,var(--primary),var(--accent));-webkit-background-clip:text;color:transparent;margin-bottom:8px;text-shadow:0 0 30px var(--glow)}
-        .subtitle{color:var(--accent);font-size:1.4em;margin-bottom:30px}
-        .wallet-button{position:fixed;top:20px;right:20px;background:rgba(10,10,10,0.8);backdrop-filter:blur(10px);padding:12px 28px;border:2px solid var(--primary);border-radius:12px;color:#fff;font-weight:600;cursor:pointer;transition:all .3s;z-index:9999}
-        .wallet-button:hover{border-color:var(--accent);box-shadow:0 0 30px var(--glow)}
-        .wallet-button.connected{color:var(--accent);border-color:var(--accent);box-shadow:0 0 30px var(--glow)}
-        .tabs{display:flex;gap:12px;margin-bottom:30px}
-        .tab{flex:1;padding:14px;border:2px solid rgba(255,255,255,0.1);border-radius:12px;background:rgba(20,20,20,0.6);cursor:pointer;transition:all .3s;text-align:center;font-weight:600}
-        .tab:hover{border-color:var(--primary)}
-        .tab.active{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 0 30px var(--glow)}
-        .denomination-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:30px 0}
-        .denomination-card{background:var(--card);border:2px solid transparent;border-radius:16px;padding:24px;cursor:pointer;transition:all .4s;text-align:center}
-        .denomination-card:hover{border-color:var(--primary);transform:translateY(-6px);box-shadow:0 12px 40px rgba(138,43,226,0.4)}
-        .denomination-card.selected{border:3px solid var(--primary);background:rgba(138,43,226,0.3);box-shadow:0 0 50px var(--glow);transform:scale(1.04)}
-        .denomination-amount{font-size:26px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:12px;color:#fff}
-        .denomination-amount img{height:36px;width:36px;border-radius:50%;box-shadow:0 0 20px var(--glow)}
-        .denomination-label{margin-top:8px;color:#aaa;font-size:13px}
-        .button{width:100%;padding:18px;background:var(--primary);color:#fff;border:none;border-radius:14px;font-size:18px;font-weight:700;cursor:pointer;margin-top:20px;transition:all .3s;box-shadow:0 0 30px var(--glow)}
-        .button:hover{background:var(--accent);color:#000;transform:translateY(-3px)}
-        .button:disabled{background:#333;color:#666;cursor:not-allowed}
-        .note-display{background:#111;border:2px solid var(--primary);padding:20px;border-radius:14px;margin-top:25px;font-family:monospace;color:var(--accent);box-shadow:0 0 30px var(--glow)}
-        .stats-list{background:rgba(20,20,20,0.6);border-radius:14px;padding:20px;margin-top:30px;border:1px solid rgba(138,43,226,0.3)}
-        .stat-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
-        .stat-row:last-child{border:none}
-        .stat-denomination{font-weight:700;color:#fff}
-        .stat-balance{color:var(--accent);font-weight:700}
-        .vault-display{margin-top:30px;padding:20px;background:rgba(138,43,226,0.2);border-radius:14px;text-align:center;border:1px solid var(--primary)}
-        .vault-display span{color:var(--accent);font-size:1.4em;font-weight:900}
-        .hidden { display: none !important; }
-    </style>
+  <style>
+    :root {
+      --primary: #8A2BE2;
+      --accent: #00ffea;
+      --bg: #000;
+      --card: rgba(138,43,226,0.15);
+      --glow: rgba(138,43,226,0.6);
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:#fff;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;overflow-x:hidden}
+    canvas#matrix-bg{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+    .container{background:rgba(10,10,10,0.7);backdrop-filter:blur(20px);border-radius:24px;padding:40px 30px;max-width:620px;width:100%;border:1px solid var(--primary);box-shadow:0 0 80px var(--glow),inset 0 0 40px rgba(138,43,226,0.1);position:relative;z-index:10}
+    h1{font-size:3.2em;background:linear-gradient(90deg,var(--primary),var(--accent));-webkit-background-clip:text;color:transparent;margin-bottom:8px;text-shadow:0 0 30px var(--glow)}
+    .subtitle{color:var(--accent);font-size:1.4em;margin-bottom:30px}
+    .wallet-button{position:fixed;top:20px;right:20px;background:rgba(10,10,10,0.8);backdrop-filter:blur(10px);padding:12px 28px;border:2px solid var(--primary);border-radius:12px;color:#fff;font-weight:600;cursor:pointer;transition:all .3s;z-index:9999}
+    .wallet-button:hover{border-color:var(--accent);box-shadow:0 0 30px var(--glow)}
+    .wallet-button.connected{color:var(--accent);border-color:var(--accent);box-shadow:0 0 30px var(--glow)}
+    .tabs{display:flex;gap:12px;margin-bottom:30px}
+    .tab{flex:1;padding:14px;border:2px solid rgba(255,255,255,0.1);border-radius:12px;background:rgba(20,20,20,0.6);cursor:pointer;transition:all .3s;text-align:center;font-weight:600}
+    .tab:hover{border-color:var(--primary)}
+    .tab.active{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 0 30px var(--glow)}
+    .denomination-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:30px 0}
+    .denomination-card{background:var(--card);border:2px solid transparent;border-radius:16px;padding:24px;cursor:pointer;transition:all .4s;text-align:center}
+    .denomination-card:hover{border-color:var(--primary);transform:translateY(-6px);box-shadow:0 12px 40px rgba(138,43,226,0.4)}
+    .denomination-card.selected{border:3px solid var(--primary);background:rgba(138,43,226,0.3);box-shadow:0 0 50px var(--glow);transform:scale(1.04)}
+    .denomination-amount{font-size:26px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:12px;color:#fff}
+    .denomination-amount img{height:36px;width:36px;border-radius:50%;box-shadow:0 0 20px var(--glow)}
+    .denomination-label{margin-top:8px;color:#aaa;font-size:13px}
+    .button{width:100%;padding:18px;background:var(--primary);color:#fff;border:none;border-radius:14px;font-size:18px;font-weight:700;cursor:pointer;margin-top:20px;transition:all .3s;box-shadow:0 0 30px var(--glow)}
+    .button:hover{background:var(--accent);color:#000;transform:translateY(-3px)}
+    .button:disabled{background:#333;color:#666;cursor:not-allowed}
+    .note-display{background:#111;border:2px solid var(--primary);padding:20px;border-radius:14px;margin-top:25px;font-family:monospace;color:var(--accent);box-shadow:0 0 30px var(--glow)}
+    .stats-list{background:rgba(20,20,20,0.6);border-radius:14px;padding:20px;margin-top:30px;border:1px solid rgba(138,43,226,0.3)}
+    .stat-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+    .stat-row:last-child{border:none}
+    .stat-denomination{font-weight:700;color:#fff}
+    .stat-balance{color:var(--accent);font-weight:700}
+    .vault-display{margin-top:30px;padding:20px;background:rgba(138,43,226,0.2);border-radius:14px;text-align:center;border:1px solid var(--primary)}
+    .vault-display span{color:var(--accent);font-size:1.4em;font-weight:900}
+    .hidden { display: none !important; }
+
+    /* 📱 Responsive Mobile Tweaks */
+    @media (max-width: 768px) {
+      h1 { font-size: 2.2em; text-align:center; }
+      .subtitle { font-size:1.1em; text-align:center; }
+      .container { max-width:95%; padding:24px 18px; }
+      .wallet-button { top:10px; right:10px; padding:10px 16px; font-size:14px; }
+      .denomination-grid { grid-template-columns:1fr; gap:14px; }
+      .denomination-amount { font-size:22px; }
+      .button { padding:14px; font-size:16px; }
+      .note-display { font-size:14px; word-break:break-all; }
+      .vault-display { font-size:15px; padding:14px; }
+      .vault-display span { font-size:1.1em; }
+      .stats-list { padding:12px; }
+      .stat-row { font-size:14px; flex-direction:column; align-items:center; text-align:center; gap:6px; }
+    }
+    @media (max-width: 480px) {
+      body { align-items:flex-start; padding-top:40px; }
+      h1 { font-size:1.8em; }
+      .subtitle { font-size:1em; }
+      .container { border-radius:18px; box-shadow:0 0 50px var(--glow); }
+      .button { font-size:15px; }
+    }
+  </style>
 </head>
 <body>
-    <canvas id="matrix-bg"></canvas>
+  <canvas id="matrix-bg"></canvas>
 
-    <div id="walletButton" class="wallet-button" onclick="toggleWallet()">
-        <span id="walletButtonText">Connect Wallet</span>
+  <div id="walletButton" class="wallet-button" onclick="toggleWallet()">
+    <span id="walletButtonText">Connect Wallet</span>
+  </div>
+
+  <div class="container">
+    <h1>PrivX Hurricane Shield</h1>
+    <p class="subtitle">Private Exchange Token + Instant 2% Proof-of-Privacy Rewards</p>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('deposit')">Deposit</div>
+      <div class="tab" onclick="switchTab('withdraw')">Withdraw</div>
     </div>
 
-    <div class="container">
-        <h1>PrivX Hurricane Shield</h1>
-        <p class="subtitle">Private Exchange Token + Instant 2% Proof-of-Privacy Rewards</p>
-
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('deposit')">Deposit</div>
-            <div class="tab" onclick="switchTab('withdraw')">Withdraw</div>
+    <div id="depositTab">
+      <div class="denomination-grid">
+        <div class="denomination-card" onclick="selectDenomination('100')">
+          <div class="denomination-amount">100 PRIVX <img src="privx-shield.png" alt="PrivX"></div>
+          <div class="denomination-label">Instant 2% reward</div>
         </div>
-
-        <div id="depositTab">
-            <div class="denomination-grid">
-                <div class="denomination-card" onclick="selectDenomination('100')">
-                    <div class="denomination-amount">100 PRIVX <img src="privx-shield.png" alt="PrivX"></div>
-                    <div class="denomination-label">Instant 2% reward</div>
-                </div>
-                <div class="denomination-card" onclick="selectDenomination('1,000')">
-                    <div class="denomination-amount">1,000 PRIVX <img src="privx-shield.png" alt="PrivX"></div>
-                    <div class="denomination-label">Instant 2% reward</div>
-                </div>
-                <div class="denomination-card" onclick="selectDenomination('10,000')">
-                    <div class="denomination-amount">10,000 PRIVX <img src="privx-shield.png" alt="PrivX"></div>
-                    <div class="denomination-label">Instant 2% reward</div>
-                </div>
-                <div class="denomination-card" onclick="selectDenomination('100,000')">
-                    <div class="denomination-amount">100,000 PRIVX <img src="privx-shield.png" alt="PrivX"></div>
-                    <div class="denomination-label">Instant 2% reward</div>
-                </div>
-            </div>
-
-            <button class="button" id="depositBtn" disabled>Connect Wallet First</button>
-
-            <div id="depositNote" class="note-display hidden">
-                <strong>YOUR PRIVATE NOTE (SAVE THIS!)</strong><br><br>
-                <span id="noteText"></span><br><br>
-                <button class="button" onclick="copyNote()" style="padding:12px 24px;font-size:15px">Copy Note</button>
-            </div>
+        <div class="denomination-card" onclick="selectDenomination('1,000')">
+          <div class="denomination-amount">1,000 PRIVX <img src="privx-shield.png" alt="PrivX"></div>
+          <div class="denomination-label">Instant 2% reward</div>
         </div>
-
-        <div id="withdrawTab" class="hidden">
-            <input type="text" id="withdrawNote" placeholder="Paste your private note here" style="width:100%;padding:16px;margin:15px 0;border-radius:12px;border:1px solid #444;background:#111;color:#fff;font-family:monospace">
-            <input type="text" id="recipientAddress" placeholder="Recipient address (optional – defaults to your wallet)" style="width:100%;padding:16px;margin:15px 0;border-radius:12px;border:1px solid #444;background:#111;color:#fff">
-            <button class="button" onclick="withdraw()">Withdraw + Claim 2% Reward</button>
+        <div class="denomination-card" onclick="selectDenomination('10,000')">
+          <div class="denomination-amount">10,000 PRIVX <img src="privx-shield.png" alt="PrivX"></div>
+          <div class="denomination-label">Instant 2% reward</div>
         </div>
-
-        <div class="vault-display">
-            <div>V14 Proof-of-Privacy Vault</div>
-            <span id="vaultBalance">Loading...</span> PRIVX Available<br>
-            <small>Rewards paid instantly on every shielded withdrawal</small>
+        <div class="denomination-card" onclick="selectDenomination('100,000')">
+          <div class="denomination-amount">100,000 PRIVX <img src="privx-shield.png" alt="PrivX"></div>
+          <div class="denomination-label">Instant 2% reward</div>
         </div>
-        <div class="vault-display">
-    <div>🔥 Total PRIVX Burned</div>
-    <span id="burnedBalance">Loading...</span> PRIVX<br>
-    <small>Across all shields – updated live from burn address</small>
-</div>
+      </div>
 
-        <div class="stats-list" id="statsContainer">
-            <!-- Stats populated by fast-stats.js -->
-        </div>
+      <button class="button" id="depositBtn" disabled>Connect Wallet First</button>
+
+      <div id="depositNote" class="note-display hidden">
+        <strong>YOUR PRIVATE NOTE (SAVE THIS!)</strong><br><br>
+        <span id="noteText"></span><br><br>
+        <button class="button" onclick="copyNote()" style="padding:12px 24px;font-size:15px">Copy Note</button>
+      </div>
     </div>
 
-              <!-- Core PrivX Hurricane Engine – FINAL WORKING ORDER -->
-    <script src="web3.min.js"></script>
-    <script src="config-all-denominations.js"></script>
-    <script src="tornado-api.js"></script>
-    <script src="withdrawal-complete.js"></script>
-    <script src="deposit-tracker.js"></script>
-    <script src="fast-stats.js"></script>
+    <div id="withdrawTab" class="hidden">
+      <input type="text" id="withdrawNote" placeholder="Paste your private note here" style="width:100%;padding:16px;margin:15px 0;border-radius:12px;border:1px solid #444;background:#111;color:#fff;font-family:monospace">
+      <input type="text" id="recipientAddress" placeholder="Recipient address (optional – defaults to your wallet)" style="width:100%;padding:16px;margin:15px 0;border-radius:12px;border:1px solid #444;background:#111;color:#fff">
+      <button class="button" onclick="withdraw()">Withdraw + Claim 2% Reward</button>
+    </div>
 
-    <!-- Universal Wallet Connector (clean version) -->
-    <script>
-        let web3, userAccount;
+    <div class="vault-display">
+      <div>V14 Proof-of-Privacy Vault</div>
+      <span id="vaultBalance">Loading...</span> PRIVX Available<br>
+      <small>Rewards paid instantly on every shielded withdrawal</small>
+    </div>
 
-        window.toggleWallet = async function() {
-            if (!window.ethereum) return alert('Wallet not found!');
+    <div class="vault-display">
+      <div>🔥 Total PRIVX Burned</div>
+      <span id="burnedBalance">Loading...</span> PRIVX<br>
+      <small>Across all shields – updated live from burn address</small>
+    </div>
 
-            try {
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                userAccount = accounts[0];
+    <div class="stats-list" id="statsContainer"></div>
+  </div>
 
-                // Auto-switch to PulseChain
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: '0x171' }]
-                    });
-                } catch (e) {
-                    if (e.code === 4902) {
-                        await window.ethereum.request({
-                            method: 'wallet_addEthereumChain',
-                            params: [{
-                                chainId: '0x171',
-                                chainName: 'PulseChain',
-                                rpcUrls: ['https://rpc.pulsechain.com'],
-                                nativeCurrency: { name: 'PLS', symbol: 'PLS', decimals: 18 },
-                                blockExplorerUrls: ['https://scan.pulsechain.com']
-                            }]
-                        });
-                    }
-                }
+  <script src="web3.min.js"></script>
+  <script src="config-all-denominations.js"></script>
+  <script src="tornado-api.js"></script>
+  <script src="withdrawal-complete.js"></script>
+  <script src="deposit-tracker.js"></script>
+  <script src="fast-stats.js"></script>
+  <script src="app-complete.js"></script>
 
-                document.getElementById('walletButtonText').textContent = userAccount.slice(0,6)+'...'+userAccount.slice(-4);
-                document.getElementById('walletButton').classList.add('connected');
-                web3 = new Web3(window.ethereum);
-                window.userAccount = userAccount;  // ← critical for app-complete.js
-                window.web3 = web3;
-
-                // Let app-complete.js take over from here
-                if (typeof initApp === 'function') initApp();
-                if (typeof updateDepositButton === 'function') updateDepositButton();
-            } catch (err) {
-                console.error(err);
-            }
-        };
-
-        // Auto-connect if already authorized
-        if (window.ethereum) {
-            window.ethereum.request({ method: 'eth_accounts' }).then(accs => {
-                if (accs.length > 0) toggleWallet();
+  <script>
+    let web3, userAccount;
+    window.toggleWallet = async function() {
+      if (!window.ethereum) return alert('Wallet not found!');
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        userAccount = accounts[0];
+        try {
+          await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x171' }] });
+        } catch (e) {
+          if (e.code === 4902) {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: '0x171',
+                chainName: 'PulseChain',
+                rpcUrls: ['https://rpc.pulsechain.com'],
+                nativeCurrency: { name: 'PLS', symbol: 'PLS', decimals: 18 },
+                blockExplorerUrls: ['https://scan.pulsechain.com']
+              }]
             });
+          }
         }
-    </script>
+        document.getElementById('walletButtonText').textContent = userAccount.slice(0,6)+'...'+userAccount.slice(-4);
+        document.getElementById('walletButton').classList.add('connected');
+        web3 = new Web3(window.ethereum);
+        window.web3 = web3; window.userAccount = userAccount;
+        if (typeof initApp === 'function') initApp();
+        if (typeof updateDepositButton === 'function') updateDepositButton();
+        if (typeof updateBurnedBalance === 'function') updateBurnedBalance();
+      } catch (err) { console.error(err); }
+    };
+    if (window.ethereum) {
+      window.ethereum.request({ method: 'eth_accounts' }).then(accs => { if (accs.length > 0) toggleWallet(); });
+    }
+  </script>
 
-    <!-- THE REAL DEPOSIT ENGINE – MUST LOAD LAST -->
-    <script src="app-complete.js"></script>
+  <script>
+    window.selectDenomination = function(denom) {
+      const clean = denom.replace(/,/g, '');
+      window.selectedDenomination = clean;
+      document.querySelectorAll('.denomination-card').forEach(card => {
+        card.classList.remove('selected');
+        if (card.querySelector('.denomination-amount').textContent.includes(clean + ' PRIVX')) card.classList.add('selected');
+      });
+      const btn = document.getElementById('depositBtn');
+      if (window.userAccount) { btn.textContent = `Deposit ${denom} PRIVX`; btn.disabled = false; }
+      else { btn.textContent = "Connect Wallet First"; btn.disabled = true; }
+    };
+  </script>
 
-    <!-- Final bulletproof selection (no conflicts) -->
-    <script>
-        window.selectDenomination = function(denom) {
-            const clean = denom.replace(/,/g, '');
-            window.selectedDenomination = clean;
-
-            document.querySelectorAll('.denomination-card').forEach(card => {
-                card.classList.remove('selected');
-                if (card.querySelector('.denomination-amount').textContent.includes(clean + ' PRIVX')) {
-                    card.classList.add('selected');
-                }
-            });
-
-            const btn = document.getElementById('depositBtn');
-            if (window.userAccount) {
-    btn.textContent = `Deposit ${denom} PRIVX`;
-    btn.disabled = false;
-} else {
-    btn.textContent = "Connect Wallet First";
-    btn.disabled = true;
-}
-        };
-    </script>
-
-    <!-- Matrix Rain -->
-    <script>
-        const canvas = document.getElementById('matrix-bg');
-        const ctx = canvas.getContext('2d');
-        canvas.width = innerWidth; canvas.height = innerHeight;
-        addEventListener('resize', () => { canvas.width = innerWidth; canvas.height = innerHeight; });
-        const chars = '01PRIVXHURRICANE';
-        const drops = [];
-        for(let i = 0; i < canvas.width/14; i++) drops[i] = 1;
-        function draw() {
-            ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,canvas.width,canvas.height);
-            ctx.fillStyle = '#8A2BE2'; ctx.font = '14px monospace';
-            drops.forEach((y,i) => {
-                const text = chars[Math.floor(Math.random()*chars.length)];
-                ctx.fillText(text, i*14, y*14);
-                if(y*14 > canvas.height && Math.random()>0.975) drops[i] = 0;
-                drops[i]++;
-            });
-        }
-        function loop() { draw(); requestAnimationFrame(loop); }
-loop();
-
-    </script>
-    <script>
-function switchTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('#depositTab, #withdrawTab').forEach(el => el.classList.add('hidden'));
-
-    document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
-    document.getElementById(tab + 'Tab').classList.remove('hidden');
-}
-window.addEventListener('load', () => switchTab('deposit'));
-</script>
-   <script>
-const BURN_ADDRESS = "0x000000000000000000000000000000000000dEaD";
-const PULSECHAIN_BURN = "0x0000000000000000000000000000000000000369";
-const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-
-const PRIVX_ABI = [
-  { "constant": true, "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
-  { "constant": true, "inputs": [], "name": "decimals", "outputs": [{ "name": "", "type": "uint8" }], "type": "function" }
-];
-
-async function waitForWeb3() {
-  return new Promise(resolve => {
-    if (window.web3) return resolve();
-    const check = setInterval(() => {
-      if (window.web3) {
-        clearInterval(check);
-        resolve();
-      }
-    }, 500);
-  });
-}
-
-async function updateBurnedBalance() {
-  await waitForWeb3(); // ✅ Wait for wallet/web3
-  const burnElem = document.getElementById("burnedBalance");
-  if (!burnElem) return;
-  burnElem.textContent = "...";
-
-  try {
-    const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
-    const decimals = await token.methods.decimals().call();
-
-    const deadBal = await token.methods.balanceOf(BURN_ADDRESS).call();
-    const chainBal = await token.methods.balanceOf(PULSECHAIN_BURN).call();
-
-    const totalBurned =
-      (BigInt(deadBal) + BigInt(chainBal)) / (BigInt(10) ** BigInt(decimals));
-
-    burnElem.textContent = Number(totalBurned).toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+  <!-- Adaptive Matrix Rain -->
+  <script>
+    const canvas = document.getElementById('matrix-bg');
+    const ctx = canvas.getContext('2d');
+    canvas.width = innerWidth; canvas.height = innerHeight;
+    let fontSize = innerWidth < 600 ? 10 : 14;
+    const chars = '01PRIVXHURRICANE';
+    let columns = Math.floor(canvas.width / fontSize);
+    let drops = Array(columns).fill(1);
+    function draw() {
+      ctx.fillStyle = 'rgba(0,0,0,0.05)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#8A2BE2';
+      ctx.font = fontSize + 'px monospace';
+      drops.forEach((y,i) => {
+        const text = chars[Math.floor(Math.random()*chars.length)];
+        ctx.fillText(text, i*fontSize, y*fontSize);
+        if(y*fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
+      });
+    }
+    function loop(){ draw(); requestAnimationFrame(loop); }
+    loop();
+    addEventListener('resize', () => {
+      canvas.width = innerWidth; canvas.height = innerHeight;
+      fontSize = innerWidth < 600 ? 10 : 14;
+      columns = Math.floor(canvas.width / fontSize);
+      drops = Array(columns).fill(1);
     });
-  } catch (err) {
-    console.error("Error loading burn balance:", err);
-    burnElem.textContent = "Error";
-  }
-}
+  </script>
 
-window.addEventListener("load", async () => {
-  await waitForWeb3();
-  updateBurnedBalance();
-  setInterval(updateBurnedBalance, 30000);
-});
-</script>
-</body>
-</html>
+  <!-- Burn Tracker -->
+  <script>
+    const BURN_ADDRESS = "0x000000000000000000000000000000000000dEaD";
+    const PULSECHAIN_BURN = "0x0000000000000000000000000000000000000369";
+    const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+    const PRIVX_ABI = [
+      { "constant": true, "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
+      { "constant": true, "inputs": [], "name": "decimals", "outputs": [{ "name": "", "type": "uint8" }], "type": "function" }
+    ];
+    async function waitForWeb3() {
+      return new Promise(resolve => {
+        if (window.web3) return resolve();
+        const check = setInterval(() => { if (window.web3) { clearInterval(check); resolve(); } }, 500);
+      });
+    }
+    async function updateBurnedBalance() {
+      await waitForWeb3();
+      const burnElem = document.getElementById("burnedBalance");
+      if (!burnElem) return;
+      burnElem.textContent = "...";
+      try {
+        const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
+        const decimals = await token.methods.decimals().call();
+        const deadBal = await token.methods.balanceOf(BURN_ADDRESS).call();
+        const chainBal = await token.methods.balanceOf(PULSECHAIN_BURN).call();
+        const
