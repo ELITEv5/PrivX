@@ -225,7 +225,9 @@
                 drops[i]++;
             });
         }
-        setInterval(draw, 33);
+        function loop() { draw(); requestAnimationFrame(loop); }
+loop();
+
     </script>
     <script>
 function switchTab(tab) {
