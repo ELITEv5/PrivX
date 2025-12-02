@@ -121,6 +121,16 @@
     <script src="deposit-tracker.js"></script>
     <script src="fast-stats.js"></script>
 
+    <script>
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  
+  document.getElementById(tab).classList.remove('hidden');
+  document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+}
+</script>
+
     <!-- Universal Wallet Connector (clean version) -->
     <script>
         let web3, userAccount;
