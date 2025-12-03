@@ -323,17 +323,29 @@ window.addEventListener("load", async () => {
   setInterval(updateBurnedBalance, 30000);
 });
 </script>
-  <script>
+ <script>
+// FINAL WORKING switchTab — fixes everything
 function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('#depositTab, #withdrawTab').forEach(el => el.classList.add('hidden'));
-
-  document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+  // tab is 'deposit' or 'withdraw'
+  
+  // Hide both tabs
+  document.getElementById('depositTab').classList.add('hidden');
+  document.getElementById('withdrawTab').classList.add('hidden');
+  
+  // Show the correct one
   document.getElementById(tab + 'Tab').classList.remove('hidden');
+  
+  // Update active button
+  document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+  document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
 }
 
-// 🟣 Auto-open deposit mode on load
-window.addEventListener('load', () => switchTab('deposit'));
+// Auto-open Deposit tab on page load
+window.addEventListener('load', () => {
+  switchTab('deposit');
+  if (typeof updateFastStats === 'function') updateFastStats();
+  if (typeof updateBurnedBalance === 'function') updateBurnedBalance();
+});
 </script>
 
 </body>
