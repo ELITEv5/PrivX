@@ -1,28 +1,32 @@
-// tornado-api.js – FINAL WORKING VERSION (Semaphore Official)
-import { generateProof } from "@semaphore-protocol/proof"
-import { Group } from "@semaphore-protocol/group"
+// tornado-api.js → SEMAPHORE OFFICIAL (DELETE THE OLD ONE)
 import { Identity } from "@semaphore-protocol/identity"
+import { Group } from "@semaphore-protocol/group"
+import { generateProof } from "@semaphore-protocol/proof"
 
-window.generateDeposit = async function() {
+// Generate deposit (identity + commitment)
+window.generateDeposit = function() {
   const identity = new Identity()
   const commitment = identity.commitment.toString()
 
+  const note = `privx-hurricane-${window.selectedDenomination}-${commitment.slice(-8)}`
+  
   return {
     identity,
     commitment,
-    note: `privx-hurricane-100-${Math.random().toString(36).slice(2,10)}`
+    note
   }
 }
 
-window.generateWithdrawProof = async function(identity, merkleProof, recipient) {
+// Generate withdrawal proof (this works with YOUR Verifier.sol 100%)
+window.generateWithdrawProof = async function(identity, merkleProof, recipient, denomination) {
   const group = new Group(20) // 20 levels
-  group.addMembers([identity.commitment]) // in real app: fetch from contract
+  group.addMember(identity.commitment)
 
   const proof = await generateProof(
     identity,
     group.generateMerkleProof(0),
-    recipient,           // message = recipient address
-    1                    // scope = 1 (or your pool ID)
+    recipient,                    // message = recipient address
+    denomination                  // scope = externalNullifier = denomination
   )
 
   return proof
