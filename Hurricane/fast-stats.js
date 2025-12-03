@@ -1,46 +1,61 @@
-// fast-stats.js – works on any GitHub Pages site
+// fast-stats.js – PRIVX Hurricane Edition (No external APIs)
 async function updateFastStats() {
-  if (!window.web3 || !window.POOLS || !window.userAccount) {
-    setTimeout(updateFastStats, 10000);
-    return;
-  }
+  if (!window.web3 || !window.POOLS) return setTimeout(updateFastStats, 5000);
+
+  const statsContainer = document.getElementById('statsContainer');
+  if (!statsContainer) return;
 
   let totalTVL = 0n;
   let totalDeposits = 0;
 
+  statsContainer.innerHTML = ''; // Clear old stats
+
   for (const pool of window.POOLS) {
     try {
-      const abi = [{"inputs":[],"name":"denomination","outputs":[{"type":"uint256"}],"type":"function"},{"inputs":[],"name":"nextLeafIdx","outputs":[{"type":"uint32"}],"type":"function"}];
-      const contract = new web3.eth.Contract(abi, pool.contract);
+      const contract = new web3.eth.Contract([
+        { "inputs": [], "name": "denomination", "outputs": [{"type": "uint256"}], "type": "function" },
+        { "inputs": [], "name": "nextIndex", "outputs": [{"type": "uint32"}], "type": "function" }
+      ], pool.contract);
 
-      const [denom, deposits] = await Promise.all([
+      const [denomStr, deposits] = await Promise.all([
         contract.methods.denomination().call(),
-        contract.methods.nextLeafIdx().call()
+        contract.methods.nextIndex().call()
       ]);
 
-      const tvl = BigInt(denom) * BigInt(deposits);
+      const denom = BigInt(denomStr);
+      const tvl = denom * BigInt(deposits);
       totalTVL += tvl;
       totalDeposits += Number(deposits);
 
-      // Update UI row
-      let row = document.querySelector(`[data-denom="${pool.denomination}"]`);
-      if (!row) {
-        row = document.createElement('div');
-        row.className = 'stat-row';
-        row.dataset.denom = pool.denomination;
-        row.innerHTML = `<div>${pool.denomination} PRIVX</div><div><span class="deposits">${deposits}</span> deposits · <span class="tvl">0</span> PRIVX</span></div>`;
-        document.getElementById('statsContainer')?.appendChild(row);
-      }
-      row.querySelector('.deposits').textContent = deposits;
-      row.querySelector('.tvl').textContent = Number(tvl / 1_000_000_000_000_000_000n).toLocaleString();
-    } catch (e) {}
+      const row = document.createElement('div');
+      row.className = 'stat-row';
+      row.innerHTML = `
+        <div class="stat-denomination">${pool.denomination} PRIVX</div>
+        <div class="stat-info">
+          <span class="stat-deposits">${deposits}</span> deposits
+          <span class="stat-balance">· ${Number(tvl / 10n**18n).toLocaleString()} PRIVX</span>
+        </div>
+      `;
+      statsContainer.appendChild(row);
+    } catch (e) {
+      console.log(`Stats failed for ${pool.denomination}:`, e);
+    }
   }
 
   // Total row
-  const totalEl = document.getElementById('totalTVL');
-  if (totalEl) totalEl.textContent = Number(totalTVL / 1_000_000_000_000_000_000n).toLocaleString();
+  const totalRow = document.createElement('div');
+  totalRow.className = 'stat-row total';
+  totalRow.innerHTML = `
+    <div class="stat-denomination">TOTAL</div>
+    <div class="stat-info">
+      <span class="stat-deposits">${totalDeposits}</span> deposits
+      <span class="stat-balance">· ${Number(totalTVL / 10n**18n).toLocaleString()} PRIVX</span>
+    </div>
+  `;
+  statsContainer.appendChild(totalRow);
 
-  setTimeout(updateFastStats, 30000);
+  setTimeout(updateFastStats, 30000); // Refresh every 30s
 }
 
+// Start on load
 updateFastStats();
