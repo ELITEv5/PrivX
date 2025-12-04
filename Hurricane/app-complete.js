@@ -1,56 +1,57 @@
-// app-complete.js — FINAL 100% WORKING
-let web3 = null;
-let account = null;
-let selected = null;
+// app-complete.js – PRIVX Hurricane (with auto-approval)
+document.getElementById("depositBtn").onclick = async function () {
+    if (!window.userAccount) return alert("Connect wallet first");
+    if (!window.selectedDenomination) return alert("Select a denomination");
 
-window.toggleWallet = async () => {
-  if (!window.ethereum) return alert("Install MetaMask");
-  try {
-    const accs = await ethereum.request({ method: "eth_requestAccounts" });
-    account = accs[0];
-    web3 = new Web3(ethereum);
-    document.getElementById("walletButtonText").innerText = account.slice(0,6)+"..."+account.slice(-4);
-    document.getElementById("walletButton").classList.add("connected");
-    updateUI();
-  } catch(e) { alert("Failed"); }
-};
+    const pool = window.POOLS.find(p => p.denomination === window.selectedDenomination);
+    if (!pool) return alert("Shield not found for this denomination.");
 
-window.selectDenomination = (d) => {
-  selected = d;
-  document.querySelectorAll(".denomination-card").forEach(c => c.classList.toggle("selected", c.innerText.includes(d)));
-  updateUI();
-};
+    const amount = pool.amount;
+    const hurricaneAddress = pool.contract;
 
-function updateUI() {
-  const btn = document.getElementById("depositBtn");
-  if (!account) { btn.innerText = "Connect Wallet"; btn.disabled = true; }
-  else if (!selected) { btn.innerText = "Select Amount"; btn.disabled = true; }
-  else { btn.innerText = `Deposit ${selected} PRIVX`; btn.disabled = false; }
-}
+    try {
+        const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
 
-window.deposit = async () => {
-  if (!account || !selected || !web3) return;
-  const pool = window.POOLS.find(p => p.denomination === selected);
-  const { commitment, note } = window.generateDeposit();
-  
-  const contract = new web3.eth.Contract([{"inputs":[{"name":"_commitment","type":"bytes32"}],"name":"deposit","outputs":[],"type":"function"}], pool.contract);
-  
-  try {
-    await contract.methods.deposit(commitment).send({ from: account });
-    document.getElementById("noteText").innerText = note;
-    document.getElementById("depositNote").classList.remove("hidden");
-    alert("DEPOSIT SUCCESS — SAVE YOUR NOTE");
-  } catch (e) {
-    alert("Failed: " + e.message);
-  }
-};
+        // 1️⃣ Check allowance
+        const allowance = await token.methods
+            .allowance(window.userAccount, hurricaneAddress)
+            .call();
 
-window.copyNote = () => {
-  navigator.clipboard.writeText(document.getElementById("noteText").innerText);
-  alert("Copied!");
-};
+        if (BigInt(allowance) < BigInt(amount)) {
+            const confirm = confirm(`Approve ${window.selectedDenomination} PRIVX for this Hurricane Shield?`);
+            if (!confirm) return;
 
-window.onload = () => {
-  updateUI();
-  document.getElementById("depositBtn").onclick = deposit;
+            // 2️⃣ Request approval
+            await token.methods
+                .approve(hurricaneAddress, amount)
+                .send({ from: window.userAccount });
+
+            alert("Approval confirmed. Proceeding with deposit...");
+        }
+
+        // 3️⃣ Generate deposit note and commitment
+        const deposit = await generateDeposit();
+        const commitment = deposit.commitment;
+
+        // 4️⃣ Send deposit transaction
+        const tx = await window.tornadoContract(hurricaneAddress)
+            .methods.deposit(commitment)
+            .send({ from: window.userAccount });
+
+        // 5️⃣ Build and show private note
+        const note = `privx-hurricane-${window.selectedDenomination}-${tx.transactionHash.slice(0,10)}-${deposit.nullifierHash.slice(0,10)}`;
+        document.getElementById("noteText").textContent = note;
+        document.getElementById("depositNote").classList.remove("hidden");
+
+        depositTracker.addDeposit({
+            note,
+            amount: window.selectedDenomination,
+            tx: tx.transactionHash
+        });
+
+        alert("✅ Deposit successful! Save your private note securely.");
+    } catch (e) {
+        console.error(e);
+        alert("Deposit failed: " + (e?.message || e));
+    }
 };
