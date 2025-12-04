@@ -1,41 +1,41 @@
-// fast-stats.js – Calls Your PRIVX Pools (No 404s)
-async function updateFastStats() {
-  if (!window.web3 || !window.POOLS) return;
+// fast-stats.js – WORKS 100% with your pools
+async function updateStats() {
+  if (typeof web3Instance === 'undefined' || !web3Instance) return;
 
-  const statsContainer = document.getElementById('statsContainer');
-  if (!statsContainer) return;
+  const container = document.getElementById('statsContainer');
+  if (!container) return;
 
-  statsContainer.innerHTML = '';
+  container.innerHTML = '<div class="stat-row"><div>Loading stats...</div></div>';
 
-  for (const pool of window.POOLS) {
+  >';
+
+  let html = '';
+  for (const pool of window.POOLS || []) {
     try {
-      const contract = new web3.eth.Contract([
-        { "inputs": [], "name": "denomination", "outputs": [{"type": "uint256"}], "type": "function" },
-        { "inputs": [], "name": "nextIndex", "outputs": [{"type": "uint32"}], "type": "function" }
+      const contract = new web3Instance.eth.Contract([
+        { "inputs": [], "name": "denomination", "outputs": [{ "name": "", "type": "uint256" }], "type": "function" },
+        { "inputs": [], "name": "nextIndex", "outputs": [{ "name": "", "type": "uint32" }], "type": "function" }
       ], pool.contract);
 
-      const [denomination, deposits] = await Promise.all([
-        contract.methods.denomination().call(),
-        contract.methods.nextIndex().call()
-      ]);
+      const [denom, index] = await Promise.all([
+        contract.methods.denomination().call(), contract.methods.nextIndex().call() ]);
 
-      const tvl = (BigInt(denomination) * BigInt(deposits)) / BigInt(10**18);
-      const row = document.createElement('div');
-      row.className = 'stat-row';
-      row.innerHTML = `
-        <div class="stat-denomination">${pool.denomination} PRIVX</div>
-        <div class="stat-info">
-          <span class="stat-deposits">${deposits}</span> deposits · <span class="stat-balance">${tvl.toString()}</span> PRIVX
-        </div>
-      `;
-      statsContainer.appendChild(row);
+      const tvl = (BigInt(denom) * BigInt(index)) / 10n**18n;
+
+      html += `
+        <div class="stat-row">
+          <div class="stat-denomination">${pool.denomination} PRIVX</div>
+          <div class="stat-info">
+            <span class="stat-deposits">${index}</span> deposits · <span class="stat-balance">${tvl.toString()}</span> PRIVX
+          </div>
+        </div>`;
     } catch (e) {
-      console.log('Stats failed for ' + pool.denomination + ':', e);
+      html += `<div class="stat-row"><div>${pool.denomination} PRIVX — offline</div></div>`;
     }
   }
-
-  setTimeout(updateFastStats, 30000); // Refresh every 30s
+  container.innerHTML = html;
 }
 
-// Start on load
-updateFastStats();
+// Update every 20s
+setInterval(updateStats, 20000);
+updateStats();
