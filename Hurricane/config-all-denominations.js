@@ -1,6 +1,6 @@
 export const CONFIG = {
   network: "PulseChain",
-  rpcUrl: "https://rpc.pulsechain.com", // or your preferred RPC endpoint
+  rpcUrl: "https://rpc.pulsechain.com",
 
   token: "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986",
   verifier: "0xB7253CE4031E72CdEeCF8212334611D64FF69bD7",
@@ -14,5 +14,7 @@ export const CONFIG = {
     "100000": "0x4b393d5Bef35E225074Ed1f247D147F8c9e904F4",
   },
 
-  explorer: "https://scan.pulsechain.com/address/",
+  // ZK setup files
+  zkeyUrl: "https://ipfs.io/ipfs/bafybeigk4mdkbngi7t72tdxnlpcfhynbgb3wbofitl7yuj7n4ddxsivvea/mixer_final.zkey",
+  verificationKey: "./verification_key.json",
 };
