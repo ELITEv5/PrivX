@@ -1,49 +1,35 @@
 {
-    "name": "@semaphore-protocol/core",
-    "version": "4.14.0",
-    "description": "Core library for the essential Semaphore features.",
-    "type": "module",
-    "license": "MIT",
-    "main": "src/index.js",
-    "types": "src/types/index.d.ts",
-    "exports": {
-        ".": {
-            "types": "./src/types/index.d.ts",
-            "require": "./src/index.cjs",
-            "default": "./src/index.js"
-        },
-        "./identity": {
-            "types": "./src/identity/types/index.d.ts",
-            "require": "./src/identity/index.cjs",
-            "default": "./src/identity/index.js"
-        },
-        "./group": {
-            "types": "./src/identity/types/index.d.ts",
-            "require": "./src/group/index.cjs",
-            "default": "./src/group/index.js"
-        },
-        "./proof": {
-            "types": "./src/identity/types/index.d.ts",
-            "require": "./src/proof/index.cjs",
-            "default": "./src/proof/index.js"
-        }
-    },
-    "files": [
-        "src/",
-        "LICENSE",
-        "README.md"
-    ],
-    "repository": "https://github.com/semaphore-protocol/semaphore",
-    "homepage": "https://github.com/semaphore-protocol/semaphore/tree/main/packages/core",
-    "bugs": {
-        "url": "https://github.com/semaphore-protocol/semaphore.git/issues"
-    },
-    "publishConfig": {
-        "access": "public"
-    },
-    "dependencies": {
-        "@semaphore-protocol/group": "4.14.0",
-        "@semaphore-protocol/identity": "4.14.0",
-        "@semaphore-protocol/proof": "4.14.0"
-    }
+  "name": "privx-hurricane",
+  "version": "1.0.0",
+  "description": "Frontend and proof generation system for PrivX Hurricane (zk-SNARK Mixer on PulseChain).",
+  "author": "PrivX Labs",
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:proof": "node test-generate.js"
+  },
+  "dependencies": {
+    "snarkjs": "^0.7.3",
+    "circomlibjs": "^0.1.7",
+    "ethers": "^6.11.1",
+    "web3": "^4.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vite": "^5.3.0",
+    "@types/node": "^22.0.0"
+  },
+  "keywords": [
+    "zk-snark",
+    "plonk",
+    "snarkjs",
+    "pulsechain",
+    "privx",
+    "mixer",
+    "privacy"
+  ]
 }
