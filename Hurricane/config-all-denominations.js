@@ -1,12 +1,18 @@
-// PrivX Hurricane – Final Config (December 1, 2025)
-window.POOLS = [
-  { denomination: "100",     amount: "100000000000000000000",   contract: "0x7cFa598e3684bd3121563bf337335ed6a8d530A6" },
-  { denomination: "1000",    amount: "1000000000000000000000",  contract: "0x307B1a12350B3a8553FAD20432be86ff954944f8" },
-  { denomination: "10000",   amount: "10000000000000000000000", contract: "0x072C300c291d79F4E87012588d1F2CDE29550F92" },
-  { denomination: "100000",  amount: "100000000000000000000000",contract: "0x96105a4066689cEC19E425Ca38D3c0FF16868330" }
-];
+export const CONFIG = {
+  network: "PulseChain",
+  rpcUrl: "https://rpc.pulsechain.com", // or your preferred RPC endpoint
 
-window.V14_VAULT = "0x21770D8B1B4Db669B69aFA4Cecc2Ad45a9976412";
-window.PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-window.VERIFIER = "0x8E0D3ac4ef407551f0F1C802999bbF0f213219a7";
-window.HASHER = "0x30DF8A96d69f0643B876c9FcCDFABdb6aA3402e5";
+  token: "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986",
+  verifier: "0xB7253CE4031E72CdEeCF8212334611D64FF69bD7",
+  hasher: "0x30DF8A96d69f0643B876c9FcCDFABdb6aA3402e5",
+  miningVault: "0x6fBd619538948e134b508e8954e120e99f7999a2",
+
+  shields: {
+    "100": "0x1746f6fe7447A13B7554fAb9FA0b77A8a5A61821",
+    "1000": "0x0F15B28f1B9C9b3c4B7b9d7864ef79BeEBCb37b6",
+    "10000": "0x8c17b741695Cb4B7c81F8Bfc20203B47dcd8d285",
+    "100000": "0x4b393d5Bef35E225074Ed1f247D147F8c9e904F4",
+  },
+
+  explorer: "https://scan.pulsechain.com/address/",
+};
