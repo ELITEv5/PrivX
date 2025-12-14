@@ -1,1 +1,10 @@
-
+cat > .gitignore << 'EOF'
+.DS_Store
+node_modules/
+build/witness.wtns
+build/proof.json
+build/public.json
+build/input.json.bak
+powersOfTau28_hez_final_21.ptau
+PrivX/
+EOF
