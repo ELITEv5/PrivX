@@ -286,48 +286,70 @@ function loop(){ draw(); requestAnimationFrame(loop); }
 loop();
 </script>
 
-<!-- 🔥 PrivX Burn Tracker (fixed) -->
+<!-- 🔥 PrivX Burn Tracker – Final Fixed -->
 <script>
+const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 const BURN_ADDRESSES = [
   "0x000000000000000000000000000000000000dEaD",
   "0x0000000000000000000000000000000000000369"
 ];
+
 const PRIVX_ABI = [
-  { "inputs": [], "name": "totalBurned", "outputs": [{ "type": "uint256" }], "stateMutability": "view", "type": "function" },
-  { "inputs": [], "name": "totalSupply", "outputs": [{ "type": "uint256" }], "stateMutability": "view", "type": "function" },
-  { "inputs": [], "name": "decimals", "outputs": [{ "type": "uint8" }], "stateMutability": "view", "type": "function" },
-  { "inputs": [{ "type": "address", "name": "account" }], "name": "balanceOf", "outputs": [{ "type": "uint256" }], "stateMutability": "view", "type": "function" }
+  { "inputs": [], "name": "totalBurned", "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "totalSupply", "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [], "name": "decimals", "outputs": [{ "name": "", "type": "uint8" }], "stateMutability": "view", "type": "function" },
+  { "inputs": [{ "name": "account", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
 ];
 
+// Wait for web3 to initialize
+async function waitForWeb3() {
+  return new Promise(resolve => {
+    if (window.web3 && window.web3.eth) return resolve(window.web3);
+    const check = setInterval(() => {
+      if (window.web3 && window.web3.eth) {
+        clearInterval(check);
+        resolve(window.web3);
+      }
+    }, 300);
+  });
+}
+
 async function updateBurnedBalance() {
-  if (!window.web3) return;
   const el = document.getElementById("burnedBalance");
   if (!el) return;
   el.textContent = "Loading...";
+
   try {
-    const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
+    const web3Instance = await waitForWeb3();
+    const token = new web3Instance.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
+
     const [decimals, totalSupply, totalBurnedValue, ...burnBalances] = await Promise.all([
-      token.methods.decimals().call(),
-      token.methods.totalSupply().call(),
+      token.methods.decimals().call().catch(() => 18),
+      token.methods.totalSupply().call().catch(() => "0"),
       token.methods.totalBurned?.().call().catch(() => "0"),
-      ...BURN_ADDRESSES.map(a => token.methods.balanceOf(a).call())
+      ...BURN_ADDRESSES.map(a => token.methods.balanceOf(a).call().catch(() => "0"))
     ]);
-    let total = BigInt(totalBurnedValue);
+
+    let total = BigInt(totalBurnedValue || 0);
     burnBalances.forEach(b => total += BigInt(b));
+
     const adjusted = Number(total / (10n ** BigInt(decimals)));
     const supply = Number(BigInt(totalSupply) / (10n ** BigInt(decimals)));
     const percent = supply > 0 ? ((adjusted / supply) * 100).toFixed(2) : "0.00";
+
     el.textContent = `${adjusted.toLocaleString()} PRIVX (${percent}% Burned)`;
   } catch (err) {
     console.error("🔥 Error loading burn balance:", err);
-    el.textContent = "Error";
+    const el = document.getElementById("burnedBalance");
+    if (el) el.textContent = "Error";
   }
 }
+
+// Run after load
 window.addEventListener("load", () => {
   updateBurnedBalance();
   setInterval(updateBurnedBalance, 30000);
 });
 </script>
-
 </body>
 </html>
