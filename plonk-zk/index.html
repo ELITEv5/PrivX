@@ -251,26 +251,42 @@
   }
 
   window.withdraw = async function() {
-    const note = document.getElementById('withdrawNote').value.trim();
-    if (!note) return alert("Paste your note");
+  const note = document.getElementById('withdrawNote').value.trim();
+  if (!note.startsWith('privx-hurricane-')) {
+    alert("Invalid note — must start with 'privx-hurricane-'");
+    return;
+  }
 
-    const parts = note.split('-');
-    if (parts.length !== 6 || !note.startsWith('privx-hurricane-')) return alert("Invalid note");
+  // Split and reconstruct hex correctly (your note has no extra splits)
+  const parts = note.split('-');
+  if (parts.length !== 6) {
+    alert("Invalid note format — expected 6 parts");
+    return;
+  }
 
-    const denom = parts[2];
-    const nullifierHex = parts[3] + parts[4];  // in case of split
-    const secretHex = parts[5];
+  const denom = parts[2];
+  const nullifierHex = parts[3] + parts[4]; // Combine if split, but in your note it's one part
+  const secretHex = parts[5];
 
-    // Minimal valid input for your circuit (adjust fields if needed after testing)
-    const input = {
-      nullifier: nullifierHex,
-      secret: secretHex,
-      recipient: userAccount || "0x0000000000000000000000000000000000000000"
-      // pathElements and pathIndices will be added later with real tree
-    };
+  if (nullifierHex.length !== 62 || secretHex.length !== 62) {
+    alert("Hex parts must be 62 characters each");
+    return;
+  }
 
-    await generatePlonkProof(input);
+  // Build minimal input for proof gen test (will error if fields don't match circuit, but proves loading)
+  const input = {
+    nullifier: nullifierHex,
+    secret: secretHex,
+    // Dummy for required fields (adjust after testing)
+    root: "0",
+    nullifierHash: "0",
+    recipient: userAccount || "0x0000000000000000000000000000000000000000",
+    pathElements: Array(20).fill("0"), // dummy Merkle depth
+    pathIndices: Array(20).fill(0)
   };
+
+  await generatePlonkProof(input);
+};
 
   // Burn tracker (now defined)
   async function updateBurnedBalance() {
