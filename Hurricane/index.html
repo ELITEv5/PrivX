@@ -318,9 +318,11 @@
       alert("No Web3 wallet detected. Install MetaMask.");
       return;
     }
+
     try {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       const account = accounts[0];
+
       // Set both local and global
       userAccount = account;
       window.userAccount = account;
@@ -348,60 +350,81 @@
         }
       }
 
-      // Initialize web3
+      // Initialize Web3
       web3 = new Web3(window.ethereum);
       window.web3 = web3;
 
-      // Update UI
+      // ✅ Update wallet UI
       const btn = document.getElementById("walletButton");
       const text = document.getElementById("walletButtonText");
       text.textContent = `${account.slice(0, 6)}...${account.slice(-4)}`;
       btn.classList.add("connected");
 
-      console.log("Web3 connected:", account);
-      console.log("Network: PulseChain");
+      console.log("✅ Web3 connected:", account);
+      console.log("🌐 Network: PulseChain");
 
-      // Enable deposit button if denomination selected
+      // ✅ Re-enable deposit button after wallet connects
+      const depositBtn = document.getElementById("depositBtn");
       if (window.selectedDenomination) {
-        const depositBtn = document.getElementById("depositBtn");
         depositBtn.textContent = `Deposit ${window.selectedDenomination} PRIVX`;
         depositBtn.disabled = false;
+        depositBtn.onclick = () => deposit();
+      } else {
+        depositBtn.textContent = "Select a Denomination First";
+        depositBtn.disabled = true;
       }
+
     } catch (err) {
       console.error("Wallet connection failed:", err);
       alert("Wallet connection failed: " + (err.message || "Check console"));
     }
   };
 
-  // Auto-connect if already authorized
+  // 🟢 Auto-connect if already authorized
   if (window.ethereum) {
     window.ethereum.request({ method: "eth_accounts" })
       .then(accounts => {
         if (accounts.length > 0) {
           userAccount = accounts[0];
           window.userAccount = userAccount;
-          toggleWallet(); // This will update UI and enable button
+          toggleWallet(); // auto-update UI
         }
       })
       .catch(err => console.error("Auto-connect error:", err));
   } else {
-    console.warn("No Ethereum provider found.");
+    console.warn("⚠️ No Ethereum provider found.");
   }
 </script>
 
-  <script>
-    window.selectDenomination = function(denom) {
-      const clean = denom.replace(/,/g, '');
-      window.selectedDenomination = clean;
-      document.querySelectorAll('.denomination-card').forEach(card => {
-        card.classList.remove('selected');
-        if (card.querySelector('.denomination-amount').textContent.includes(clean + ' PRIVX')) card.classList.add('selected');
-      });
-      const btn = document.getElementById('depositBtn');
-      if (window.userAccount) { btn.textContent = `Deposit ${denom} PRIVX`; btn.disabled = false; }
-      else { btn.textContent = "Connect Wallet First"; btn.disabled = true; }
-    };
-  </script>
+<script>
+  window.selectDenomination = function(denom) {
+    const clean = denom.replace(/,/g, '');
+    window.selectedDenomination = clean;
+
+    // ✅ Highlight selection
+    document.querySelectorAll('.denomination-card').forEach(card => {
+      card.classList.remove('selected');
+      if (card.querySelector('.denomination-amount').textContent.includes(clean + ' PRIVX')) {
+        card.classList.add('selected');
+      }
+    });
+
+    // ✅ Deposit button logic
+    const btn = document.getElementById('depositBtn');
+    if (window.userAccount) {
+      btn.textContent = `Deposit ${denom} PRIVX`;
+      btn.disabled = false;
+      btn.onclick = () => deposit();
+    } else {
+      btn.textContent = "Connect Wallet First";
+      btn.disabled = false;
+      btn.onclick = () => toggleWallet(); // 👈 gracefully reuses connect
+    }
+
+    console.log("💰 Denomination selected:", denom);
+  };
+</script>
+
 
   <!-- Adaptive Matrix Rain -->
   <script>
