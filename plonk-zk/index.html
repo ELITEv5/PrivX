@@ -288,36 +288,62 @@
   await generatePlonkProof(input);
 };
 
-  // Burn tracker (now defined)
+  <!-- 🔥 PrivX Burn Tracker – Fixed + Graphics Restored -->
+<script>
+  const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+  const BURN_ADDRESSES = [
+    "0x000000000000000000000000000000000000dEaD",
+    "0x0000000000000000000000000000000000000369"
+  ];
+  const PRIVX_ABI = [
+    { "name": "totalBurned", "type": "function", "inputs": [], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" },
+    { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" },
+    { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "name": "", "type": "uint8" }], "stateMutability": "view" },
+    { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" }
+  ];
+
   async function updateBurnedBalance() {
-    if (!web3) return;
+    if (!web3) {
+      document.getElementById("burnedBalance").textContent = "Connect wallet";
+      return;
+    }
+
     const el = document.getElementById("burnedBalance");
     if (!el) return;
-    el.textContent = "...";
+    el.textContent = "Loading...";
+
     try {
       const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
-      const [dec, supply, burned, ...balances] = await Promise.all([
+
+      const [decimals, totalSupply, totalBurnedValue, ...burnBalances] = await Promise.all([
         token.methods.decimals().call().catch(() => 18),
         token.methods.totalSupply().call(),
         token.methods.totalBurned?.().call().catch(() => "0"),
-        ...["0x000000000000000000000000000000000000dEaD","0x0000000000000000000000000000000000000369"].map(a => token.methods.balanceOf(a).call())
+        ...BURN_ADDRESSES.map(addr => token.methods.balanceOf(addr).call().catch(() => "0"))
       ]);
-      let total = BigInt(burned || 0);
-      balances.forEach(b => total += BigInt(b));
-      const adjusted = Number(total / (10n ** BigInt(dec)));
-      const pct = Number(BigInt(supply) / (10n ** BigInt(dec))) > 0 ? (adjusted / (Number(BigInt(supply) / (10n ** BigInt(dec)))) * 100).toFixed(2) : 0;
-      el.textContent = `${adjusted.toLocaleString()} PRIVX (${pct}%)`;
-    } catch (e) { el.textContent = "Error"; }
+
+      let totalBurned = BigInt(totalBurnedValue || 0);
+      burnBalances.forEach(b => totalBurned += BigInt(b));
+
+      const burnedFormatted = Number(totalBurned / (10n ** BigInt(decimals))).toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      });
+
+      const supplyFormatted = Number(BigInt(totalSupply) / (10n ** BigInt(decimals)));
+      const burnPercent = supplyFormatted > 0 
+        ? ((Number(totalBurned) / Number(totalSupply)) * 100).toFixed(4)
+        : "0.0000";
+
+      el.innerHTML = `<strong>${burnedFormatted}</strong> PRIVX <span style="color:#00ffea;">(${burnPercent}% burned)</span>`;
+    } catch (err) {
+      console.error("Burn tracker error:", err);
+      el.textContent = "Error loading";
+    }
   }
 
-  const PRIVX_ABI = [{"name":"totalBurned","type":"function","inputs":[],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"},{"name":"totalSupply","type":"function","inputs":[],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"},{"name":"decimals","type":"function","inputs":[],"outputs":[{"name":"","type":"uint8"}],"stateMutability":"view"},{"name":"balanceOf","type":"function","inputs":[{"name":"account","type":"address"}],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"}];
-
-  // Init everything
+  // Call on load and every 30 seconds
   window.addEventListener('load', () => {
-    document.getElementById('depositBtn').addEventListener('click', deposit);
-    document.getElementById('withdrawBtn').addEventListener('click', withdraw);
-    switchTab('deposit');
-    updateDepositButton();
     updateBurnedBalance();
     setInterval(updateBurnedBalance, 30000);
   });
