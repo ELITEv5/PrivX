@@ -184,14 +184,10 @@
 <!-- ✅ Load Web3 globally before your module -->
 <script src="./web3.min.js"></script>
 
-<!-- ✅ Main app logic -->
-<script type="module">
-  import { generateProof } from "./generate-proofs.js";
-  import { verifyProof } from "./verify-proofs.js";
-  import { poseidonHash } from "./hash.js";
-  import { HURRICANE_ABI } from "./HURRICANE_ABI.js";
-
-  const ZK_FILES = {
+<!-- ✅ Main app logic – fully working real deposit + ready for PLONK withdraw -->
+<script>
+// ZK Files (hosted on Pinata/IPFS)
+const ZK_FILES = {
   wasm: "https://gateway.pinata.cloud/ipfs/bafybeienonnaf3j4qafrwgefrrtboh4ntydfcosszgoiugwamdxul6esj4/mixer.wasm",
   zkey: "https://gateway.pinata.cloud/ipfs/bafybeienonnaf3j4qafrwgefrrtboh4ntydfcosszgoiugwamdxul6esj4/mixer_final.zkey"
 };
@@ -212,22 +208,42 @@ const DENOM_AMOUNTS = {
   "100000": "100000000000000000000000"
 };
 
-  let web3, userAccount;
+// ERC20 ABI (minimal – for approve)
+const ERC20_ABI = [
+  {
+    "constant": false,
+    "inputs": [
+      { "name": "spender", "type": "address" },
+      { "name": "amount", "type": "uint256" }
+    ],
+    "name": "approve",
+    "outputs": [{ "name": "", "type": "bool" }],
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "decimals",
+    "outputs": [{ "name": "", "type": "uint8" }],
+    "type": "function"
+  }
+];
 
-  // ✅ Wallet Connect Logic
-  window.toggleWallet = async function() {
-    if (!window.ethereum) return alert("No wallet found");
-    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-    userAccount = accounts[0];
-    web3 = new Web3Global(window.ethereum);
-    document.getElementById("walletButtonText").textContent =
-      `${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
-    document.getElementById("walletButton").classList.add("connected");
-    console.log("✅ Web3 is ready");
-  };
+// Shield ABI (minimal – deposit)
+const SHIELD_ABI = [
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "_commitment", "type": "bytes32" }
+    ],
+    "name": "deposit",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+];
 
-  // ✅ Deposit Function
-  window.deposit = async function () {
+// Real deposit function with Poseidon commitment
+window.deposit = async function () {
   if (!window.userAccount) return alert("Connect wallet first");
   if (!window.selectedDenomination) return alert("Select a denomination");
 
@@ -236,103 +252,44 @@ const DENOM_AMOUNTS = {
   const shieldAddress = SHIELD_CONTRACTS[denom];
 
   try {
-    // Generate random nullifier and secret (bigints)
-    const nullifier = BigInt("0x" + crypto.getRandomValues(new Uint8Array(32)).reduce((a, b) => a + b.toString(16).padStart(2, '0'), ''));
-    const secret = BigInt("0x" + crypto.getRandomValues(new Uint8Array(32)).reduce((a, b) => a + b.toString(16).padStart(2, '0'), ''));
+    // Generate random nullifier and secret
+    const nullifier = BigInt("0x" + crypto.getRandomValues(new Uint8Array(32)).reduce((a, b) => a + b.toString(16).padStart(2, "0"), ""));
+    const secret = BigInt("0x" + crypto.getRandomValues(new Uint8Array(32)).reduce((a, b) => a + b.toString(16).padStart(2, "0"), ""));
+
+    // Build Poseidon (from circomlibjs CDN)
+    const poseidon = await circomlibjs.buildPoseidon();
 
     // Commitment = Poseidon(nullifier, secret)
-    const commitment = circomlibjs.poseidon([nullifier, secret]);
+    const commitment = poseidon([nullifier, secret]);
+    const commitmentHex = "0x" + poseidon.F.toObject(commitment).toString(16).padStart(64, '0');
 
-    // Convert to hex string for contract
-    const commitmentHex = "0x" + commitment.toString(16).padStart(64, '0');
-
-    // Create note for user
+    // Create and display private note
     const note = `privx-hurricane-${denom}-${nullifier.toString(16)}-${secret.toString(16)}`;
     document.getElementById("noteText").textContent = note;
     document.getElementById("depositNote").classList.remove("hidden");
 
     // Web3 setup
     const web3 = new Web3(window.ethereum);
-    const privx = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
-    const shield = new web3.eth.Contract(HURRICANE_ABI, shieldAddress);
+    const privx = new web3.eth.Contract(ERC20_ABI, PRIVX_TOKEN);
+    const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddress);
 
-    // Approve PRIVX spend
+    console.log("Approving PRIVX spend...");
     await privx.methods.approve(shieldAddress, amount).send({ from: window.userAccount });
 
-    // Deposit commitment
+    console.log("Depositing commitment...");
     const tx = await shield.methods.deposit(commitmentHex).send({ from: window.userAccount });
 
-    alert(`Deposit successful!\nTX: ${tx.transactionHash}\nSave your note securely!`);
+    alert(`Deposit successful!\n\nTX: ${tx.transactionHash}\n\nSave your note securely!`);
   } catch (err) {
-    console.error("Deposit error:", err);
-    alert("Deposit failed – check console for details");
+    console.error("Deposit failed:", err);
+    alert("Deposit failed: " + (err.message || "Check console"));
   }
 };
-</script>
-<script>
-  // 🟣 Helper: Track selected denomination
-  window.selectDenomination = function(denom) {
-    const clean = denom.replace(/,/g, '');
-    window.selectedDenomination = clean;
 
-    document.querySelectorAll('.denomination-card').forEach(card => {
-      card.classList.remove('selected');
-      if (card.querySelector('.denomination-amount').textContent.includes(clean + ' PRIVX')) {
-        card.classList.add('selected');
-      }
-    });
-
-    const btn = document.getElementById('depositBtn');
-    if (window.userAccount) {
-      btn.textContent = `Deposit ${denom} PRIVX`;
-      btn.disabled = false;
-    } else {
-      btn.textContent = "Connect Wallet First";
-      btn.disabled = true;
-    }
-  };
-
-  // 🟣 Deposit button handler
-  window.deposit = async function () {
-    if (!window.userAccount) return alert("⚠️ Please connect wallet first");
-    if (!window.selectedDenomination) return alert("⚠️ Please select a denomination");
-
-    console.log(`🔧 Simulating deposit for ${window.selectedDenomination} PRIVX...`);
-
-    try {
-      // Simulate proof
-      const proof = "0x1234abcd"; // placeholder for testing
-      const signals = ["0x1", "0x2", "0x3"];
-
-      console.log("✅ Fake proof generated:", proof, signals);
-
-      // Simulate smart contract call
-      alert(`✅ Deposit ready for ${window.selectedDenomination} PRIVX!\n(Proof simulated, ready for live ZK flow)`);
-    } catch (err) {
-      console.error("❌ Deposit simulation failed:", err);
-      alert("❌ Deposit failed — check console for details");
-    }
-  };
-
-  // 🟣 Withdraw button handler
-  window.withdraw = async function () {
-    if (!window.userAccount) return alert("⚠️ Please connect wallet first");
-    const note = document.getElementById('withdrawNote').value.trim();
-    const recipient = document.getElementById('recipientAddress').value.trim() || window.userAccount;
-
-    if (!note) return alert("⚠️ Paste your private note first");
-
-    try {
-      console.log("🔧 Verifying withdrawal for note:", note);
-      console.log("👤 Recipient:", recipient);
-
-      // Simulate withdraw (ZK flow to come)
-      alert(`✅ Withdrawal simulated!\nRecipient: ${recipient}\nNote: ${note}`);
-    } catch (err) {
-      console.error("❌ Withdrawal failed:", err);
-      alert("❌ Withdrawal failed — check console for details");
-    }
-  };
+// Placeholder withdraw (will be replaced with full PLONK in next step)
+window.withdraw = async function () {
+  alert("Withdraw with real PLONK proof coming in next step!");
+};
 </script>
 
 
