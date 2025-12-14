@@ -178,14 +178,15 @@
 
     <div class="stats-list" id="statsContainer"></div>
   </div>
+<script src="./web3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.5/dist/snarkjs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/build/circomlibjs.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/ffjavascript@0.2.57/build/ffjavascript.min.js"></script>
-<!-- ✅ Load Web3 globally before your module -->
-<script type="module">
-  const circomlibjs = await import("https://cdn.jsdelivr.net/npm/@railgun-community/circomlibjs@latest/circomlibjs.js");
-  const { poseidon } = circomlibjs;
 
+<script type="module">
+  // Correct browser-ready circomlibjs from railgun (working path)
+  const circomlibjs = await import("https://cdn.jsdelivr.net/npm/@railgun-community/circomlibjs@latest/circomlibjs.js");
+  const poseidon = circomlibjs.poseidon;
+
+  // ZK files (your Pinata IPFS)
   const ZK_FILES = {
     wasm: "https://gateway.pinata.cloud/ipfs/bafybeienonnaf3j4qafrwgefrrtboh4ntydfcosszgoiugwamdxul6esj4/mixer.wasm",
     zkey: "https://gateway.pinata.cloud/ipfs/bafybeienonnaf3j4qafrwgefrrtboh4ntydfcosszgoiugwamdxul6esj4/mixer_final.zkey"
@@ -218,6 +219,7 @@
 
   let web3, userAccount;
 
+  // Real deposit with Poseidon commitment
   window.deposit = async function () {
     if (!userAccount) return alert("Connect wallet first");
     if (!window.selectedDenomination) return alert("Select a denomination");
@@ -227,21 +229,26 @@
     const shieldAddr = SHIELD_CONTRACTS[denom];
 
     try {
-      // Generate random nullifier & secret
-      const nullifier = crypto.getRandomValues(new Uint8Array(31));
-      const secret = crypto.getRandomValues(new Uint8Array(31));
+      // Random nullifier & secret as Uint8Array
+      const nullifierBytes = crypto.getRandomValues(new Uint8Array(31));
+      const secretBytes = crypto.getRandomValues(new Uint8Array(31));
+
+      // Convert to BigInt for Poseidon
+      const nullifier = BigInt("0x" + Array.from(nullifierBytes).map(b => b.toString(16).padStart(2, "0")).join(""));
+      const secret = BigInt("0x" + Array.from(secretBytes).map(b => b.toString(16).padStart(2, "0")).join(""));
 
       // Real Poseidon commitment
-      const commitment = poseidon([BigInt("0x" + Array.from(nullifier).map(b => b.toString(16).padStart(2, "0")).join("")), BigInt("0x" + Array.from(secret).map(b => b.toString(16).padStart(2, "0")).join(""))]);
+      const commitment = poseidon([nullifier, secret]);
+
       const commitmentHex = "0x" + commitment.toString(16).padStart(64, "0");
 
       // Note for user
-      const note = `privx-hurricane-${denom}-${Array.from(nullifier).map(b => b.toString(16).padStart(2,"0")).join("")}-${Array.from(secret).map(b => b.toString(16).padStart(2,"0")).join("")}`;
+      const note = `privx-hurricane-${denom}-${Array.from(nullifierBytes).map(b => b.toString(16).padStart(2,"0")).join("")}-${Array.from(secretBytes).map(b => b.toString(16).padStart(2,"0")).join("")}`;
       document.getElementById("noteText").textContent = note;
       document.getElementById("depositNote").classList.remove("hidden");
 
-      // Web3
-      web3 = new Web3(window.ethereum);
+      // Web3 (use the global from web3.min.js or ethereum)
+      web3 = new Web3(window.ethereum || web3.currentProvider);
       const privx = new web3.eth.Contract(ERC20_ABI, PRIVX_TOKEN);
       const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
 
@@ -260,7 +267,7 @@
     }
   };
 
-  window.withdraw = () => alert("Real PLONK withdraw in next step!");
+  window.withdraw = () => alert("Real PLONK withdraw coming next!");
 </script>
 
 <!-- ✅ Wallet Connect Logic (Fully Fixed) -->
