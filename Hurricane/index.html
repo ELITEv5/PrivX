@@ -228,36 +228,46 @@ const DENOM_AMOUNTS = {
 
   // ✅ Deposit Function
   window.deposit = async function () {
-    if (!userAccount) return alert("⚠️ Connect wallet first");
-    if (!window.selectedDenomination) return alert("⚠️ Select a denomination");
+  if (!window.userAccount) return alert("Connect wallet first");
+  if (!window.selectedDenomination) return alert("Select a denomination");
 
-    const denom = window.selectedDenomination;
-    const shield = SHIELDS[denom];
-    if (!shield) return alert("Invalid denomination selected");
+  const denom = window.selectedDenomination;
+  const amount = DENOM_AMOUNTS[denom];
+  const shieldAddress = SHIELD_CONTRACTS[denom];
 
-    try {
-      console.log(`🔧 Generating proof for ${denom} PRIVX...`);
-      const { proof, publicSignals } = await generateProof(denom);
-      console.log("✅ Proof generated", proof);
+  try {
+    // Generate random nullifier and secret (bigints)
+    const nullifier = BigInt("0x" + crypto.getRandomValues(new Uint8Array(32)).reduce((a, b) => a + b.toString(16).padStart(2, '0'), ''));
+    const secret = BigInt("0x" + crypto.getRandomValues(new Uint8Array(32)).reduce((a, b) => a + b.toString(16).padStart(2, '0'), ''));
 
-      const proofBytes = web3.utils.hexToBytes("0x" + proof.toString());
-      const publicSignalsBytes = publicSignals.map(ps =>
-        web3.utils.padLeft(web3.utils.toHex(ps), 64)
-      );
+    // Commitment = Poseidon(nullifier, secret)
+    const commitment = circomlibjs.poseidon([nullifier, secret]);
 
-      const hurricane = new web3.eth.Contract(HURRICANE_ABI, shield);
+    // Convert to hex string for contract
+    const commitmentHex = "0x" + commitment.toString(16).padStart(64, '0');
 
-      const tx = await hurricane.methods
-        .deposit(proofBytes, publicSignalsBytes)
-        .send({ from: userAccount });
+    // Create note for user
+    const note = `privx-hurricane-${denom}-${nullifier.toString(16)}-${secret.toString(16)}`;
+    document.getElementById("noteText").textContent = note;
+    document.getElementById("depositNote").classList.remove("hidden");
 
-      console.log("✅ Deposit confirmed:", tx.transactionHash);
-      alert(`Deposit confirmed! TX: ${tx.transactionHash}`);
-    } catch (err) {
-      console.error("❌ Deposit failed:", err);
-      alert("❌ Deposit failed — check console for details");
-    }
-  };
+    // Web3 setup
+    const web3 = new Web3(window.ethereum);
+    const privx = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
+    const shield = new web3.eth.Contract(HURRICANE_ABI, shieldAddress);
+
+    // Approve PRIVX spend
+    await privx.methods.approve(shieldAddress, amount).send({ from: window.userAccount });
+
+    // Deposit commitment
+    const tx = await shield.methods.deposit(commitmentHex).send({ from: window.userAccount });
+
+    alert(`Deposit successful!\nTX: ${tx.transactionHash}\nSave your note securely!`);
+  } catch (err) {
+    console.error("Deposit error:", err);
+    alert("Deposit failed – check console for details");
+  }
+};
 </script>
 <script>
   // 🟣 Helper: Track selected denomination
