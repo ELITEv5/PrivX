@@ -311,7 +311,7 @@
   window.withdraw = () => alert("Real PLONK withdraw coming next!");
 </script>
 
-<!-- Wallet Connect Logic -->
+<!-- Wallet Connect Logic (Fixed – sets window.userAccount properly) -->
 <script>
   window.toggleWallet = async function() {
     if (!window.ethereum) {
@@ -320,9 +320,12 @@
     }
     try {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-      userAccount = accounts[0];
-      window.userAccount = userAccount;
+      const account = accounts[0];
+      // Set both local and global
+      userAccount = account;
+      window.userAccount = account;
 
+      // Switch to PulseChain
       try {
         await window.ethereum.request({
           method: "wallet_switchEthereumChain",
@@ -340,34 +343,49 @@
               blockExplorerUrls: ["https://scan.pulsechain.com"]
             }]
           });
+        } else {
+          throw e;
         }
       }
 
+      // Initialize web3
       web3 = new Web3(window.ethereum);
       window.web3 = web3;
 
+      // Update UI
       const btn = document.getElementById("walletButton");
       const text = document.getElementById("walletButtonText");
-      text.textContent = `${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
+      text.textContent = `${account.slice(0, 6)}...${account.slice(-4)}`;
       btn.classList.add("connected");
 
-      console.log("Web3 connected:", userAccount);
+      console.log("Web3 connected:", account);
       console.log("Network: PulseChain");
+
+      // Enable deposit button if denomination selected
+      if (window.selectedDenomination) {
+        const depositBtn = document.getElementById("depositBtn");
+        depositBtn.textContent = `Deposit ${window.selectedDenomination} PRIVX`;
+        depositBtn.disabled = false;
+      }
     } catch (err) {
-      console.error(err);
-      alert("Wallet connection failed");
+      console.error("Wallet connection failed:", err);
+      alert("Wallet connection failed: " + (err.message || "Check console"));
     }
   };
 
+  // Auto-connect if already authorized
   if (window.ethereum) {
     window.ethereum.request({ method: "eth_accounts" })
-      .then(accs => {
-        if (accs.length > 0) {
-          userAccount = accs[0];
+      .then(accounts => {
+        if (accounts.length > 0) {
+          userAccount = accounts[0];
           window.userAccount = userAccount;
-          toggleWallet();
+          toggleWallet(); // This will update UI and enable button
         }
-      });
+      })
+      .catch(err => console.error("Auto-connect error:", err));
+  } else {
+    console.warn("No Ethereum provider found.");
   }
 </script>
 
