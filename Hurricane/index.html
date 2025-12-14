@@ -182,16 +182,10 @@
 <script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/build/circomlibjs.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/ffjavascript@0.2.57/build/ffjavascript.min.js"></script>
 <!-- ✅ Load Web3 globally before your module -->
-<script src="./web3.min.js"></script>
-
 <script type="module">
-  // Load circomlibjs and snarkjs from CDN (already in <head>)
-  const circomlibjs = await import("https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/build/circomlibjs.js");
-  const snarkjs = window.snarkjs;
+  const circomlibjs = await import("https://cdn.jsdelivr.net/npm/@railgun-community/circomlibjs@latest/circomlibjs.js");
+  const { poseidon } = circomlibjs;
 
-  const poseidon = await circomlibjs.buildPoseidon();
-
-  // ZK Files (your Pinata IPFS)
   const ZK_FILES = {
     wasm: "https://gateway.pinata.cloud/ipfs/bafybeienonnaf3j4qafrwgefrrtboh4ntydfcosszgoiugwamdxul6esj4/mixer.wasm",
     zkey: "https://gateway.pinata.cloud/ipfs/bafybeienonnaf3j4qafrwgefrrtboh4ntydfcosszgoiugwamdxul6esj4/mixer_final.zkey"
@@ -224,7 +218,6 @@
 
   let web3, userAccount;
 
-  // REAL DEPOSIT — Poseidon commitment + on-chain deposit
   window.deposit = async function () {
     if (!userAccount) return alert("Connect wallet first");
     if (!window.selectedDenomination) return alert("Select a denomination");
@@ -234,35 +227,40 @@
     const shieldAddr = SHIELD_CONTRACTS[denom];
 
     try {
+      // Generate random nullifier & secret
       const nullifier = crypto.getRandomValues(new Uint8Array(31));
       const secret = crypto.getRandomValues(new Uint8Array(31));
 
-      const commitment = poseidon([poseidon.F.toObject(nullifier), poseidon.F.toObject(secret)]);
+      // Real Poseidon commitment
+      const commitment = poseidon([BigInt("0x" + Array.from(nullifier).map(b => b.toString(16).padStart(2, "0")).join("")), BigInt("0x" + Array.from(secret).map(b => b.toString(16).padStart(2, "0")).join(""))]);
       const commitmentHex = "0x" + commitment.toString(16).padStart(64, "0");
 
+      // Note for user
       const note = `privx-hurricane-${denom}-${Array.from(nullifier).map(b => b.toString(16).padStart(2,"0")).join("")}-${Array.from(secret).map(b => b.toString(16).padStart(2,"0")).join("")}`;
       document.getElementById("noteText").textContent = note;
       document.getElementById("depositNote").classList.remove("hidden");
 
+      // Web3
       web3 = new Web3(window.ethereum);
       const privx = new web3.eth.Contract(ERC20_ABI, PRIVX_TOKEN);
       const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
 
+      // Approve if needed
       const allowance = await privx.methods.allowance(userAccount, shieldAddr).call();
       if (BigInt(allowance) < BigInt(amount)) {
         await privx.methods.approve(shieldAddr, amount).send({ from: userAccount });
       }
 
+      // Deposit
       const tx = await shield.methods.deposit(commitmentHex).send({ from: userAccount });
-      alert(`DEPOSIT SUCCESSFUL!\nTX: ${tx.transactionHash}\nSave your note!`);
+      alert(`DEPOSIT SUCCESS!\nTX: ${tx.transactionHash}\nSave your note!`);
     } catch (err) {
       console.error(err);
       alert("Deposit failed: " + (err.message || "Check console"));
     }
   };
 
-  // Placeholder — real withdraw in next step
-  window.withdraw = () => alert("Real PLONK withdraw coming next!");
+  window.withdraw = () => alert("Real PLONK withdraw in next step!");
 </script>
 
 <!-- ✅ Wallet Connect Logic (Fully Fixed) -->
