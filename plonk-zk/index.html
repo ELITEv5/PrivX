@@ -205,6 +205,20 @@ async function deposit() {
   }
 }
 
+// 🧾 Copy Note Function
+window.copyNote = function() {
+  const noteText = document.getElementById("noteText").textContent.trim();
+  if (!noteText) return alert("No note to copy yet!");
+  navigator.clipboard.writeText(noteText)
+    .then(() => {
+      alert("✅ Note copied!");
+      const box = document.getElementById('depositNote');
+      box.style.boxShadow = '0 0 25px #00ffea';
+      setTimeout(() => box.style.boxShadow = '', 800);
+    })
+    .catch(() => alert("❌ Copy failed — please copy manually."));
+};
+
 // 🦊 Wallet Connect
 window.toggleWallet = async function() {
   if (!window.ethereum) return alert("Install MetaMask");
@@ -272,14 +286,12 @@ function loop(){ draw(); requestAnimationFrame(loop); }
 loop();
 </script>
 
-<!-- 🔥 PrivX Burn Tracker -->
+<!-- 🔥 PrivX Burn Tracker (fixed) -->
 <script>
-const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 const BURN_ADDRESSES = [
   "0x000000000000000000000000000000000000dEaD",
   "0x0000000000000000000000000000000000000369"
 ];
-
 const PRIVX_ABI = [
   { "inputs": [], "name": "totalBurned", "outputs": [{ "type": "uint256" }], "stateMutability": "view", "type": "function" },
   { "inputs": [], "name": "totalSupply", "outputs": [{ "type": "uint256" }], "stateMutability": "view", "type": "function" },
@@ -287,63 +299,35 @@ const PRIVX_ABI = [
   { "inputs": [{ "type": "address", "name": "account" }], "name": "balanceOf", "outputs": [{ "type": "uint256" }], "stateMutability": "view", "type": "function" }
 ];
 
-// 🕐 Wait for Web3 injection
-async function waitForWeb3() {
-  return new Promise(resolve => {
-    if (window.web3 || window.Web3) return resolve();
-    const check = setInterval(() => {
-      if (window.web3 || window.Web3) {
-        clearInterval(check);
-        resolve();
-      }
-    }, 300);
-  });
-}
-
-async function getWeb3Instance() {
-  if (window.web3 && window.web3.eth) return window.web3; // already instance
-  if (window.Web3) return new window.Web3(window.ethereum); // create instance
-  throw new Error("Web3 not detected");
-}
-
 async function updateBurnedBalance() {
-  await waitForWeb3();
-  const burnElem = document.getElementById("burnedBalance");
-  if (!burnElem) return;
-  burnElem.textContent = "...";
-
+  if (!window.web3) return;
+  const el = document.getElementById("burnedBalance");
+  if (!el) return;
+  el.textContent = "Loading...";
   try {
-    const web3 = await getWeb3Instance();
     const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
-
-    const [decimals, totalSupplyValue, totalBurnedValue, ...burnBalances] = await Promise.all([
-      token.methods.decimals().call().catch(() => 18),
-      token.methods.totalSupply().call().catch(() => "0"),
+    const [decimals, totalSupply, totalBurnedValue, ...burnBalances] = await Promise.all([
+      token.methods.decimals().call(),
+      token.methods.totalSupply().call(),
       token.methods.totalBurned?.().call().catch(() => "0"),
-      ...BURN_ADDRESSES.map(addr => token.methods.balanceOf(addr).call().catch(() => "0"))
+      ...BURN_ADDRESSES.map(a => token.methods.balanceOf(a).call())
     ]);
-
     let total = BigInt(totalBurnedValue);
-    for (const b of burnBalances) total += BigInt(b);
-
-    const adjusted = total / (BigInt(10) ** BigInt(decimals));
-    const adjustedSupply = BigInt(totalSupplyValue) / (BigInt(10) ** BigInt(decimals));
-    const percent = adjustedSupply > 0n ? (Number(adjusted) / Number(adjustedSupply)) * 100 : 0;
-
-    burnElem.textContent = `${Number(adjusted).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PRIVX (${percent.toFixed(2)}%)`;
-
+    burnBalances.forEach(b => total += BigInt(b));
+    const adjusted = Number(total / (10n ** BigInt(decimals)));
+    const supply = Number(BigInt(totalSupply) / (10n ** BigInt(decimals)));
+    const percent = supply > 0 ? ((adjusted / supply) * 100).toFixed(2) : "0.00";
+    el.textContent = `${adjusted.toLocaleString()} PRIVX (${percent}% Burned)`;
   } catch (err) {
     console.error("🔥 Error loading burn balance:", err);
-    burnElem.textContent = "Error";
+    el.textContent = "Error";
   }
 }
-
-// Run on page load
-window.addEventListener("load", async () => {
-  await waitForWeb3();
+window.addEventListener("load", () => {
   updateBurnedBalance();
   setInterval(updateBurnedBalance, 30000);
 });
 </script>
+
 </body>
 </html>
