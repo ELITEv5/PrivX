@@ -182,7 +182,7 @@
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.5/dist/snarkjs.min.js"></script>
 
 <script type="module">
-  // Pure JS Poseidon T3 – matches your on-chain Hasher exactly
+  // Pure JS Poseidon T3 – exact match to your on-chain Hasher
   const POSEIDON_Q = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
   function pow5(x) {
@@ -219,7 +219,7 @@
 
     // 56 partial rounds
     for (let i = 0; i < 56; i++) {
-      x = (x + C[4]) % POSEIDON_Q; // using C[4] as in your contract
+      x = (x + C[4]) % POSEIDON_Q;
       x = pow5(x);
       x = (x + M * y % POSEIDON_Q) % POSEIDON_Q;
     }
@@ -235,6 +235,7 @@
     return x;
   }
 
+  // ZK files
   const ZK_FILES = {
     wasm: "https://gateway.pinata.cloud/ipfs/bafybeienonnaf3j4qafrwgefrrtboh4ntydfcosszgoiugwamdxul6esj4/mixer.wasm",
     zkey: "https://gateway.pinata.cloud/ipfs/bafybeienonnaf3j4qafrwgefrrtboh4ntydfcosszgoiugwamdxul6esj4/mixer_final.zkey"
@@ -267,6 +268,7 @@
 
   let web3, userAccount;
 
+  // Real deposit
   window.deposit = async function () {
     if (!userAccount) return alert("Connect wallet first");
     if (!window.selectedDenomination) return alert("Select a denomination");
@@ -276,19 +278,16 @@
     const shieldAddr = SHIELD_CONTRACTS[denom];
 
     try {
-      // Random nullifier & secret
-      const nullifier = crypto.getRandomValues(new Uint8Array(31));
-      const secret = crypto.getRandomValues(new Uint8Array(31));
+      const nullifierBytes = crypto.getRandomValues(new Uint8Array(31));
+      const secretBytes = crypto.getRandomValues(new Uint8Array(31));
 
-      const nullifierBI = BigInt("0x" + Array.from(nullifier).map(b => b.toString(16).padStart(2, "0")).join(""));
-      const secretBI = BigInt("0x" + Array.from(secret).map(b => b.toString(16).padStart(2, "0")).join(""));
+      const nullifierBI = BigInt("0x" + Array.from(nullifierBytes).map(b => b.toString(16).padStart(2, "0")).join(""));
+      const secretBI = BigInt("0x" + Array.from(secretBytes).map(b => b.toString(16).padStart(2, "0")).join(""));
 
-      // Real PoseidonT3 commitment
       const commitmentBI = await poseidonT3(nullifierBI, secretBI);
       const commitmentHex = "0x" + commitmentBI.toString(16).padStart(64, "0");
 
-      // Note
-      const note = `privx-hurricane-${denom}-${Array.from(nullifier).map(b => b.toString(16).padStart(2,"0")).join("")}-${Array.from(secret).map(b => b.toString(16).padStart(2,"0")).join("")}`;
+      const note = `privx-hurricane-${denom}-${Array.from(nullifierBytes).map(b => b.toString(16).padStart(2,"0")).join("")}-${Array.from(secretBytes).map(b => b.toString(16).padStart(2,"0")).join("")}`;
       document.getElementById("noteText").textContent = note;
       document.getElementById("depositNote").classList.remove("hidden");
 
@@ -312,27 +311,24 @@
   window.withdraw = () => alert("Real PLONK withdraw coming next!");
 </script>
 
-<!-- ✅ Wallet Connect Logic (Fully Fixed) -->
+<!-- Wallet Connect Logic -->
 <script>
   window.toggleWallet = async function() {
     if (!window.ethereum) {
-      alert("⚠️ No Web3 wallet detected. Please install MetaMask or a compatible wallet.");
+      alert("No Web3 wallet detected. Install MetaMask.");
       return;
     }
-
     try {
-      // 🔹 Request wallet connection
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-      const userAccount = accounts[0];
+      userAccount = accounts[0];
+      window.userAccount = userAccount;
 
-      // 🔹 Attempt to switch to PulseChain (chainId 0x171)
       try {
         await window.ethereum.request({
           method: "wallet_switchEthereumChain",
           params: [{ chainId: "0x171" }]
         });
       } catch (e) {
-        // 🔹 If PulseChain not added, add it automatically
         if (e.code === 4902) {
           await window.ethereum.request({
             method: "wallet_addEthereumChain",
@@ -347,47 +343,31 @@
         }
       }
 
-      // ✅ Initialize global Web3 + user state
-      const web3 = new Web3(window.ethereum);
+      web3 = new Web3(window.ethereum);
       window.web3 = web3;
-      window.userAccount = userAccount;
 
-      // ✅ Update wallet UI
       const btn = document.getElementById("walletButton");
       const text = document.getElementById("walletButtonText");
-      if (btn && text) {
-        text.textContent = `${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
-        btn.classList.add("connected");
-        btn.style.opacity = "1";
-        btn.disabled = false;
-      }
+      text.textContent = `${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
+      btn.classList.add("connected");
 
-      console.log("✅ Web3 connected:", userAccount);
-      console.log("✅ Network: PulseChain");
-
-      // 🔹 Trigger any post-connection app updates
-      if (typeof initApp === "function") initApp();
-      if (typeof updateDepositButton === "function") updateDepositButton();
-      if (typeof updateBurnedBalance === "function") updateBurnedBalance();
-
+      console.log("Web3 connected:", userAccount);
+      console.log("Network: PulseChain");
     } catch (err) {
-      console.error("❌ Wallet connection failed:", err);
-      alert("❌ Wallet connection failed — check console for details.");
+      console.error(err);
+      alert("Wallet connection failed");
     }
   };
 
-  // 🔹 Auto-connect if already authorized
   if (window.ethereum) {
     window.ethereum.request({ method: "eth_accounts" })
       .then(accs => {
         if (accs.length > 0) {
-          window.userAccount = accs[0];
-          console.log("🟢 Already connected:", window.userAccount);
-          window.toggleWallet();
+          userAccount = accs[0];
+          window.userAccount = userAccount;
+          toggleWallet();
         }
       });
-  } else {
-    console.warn("⚠️ No Ethereum provider found.");
   }
 </script>
 
