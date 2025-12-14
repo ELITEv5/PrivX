@@ -1,10 +1,44 @@
 cat > .gitignore << 'EOF'
+# macOS junk
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Node / JS
 node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Large ZK artifacts (not source code)
+build/*.zkey
+build/*.ptau
 build/witness.wtns
 build/proof.json
 build/public.json
 build/input.json.bak
-powersOfTau28_hez_final_21.ptau
+
+# Temporary / test files
+*.bak
+*.tmp
+*.log
+
+# Entire old PrivX folder if you moved docs out
 PrivX/
+
+# Optional: if you add a frontend later
+dist/
+build/
+.cache/
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
 EOF
