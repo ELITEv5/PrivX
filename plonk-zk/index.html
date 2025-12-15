@@ -377,7 +377,7 @@
     });
   </script>
 
- <!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Correct Direction + Zero Hashes + Normalize) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Correct Direction + Switcher-Aligned Merkle Proof) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
@@ -399,7 +399,7 @@ let ZERO_HASHES = [];
 })();
 
 // ─────────────────────────────
-// Merkle Tree (with correct zero padding)
+// Merkle Tree (Switcher-compatible: 0 = left, 1 = right)
 // ─────────────────────────────
 class MerkleTree {
   constructor(levels) {
@@ -416,20 +416,21 @@ class MerkleTree {
     const indices = [];
     let nodes = this.leaves.slice();
 
-    for (let i = 0; i < this.levels; i++) {
-      const siblingIndex = index ^ 1;
-      const sibling = nodes[siblingIndex] ?? ZERO_HASHES[i];
+    for (let level = 0; level < this.levels; level++) {
+      const isRightNode = index % 2; // 1 if right, 0 if left
+      const siblingIndex = isRightNode ? index - 1 : index + 1;
+      const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
       path.push(sibling);
-      indices.push(index % 2);
-      index = Math.floor(index / 2);
+      indices.push(isRightNode); // 0 = left, 1 = right
 
       const next = [];
       for (let j = 0; j < nodes.length; j += 2) {
-        const left = nodes[j] ?? ZERO_HASHES[i];
-        const right = nodes[j + 1] ?? ZERO_HASHES[i];
+        const left = nodes[j] ?? ZERO_HASHES[level];
+        const right = nodes[j + 1] ?? ZERO_HASHES[level];
         next.push(await poseidonT3(left, right));
       }
       nodes = next;
+      index = Math.floor(index / 2);
     }
 
     return { root: nodes[0] || 0n, path, indices };
@@ -437,11 +438,11 @@ class MerkleTree {
 }
 
 // ─────────────────────────────
-// 🔓 Withdraw Function (frontend-only logic fix)
+// 🔓 Withdraw Function
 // ─────────────────────────────
 window.withdraw = async function () {
   const noteInput = document.getElementById("withdrawNote").value.trim();
-  if (!noteInput) return alert("Paste your note first");
+  if (!noteInput) return alert("Paste your private note first");
   if (!web3 || !userAccount) return alert("Connect your wallet");
 
   const match = noteInput.match(/^privx-hurricane-(\d+)-([a-f0-9]{62})-([a-f0-9]{62})$/);
@@ -473,40 +474,41 @@ window.withdraw = async function () {
 
     const leafIndex = leaves.findIndex((l) => BigInt(l) === commitment);
     if (leafIndex === -1)
-      return alert("Commitment not found in this pool (check network or denom)");
+      return alert("❌ Commitment not found in this pool (check denomination or note).");
 
+    // 🌳 Build Merkle tree + proof
     const tree = new MerkleTree(TREE_LEVELS);
     leaves.forEach((l) => tree.insert(BigInt(l)));
-    const { root, path: siblings, indices: pathIndices } = await tree.getProof(
-      leafIndex
-    );
+    const { root, path: siblings, indices: pathIndices } = await tree.getProof(leafIndex);
 
-    // ⚙️ Normalize everything
-    const rootNorm = fieldNorm(root).toString();
-    const nullifierNorm = fieldNorm(nullifier).toString();
-    const secretNorm = fieldNorm(secret).toString();
-    const denomNorm = fieldNorm(BigInt(DENOM_AMOUNTS[denom])).toString();
-    const nfHashNorm = fieldNorm(
-      await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))
-    ).toString();
+    // ✅ Recompute root locally (sanity check)
+    let recomputed = commitment;
+    for (let i = 0; i < siblings.length; i++) {
+      if (pathIndices[i] === 0n || pathIndices[i] === 0) {
+        recomputed = await poseidonT3(recomputed, siblings[i]); // current left
+      } else {
+        recomputed = await poseidonT3(siblings[i], recomputed); // sibling left
+      }
+    }
 
-    // 🧠 Prepare input matching circuit format (FIX: reverse path order)
-const reversedSiblings = siblings.slice().reverse();
-const reversedIndices = pathIndices.slice().reverse();
+    console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
+    console.log("✅ Tree root:", "0x" + root.toString(16));
 
-const input = {
-  root: fieldNorm(root).toString(),
-  nullifierHash: fieldNorm(await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString(),
-  denomination: fieldNorm(BigInt(DENOM_AMOUNTS[denom])).toString(),
-  secret: fieldNorm(secret).toString(),
-  nullifier: fieldNorm(nullifier).toString(),
-  pathIndices: reversedIndices.map(i => i.toString()),
-  siblings: reversedSiblings.map(s => fieldNorm(s).toString())
-};
+    // 🧠 Prepare input exactly as Circom expects
+    const input = {
+      root: fieldNorm(root).toString(),
+      nullifierHash: fieldNorm(await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString(),
+      denomination: fieldNorm(BigInt(DENOM_AMOUNTS[denom])).toString(),
+      secret: fieldNorm(secret).toString(),
+      nullifier: fieldNorm(nullifier).toString(),
+      pathIndices: pathIndices.map((i) => i.toString()),
+      siblings: siblings.map((s) => fieldNorm(s).toString()),
+    };
 
     console.log("🧾 Withdraw Input (final normalized):", input);
 
-    btn.textContent = "Generating proof (PLONK)...";
+    // ⚙️ Generate PLONK proof
+    btn.textContent = "Generating PLONK proof (30–60s)...";
     const { proof, publicSignals } = await snarkjs.plonk.fullProve(
       input,
       WASM_URL,
@@ -516,10 +518,8 @@ const input = {
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
 
-    const calldata = await snarkjs.plonk.exportSolidityCallData(
-      proof,
-      publicSignals
-    );
+    // 🧩 Format calldata for Solidity
+    const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
     const [proofBytes, pubSignalsArr] = JSON.parse(
       "[" + calldata.replace(/\]\[/g, "],[") + "]"
     );
@@ -530,7 +530,7 @@ const input = {
       .send({ from: userAccount });
 
     alert(
-      `🎉 Withdraw success!\nTX: ${tx.transactionHash}\nYou received ${denom} PRIVX + reward.`
+      `🎉 WITHDRAW SUCCESS!\nTX: ${tx.transactionHash}\nYou received ${denom} PRIVX + Proof-of-Privacy reward.`
     );
   } catch (err) {
     console.error("❌ Withdraw error:", err);
