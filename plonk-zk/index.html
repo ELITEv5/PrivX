@@ -377,7 +377,7 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Switcher Fix + Path Reversal + Field Normalize) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Circom Switcher Alignment + Path Reversal + Field Normalize) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
@@ -388,7 +388,7 @@ function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-// ✅ Precompute Poseidon zero hashes (for empty leaves)
+// ✅ Precompute Poseidon zero hashes
 let ZERO_HASHES = [];
 (async () => {
   ZERO_HASHES[0] = 0n;
@@ -399,7 +399,7 @@ let ZERO_HASHES = [];
 })();
 
 // ─────────────────────────────
-// Merkle Tree (Switcher-compatible: 0 = left, 1 = right)
+// Merkle Tree (Circom Switcher-aligned: 0 = left, 1 = right)
 // ─────────────────────────────
 class MerkleTree {
   constructor(levels) {
@@ -417,11 +417,12 @@ class MerkleTree {
     let nodes = this.leaves.slice();
 
     for (let level = 0; level < this.levels; level++) {
-      const isRightNode = index % 2; // 1 if right, 0 if left
+      // ✅ Switcher alignment: invert right/left interpretation
+      const isRightNode = (index + 1) % 2; // (instead of index % 2)
       const siblingIndex = isRightNode ? index - 1 : index + 1;
       const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
       path.push(sibling);
-      indices.push(isRightNode); // 0 = left, 1 = right
+      indices.push(isRightNode); // 0 = left, 1 = right per Circom
 
       const next = [];
       for (let j = 0; j < nodes.length; j += 2) {
@@ -438,7 +439,7 @@ class MerkleTree {
 }
 
 // ─────────────────────────────
-// 🔓 Withdraw Function (with Circom Switcher alignment)
+// 🔓 Withdraw Function
 // ─────────────────────────────
 window.withdraw = async function () {
   const noteInput = document.getElementById("withdrawNote").value.trim();
@@ -460,7 +461,6 @@ window.withdraw = async function () {
     btn.disabled = true;
     btn.textContent = "Fetching deposits...";
 
-    // 🔍 Fetch on-chain deposits
     const deposits = await shield.getPastEvents("Deposit", {
       fromBlock: 0,
       toBlock: "latest",
@@ -475,7 +475,7 @@ window.withdraw = async function () {
     if (leafIndex === -1)
       return alert("❌ Commitment not found in this pool. Check denomination or note.");
 
-    // 🌳 Build Merkle tree + proof (leaf → root order)
+    // 🌳 Build Merkle tree + proof
     const tree = new MerkleTree(TREE_LEVELS);
     leaves.forEach((l) => tree.insert(BigInt(l)));
     const proofData = await tree.getProof(leafIndex);
@@ -484,16 +484,12 @@ window.withdraw = async function () {
     const siblings = proofData.path.map((p) => fieldNormalize(p));
     const pathIndices = proofData.indices.map((i) => Number(i));
 
-    // 🔁 Circom Switcher Fix: invert indices so sel aligns with Switcher
-    const pathIndicesInverted = pathIndices.map((i) => (i === 0 ? 1 : 0));
-
     // 🔄 Circom expects top-down order → reverse arrays
     const siblingsReversed = [...siblings].reverse();
-    const pathIndicesReversed = [...pathIndicesInverted].reverse();
+    const pathIndicesReversed = [...pathIndices].reverse();
 
-    // 🧠 Debugging: verify alignment + order
+    // 🧠 Debugging
     console.log("🔍 PathIndices (0=left,1=right):", pathIndices);
-    console.log("🔁 Inverted PathIndices (for Circom Switcher):", pathIndicesInverted);
     console.log("🔄 Reversed PathIndices (for Circom input):", pathIndicesReversed);
     console.log("🔄 First 5 siblings:", siblingsReversed.slice(0, 5).map((s) => "0x" + s.toString(16)));
 
@@ -510,7 +506,7 @@ window.withdraw = async function () {
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
     console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
 
-    // 🧠 Build Circom-compatible input
+    // 🧠 Build Circom input
     const nfHash = await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]));
     const denomBig = BigInt(DENOM_AMOUNTS[denom]);
 
@@ -555,7 +551,6 @@ window.withdraw = async function () {
       fieldNormalize(proofData.root).toString() === publicSignals[0].toString()
     );
 
-    // 🧩 Build calldata for Solidity
     const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
     const [proofBytes, pubSignalsArr] = JSON.parse(
       "[" + calldata.replace(/\]\[/g, "],[") + "]"
