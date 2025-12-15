@@ -490,16 +490,19 @@ window.withdraw = async function () {
       await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))
     ).toString();
 
-    // 🧠 Prepare input matching circuit format
-    const input = {
-      root: rootNorm,
-      nullifierHash: nfHashNorm,
-      denomination: denomNorm,
-      secret: secretNorm,
-      nullifier: nullifierNorm,
-      pathIndices: pathIndices.map((i) => i.toString()),
-      siblings: siblings.map((s) => fieldNorm(s).toString()),
-    };
+    // 🧠 Prepare input matching circuit format (FIX: reverse path order)
+const reversedSiblings = siblings.slice().reverse();
+const reversedIndices = pathIndices.slice().reverse();
+
+const input = {
+  root: fieldNorm(root).toString(),
+  nullifierHash: fieldNorm(await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString(),
+  denomination: fieldNorm(BigInt(DENOM_AMOUNTS[denom])).toString(),
+  secret: fieldNorm(secret).toString(),
+  nullifier: fieldNorm(nullifier).toString(),
+  pathIndices: reversedIndices.map(i => i.toString()),
+  siblings: reversedSiblings.map(s => fieldNorm(s).toString())
+};
 
     console.log("🧾 Withdraw Input (final normalized):", input);
 
