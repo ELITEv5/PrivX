@@ -465,6 +465,12 @@ window.withdraw = async function() {
     // 🌳 Build Merkle tree + proof
     const tree = new MerkleTree(TREE_LEVELS);
     leaves.forEach(l => tree.insert(BigInt(l)));
+    // Pad to full tree size with zero hashes (to match circuit)
+const fullSize = 1 << TREE_LEVELS; // 2^TREE_LEVELS
+while (tree.leaves.length < fullSize) {
+  tree.insert(ZERO_HASHES[0]);
+}
+
     const { root, path: pathElements, indices: pathIndices } = await tree.getProof(leafIndex);
 
     // ✅ Match circuit’s direction: 0 = left, 1 = right
