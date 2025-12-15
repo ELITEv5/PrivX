@@ -246,10 +246,13 @@
         const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
 
         const allowance = await privx.methods.allowance(userAccount, shieldAddr).call();
-        if (BigInt(allowance) < BigInt(amount)) {
-          btn.textContent = "Approving PRIVX...";
-          await privx.methods.approve(shieldAddr, amount).send({ from: userAccount });
-        }
+        const fee = (BigInt(amount) * 3n) / 1000n; // 0.3%
+const total = BigInt(amount) + fee;
+
+if (BigInt(allowance) < total) {
+  btn.textContent = "Approving PRIVX (amount + fee)...";
+  await privx.methods.approve(shieldAddr, total.toString()).send({ from: userAccount });
+}
 
         btn.textContent = "Depositing...";
         const tx = await shield.methods.deposit(commitment).send({ from: userAccount });
