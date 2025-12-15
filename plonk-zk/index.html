@@ -377,7 +377,7 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Correct Direction + Switcher-Aligned Merkle Proof) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Correct Direction + Input Order Alignment) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
@@ -466,8 +466,6 @@ window.withdraw = async function () {
     });
     const leaves = deposits.map((e) => e.returnValues.commitment);
 
-    const fieldNorm = (x) => ((x % FIELD_P) + FIELD_P) % FIELD_P;
-
     const nullifier = BigInt("0x" + nullifierHex);
     const secret = BigInt("0x" + secretHex);
     const commitment = await poseidonT3(nullifier, secret);
@@ -481,7 +479,7 @@ window.withdraw = async function () {
     leaves.forEach((l) => tree.insert(BigInt(l)));
     const { root, path: siblings, indices: pathIndices } = await tree.getProof(leafIndex);
 
-    // ✅ Recompute root locally (sanity check)
+    // ✅ JS recompute root (sanity check)
     let recomputed = commitment;
     for (let i = 0; i < siblings.length; i++) {
       if (pathIndices[i] === 0n || pathIndices[i] === 0) {
@@ -494,18 +492,23 @@ window.withdraw = async function () {
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
     console.log("✅ Tree root:", "0x" + root.toString(16));
 
-    // 🧠 Prepare input exactly as Circom expects
+    // 🧠 Build input in the EXACT field order Circom expects:
+    // public [root, nullifierHash, denomination]
+    const nfHash = await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]));
+    const denomBig = BigInt(DENOM_AMOUNTS[denom]);
+
     const input = {
-      root: fieldNorm(root).toString(),
-      nullifierHash: fieldNorm(await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString(),
-      denomination: fieldNorm(BigInt(DENOM_AMOUNTS[denom])).toString(),
-      secret: fieldNorm(secret).toString(),
-      nullifier: fieldNorm(nullifier).toString(),
+      root: fieldNormalize(root).toString(),
+      nullifierHash: fieldNormalize(nfHash).toString(),
+      denomination: fieldNormalize(denomBig).toString(),
+      secret: fieldNormalize(secret).toString(),
+      nullifier: fieldNormalize(nullifier).toString(),
       pathIndices: pathIndices.map((i) => i.toString()),
-      siblings: siblings.map((s) => fieldNorm(s).toString()),
+      siblings: siblings.map((s) => fieldNormalize(s).toString()),
     };
 
     console.log("🧾 Withdraw Input (final normalized):", input);
+    console.log("🧩 Input keys order:", Object.keys(input));
 
     // ⚙️ Generate PLONK proof
     btn.textContent = "Generating PLONK proof (30–60s)...";
@@ -517,6 +520,7 @@ window.withdraw = async function () {
 
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
+    console.log("🧩 Expected root:", fieldNormalize(root).toString());
 
     // 🧩 Format calldata for Solidity
     const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
