@@ -395,18 +395,16 @@ if (BigInt(allowance) < total) {
 const TREE_LEVELS = 20;
 let poseidon, F;
 
-// ✅ Load circomlibjs Poseidon in browser
+// ✅ Load circomlibjs Poseidon in browser (works locally + from GitHub Pages)
 (async () => {
-  const script = document.createElement('script');
-    script.src = "https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/dist/circomlibjs.min.js";
-    script.onload = async () => {
-    const circomlib = await window.circomlibjs;
-    poseidon = await circomlib.buildPoseidon();
+  try {
+    const res = await import("https://unpkg.com/circomlibjs@0.0.8/dist/circomlibjs.min.js");
+    poseidon = await res.buildPoseidon();
     F = poseidon.F;
-    console.log("✅ Poseidon loaded");
-  };
-  script.onerror = () => console.error("❌ Failed to load circomlibjs");
-  document.head.appendChild(script);
+    console.log("✅ Poseidon loaded successfully");
+  } catch (err) {
+    console.error("❌ Poseidon load failed:", err);
+  }
 })();
 
 // 🧩 Minimal Merkle Tree builder (client-side)
@@ -443,7 +441,6 @@ class MerkleTree {
       const siblingValue = nodes[sibling] ?? 0n;
       path.push(siblingValue);
       indices.push(index % 2);
-
       index >>= 1;
 
       const next = [];
@@ -512,11 +509,7 @@ window.withdraw = async function () {
 
     // ⚙️ Generate proof
     btn.textContent = "Generating PLONK proof (30–60s)...";
-    const { proof, publicSignals } = await snarkjs.plonk.fullProve(
-      input,
-      WASM_URL,
-      ZKEY_URL
-    );
+    const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
 
     console.log("✅ Proof generated:", proof);
     console.log("📜 Public signals:", publicSignals);
