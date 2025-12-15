@@ -377,18 +377,20 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Correct Direction + Input Order Alignment) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Modular Normalization + Root Alignment) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
   21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
-// Normalize to the same finite field as circom/snarkjs
+// ─────────────────────────────
+// Normalize any BigInt into Circom field
+// ─────────────────────────────
 function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-// ✅ Precompute Poseidon zeros AFTER poseidonT3 is ready
+// ✅ Precompute Poseidon zero hashes (matches on-chain tree)
 let ZERO_HASHES = [];
 (async () => {
   ZERO_HASHES[0] = 0n;
@@ -507,11 +509,22 @@ window.withdraw = async function () {
       siblings: siblings.map((s) => fieldNormalize(s).toString()),
     };
 
+    // ✅ Force mod-normalization on all fields before proof
+    for (const key in input) {
+      if (Array.isArray(input[key])) {
+        input[key] = input[key].map((v) =>
+          fieldNormalize(BigInt(v)).toString()
+        );
+      } else if (!isNaN(input[key])) {
+        input[key] = fieldNormalize(BigInt(input[key])).toString();
+      }
+    }
+
     console.log("🧾 Withdraw Input (final normalized):", input);
     console.log("🧩 Input keys order:", Object.keys(input));
 
-    // ⚙️ Generate PLONK proof
-    btn.textContent = "Generating PLONK proof (30–60s)...";
+    btn.textContent = "Generating PLONK proof (30–60s)... ⏳";
+
     const { proof, publicSignals } = await snarkjs.plonk.fullProve(
       input,
       WASM_URL,
@@ -521,14 +534,17 @@ window.withdraw = async function () {
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
     console.log("🧩 Expected root:", fieldNormalize(root).toString());
+    console.log(
+      "🧩 Root matches circuit?",
+      fieldNormalize(root).toString() === publicSignals[0].toString()
+    );
 
-    // 🧩 Format calldata for Solidity
     const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
     const [proofBytes, pubSignalsArr] = JSON.parse(
       "[" + calldata.replace(/\]\[/g, "],[") + "]"
     );
 
-    btn.textContent = "Submitting withdraw...";
+    btn.textContent = "Submitting withdraw... 🚀";
     const tx = await shield.methods
       .withdraw(proofBytes, pubSignalsArr, recipient)
       .send({ from: userAccount });
