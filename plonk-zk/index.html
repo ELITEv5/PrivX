@@ -435,21 +435,19 @@ class MerkleTree {
   }
 }
 
-// ─────────────────────────────
-// 🔓 Withdraw Function
-// ─────────────────────────────
-window.withdraw = async function() {
+<!-- 🔒 Frontend-only Withdraw Fix (no circuit changes) -->
+<script>
+window.withdraw = async function () {
   const noteInput = document.getElementById("withdrawNote").value.trim();
-  if (!noteInput) return alert("Paste your private note");
+  if (!noteInput) return alert("Paste your note first");
   if (!web3 || !userAccount) return alert("Connect your wallet");
 
   const match = noteInput.match(/^privx-hurricane-(\d+)-([a-f0-9]{62})-([a-f0-9]{62})$/);
   if (!match) return alert("Invalid note format");
-
   const [_, denom, nullifierHex, secretHex] = match;
-  const shieldAddr = SHIELD_CONTRACTS[denom];
-  if (!shieldAddr) return alert("Invalid denomination for this note");
 
+  const shieldAddr = SHIELD_CONTRACTS[denom];
+  if (!shieldAddr) return alert("Invalid denomination");
   const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
   const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
   const btn = document.getElementById("withdrawBtn");
@@ -461,68 +459,56 @@ window.withdraw = async function() {
     const deposits = await shield.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
     const leaves = deposits.map(e => e.returnValues.commitment);
 
+    const FIELD_P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+    const fieldNorm = x => ((x % FIELD_P) + FIELD_P) % FIELD_P;
+
     const nullifier = BigInt("0x" + nullifierHex);
     const secret = BigInt("0x" + secretHex);
     const commitment = await poseidonT3(nullifier, secret);
 
     const leafIndex = leaves.findIndex(l => BigInt(l) === commitment);
-    if (leafIndex === -1) return alert("❌ Commitment not found in pool — deposit must exist on-chain.");
+    if (leafIndex === -1) return alert("Commitment not found in this pool");
 
-    // 🌳 Build Merkle tree + proof
+    const TREE_LEVELS = 20;
+    const ZERO = 0n;
+
     const tree = new MerkleTree(TREE_LEVELS);
     leaves.forEach(l => tree.insert(BigInt(l)));
+    const { root, path: siblings, indices: pathIndices } = await tree.getProof(leafIndex);
 
-    // Pad to full tree size with zero hashes (to match circuit)
-    const fullSize = 1 << TREE_LEVELS;
-    while (tree.leaves.length < fullSize) {
-      tree.insert(ZERO_HASHES[0]);
-    }
+    // ⚙️ Normalize everything
+    const rootNorm = fieldNorm(root).toString();
+    const nullifierNorm = fieldNorm(nullifier).toString();
+    const secretNorm = fieldNorm(secret).toString();
+    const denomNorm = fieldNorm(BigInt(DENOM_AMOUNTS[denom])).toString();
+    const nfHashNorm = fieldNorm(await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString();
 
-    const { root, path: pathElements, indices: pathIndices } = await tree.getProof(leafIndex);
-
-    // ✅ Match circuit’s direction: 0 = left, 1 = right
-    let checkRoot = commitment;
-    for (let i = 0; i < pathElements.length; i++) {
-      if (pathIndices[i] === 0) {
-        checkRoot = await poseidonT3(checkRoot, pathElements[i]); // current is left
-      } else {
-        checkRoot = await poseidonT3(pathElements[i], checkRoot); // sibling is left
-      }
-    }
-
-    console.log("✅ Recomputed root:", "0x" + checkRoot.toString(16));
-
-    // 🧠 Build witness input (reverse order to match circom)
-    pathElements.reverse();
-    pathIndices.reverse();
-
+    // 🧠 Prepare input matching circuit format
     const input = {
-      secret: fieldNormalize(secret).toString(),
-      nullifier: fieldNormalize(nullifier).toString(),
-      pathIndices,
-      siblings: pathElements.map(p => fieldNormalize(p).toString()),
-      root: fieldNormalize(root).toString(),
-      nullifierHash: fieldNormalize(await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString(),
-      denomination: fieldNormalize(BigInt(DENOM_AMOUNTS[denom])).toString()
+      root: rootNorm,
+      nullifierHash: nfHashNorm,
+      denomination: denomNorm,
+      secret: secretNorm,
+      nullifier: nullifierNorm,
+      pathIndices: pathIndices.map(i => i.toString()),
+      siblings: siblings.map(s => fieldNorm(s).toString())
     };
 
-    console.log("🧾 Withdraw Input:", input);
+    console.log("🧾 Withdraw Input (final normalized):", input);
 
-    // ⚙️ Generate PLONK proof
-    btn.textContent = "Generating PLONK proof (30–90s)...";
+    btn.textContent = "Generating proof (PLONK)...";
     const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
 
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
 
-    // 🧩 Format calldata for Solidity
     const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
     const [proofBytes, pubSignalsArr] = JSON.parse("[" + calldata.replace(/\]\[/g, "],[") + "]");
 
     btn.textContent = "Submitting withdraw...";
     const tx = await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
 
-    alert(`🎉 WITHDRAW SUCCESS!\nTX: ${tx.transactionHash}\nYou received ${denom} PRIVX + Proof-of-Privacy reward.`);
+    alert(`🎉 Withdraw success!\nTX: ${tx.transactionHash}`);
   } catch (err) {
     console.error("❌ Withdraw error:", err);
     alert("Withdraw failed: " + (err.message || "Check console"));
