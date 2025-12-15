@@ -448,14 +448,15 @@
         const { root, path: pathElements, indices: pathIndices } = await tree.getProof(leafIndex);
 
         const input = {
+  secret: secret.toString(),
+  nullifier: nullifier.toString(),
+  pathIndices,
+  siblings: pathElements.map(p => p.toString()), // rename pathElements → siblings
   root: root.toString(),
   nullifierHash: (await poseidonT3(nullifier, 0n)).toString(),
-  nullifier: nullifier.toString(),
-  secret: secret.toString(),
-  pathElements: pathElements.map(p => p.toString()),
-  pathIndices,
-  denomination: denom // the denomination string from the note, e.g. "100"
+  denomination: denom // e.g., "100"
 };
+
 
 
         btn.textContent = "Generating proof (30-60s)...";
