@@ -217,10 +217,28 @@
       }
     ];
     const PRIVX_ABI = [
-      { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
-      { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
-      { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" }
-    ];
+  {
+    "name": "balanceOf",
+    "type": "function",
+    "inputs": [{ "name": "account", "type": "address" }],
+    "outputs": [{ "type": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "decimals",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "type": "uint8" }],
+    "stateMutability": "view"
+  },
+  {
+    "name": "totalSupply",
+    "type": "function",
+    "inputs": [],
+    "outputs": [{ "type": "uint256" }],
+    "stateMutability": "view"
+  }
+];
     const WASM_URL = "./circuits/mixer_js/mixer.wasm";
     const ZKEY_URL = "https://gateway.pinata.cloud/ipfs/bafybeigk4mdkbngi7t72tdxnlpcfhynbgb3wbofitl7yuj7n4ddxsivvea";
 
@@ -380,9 +398,10 @@ let poseidon, F;
 // ✅ Load circomlibjs Poseidon in browser
 (async () => {
   const script = document.createElement('script');
-  script.src = "https://cdn.jsdelivr.net/npm/@railgun-community/circomlibjs@latest/browser/circomlib.js";
-  script.onload = async () => {
-    poseidon = await buildPoseidon();
+    script.src = "https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/dist/circomlibjs.min.js";
+    script.onload = async () => {
+    const circomlib = await window.circomlibjs;
+    poseidon = await circomlib.buildPoseidon();
     F = poseidon.F;
     console.log("✅ Poseidon loaded");
   };
