@@ -387,16 +387,19 @@ function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-// Build contract-matching zero hashes (used for empty leaves)
+// ✅ Precompute Poseidon zeros AFTER poseidonT3 is ready
 let ZERO_HASHES = [];
 (async () => {
-  let current = 0n;
-  for (let i = 0; i < TREE_LEVELS; i++) {
-    ZERO_HASHES.push(current);
-    current = await poseidonT3(current, current);
+  ZERO_HASHES[0] = 0n;
+  for (let i = 1; i < TREE_LEVELS; i++) {
+    ZERO_HASHES[i] = await poseidonT3(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
   }
+  console.log("✅ Zero hashes precomputed:", ZERO_HASHES.length);
 })();
 
+// ─────────────────────────────
+// Merkle Tree (with correct zero padding)
+// ─────────────────────────────
 class MerkleTree {
   constructor(levels) {
     this.levels = levels;
@@ -427,11 +430,14 @@ class MerkleTree {
       }
       nodes = next;
     }
+
     return { root: nodes[0] || 0n, path, indices };
   }
 }
 
+// ─────────────────────────────
 // 🔓 Withdraw Function
+// ─────────────────────────────
 window.withdraw = async function() {
   const noteInput = document.getElementById("withdrawNote").value.trim();
   if (!noteInput) return alert("Paste your private note");
@@ -465,11 +471,12 @@ window.withdraw = async function() {
     // 🌳 Build Merkle tree + proof
     const tree = new MerkleTree(TREE_LEVELS);
     leaves.forEach(l => tree.insert(BigInt(l)));
+
     // Pad to full tree size with zero hashes (to match circuit)
-const fullSize = 1 << TREE_LEVELS; // 2^TREE_LEVELS
-while (tree.leaves.length < fullSize) {
-  tree.insert(ZERO_HASHES[0]);
-}
+    const fullSize = 1 << TREE_LEVELS;
+    while (tree.leaves.length < fullSize) {
+      tree.insert(ZERO_HASHES[0]);
+    }
 
     const { root, path: pathElements, indices: pathIndices } = await tree.getProof(leafIndex);
 
@@ -477,32 +484,32 @@ while (tree.leaves.length < fullSize) {
     let checkRoot = commitment;
     for (let i = 0; i < pathElements.length; i++) {
       if (pathIndices[i] === 0) {
-        checkRoot = await poseidonT3(checkRoot, pathElements[i]); // current left
+        checkRoot = await poseidonT3(checkRoot, pathElements[i]); // current is left
       } else {
-        checkRoot = await poseidonT3(pathElements[i], checkRoot); // sibling left
+        checkRoot = await poseidonT3(pathElements[i], checkRoot); // sibling is left
       }
     }
+
     console.log("✅ Recomputed root:", "0x" + checkRoot.toString(16));
 
-    // 🧠 Build witness input (after reversing)
-pathElements.reverse();
-pathIndices.reverse();
+    // 🧠 Build witness input (reverse order to match circom)
+    pathElements.reverse();
+    pathIndices.reverse();
 
-const input = {
-  secret: fieldNormalize(secret).toString(),
-  nullifier: fieldNormalize(nullifier).toString(),
-  pathIndices,
-  siblings: pathElements.map(p => fieldNormalize(p).toString()),
-  root: fieldNormalize(root).toString(),
-  nullifierHash: fieldNormalize(await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString(),
-  denomination: fieldNormalize(BigInt(DENOM_AMOUNTS[denom])).toString()
-};
-
+    const input = {
+      secret: fieldNormalize(secret).toString(),
+      nullifier: fieldNormalize(nullifier).toString(),
+      pathIndices,
+      siblings: pathElements.map(p => fieldNormalize(p).toString()),
+      root: fieldNormalize(root).toString(),
+      nullifierHash: fieldNormalize(await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString(),
+      denomination: fieldNormalize(BigInt(DENOM_AMOUNTS[denom])).toString()
+    };
 
     console.log("🧾 Withdraw Input:", input);
 
     // ⚙️ Generate PLONK proof
-    btn.textContent = "Generating PLONK proof (30–60s)...";
+    btn.textContent = "Generating PLONK proof (30–90s)...";
     const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
 
     console.log("✅ Proof generated");
