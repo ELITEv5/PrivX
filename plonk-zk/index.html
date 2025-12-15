@@ -304,25 +304,24 @@ function draw() {
 requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
 </script>
 
-<!-- 🔥 PrivX Burn Tracker (Fee + Reclaim Optimized, Wallet-Agnostic) -->
 <script>
-const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-const BURN_ADDRESSES = [
-  "0x000000000000000000000000000000000000dEaD", // standard burn address
-  "0x0000000000000000000000000000000000000369"  // PrivX reclaim burn sink
+// 🔥 PrivX Burn Tracker – Unique Variable Names
+const PRIVX_BURN_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+const PRIVX_BURN_ADDRESSES = [
+  "0x000000000000000000000000000000000000dEaD",
+  "0x0000000000000000000000000000000000000369"
 ];
 
-const PRIVX_ABI = [
+const PRIVX_BURN_ABI = [
   { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
   { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
   { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" }
 ];
 
-// 🌐 Smart Web3 selector (wallet or RPC fallback)
-function getWeb3Instance() {
+// 🌐 Web3 Fallback Logic
+function getBurnWeb3() {
   if (window.web3 && window.web3.eth) return window.web3;
   if (window.ethereum) return new Web3(window.ethereum);
-  // fallback for users without any wallet installed
   return new Web3("https://rpc.pulsechain.com");
 }
 
@@ -332,49 +331,33 @@ async function updateBurnedBalance() {
   el.textContent = "Loading...";
 
   try {
-    const web3 = getWeb3Instance();
-    const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
+    const web3 = getBurnWeb3();
+    const token = new web3.eth.Contract(PRIVX_BURN_ABI, PRIVX_BURN_TOKEN);
 
-    // Grab decimals, totalSupply, and both burn addresses
     const [decimals, totalSupplyRaw, ...burnBalances] = await Promise.all([
       token.methods.decimals().call().catch(() => 18),
       token.methods.totalSupply().call().catch(() => "0"),
-      ...BURN_ADDRESSES.map(addr => token.methods.balanceOf(addr).call().catch(() => "0"))
+      ...PRIVX_BURN_ADDRESSES.map(addr => token.methods.balanceOf(addr).call().catch(() => "0"))
     ]);
 
-    // Add up burn addresses
     let totalBurned = 0n;
     for (const b of burnBalances) totalBurned += BigInt(b);
 
-    // Normalize numbers
     const divisor = 10n ** BigInt(decimals);
     const burned = totalBurned / divisor;
     const supply = BigInt(totalSupplyRaw) / divisor;
-
-    // Calculate percent burned
     const percent = supply > 0n ? (Number(burned) / Number(supply)) * 100 : 0;
 
-    // Update UI
     el.innerHTML = `
       <strong>${Number(burned).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> PRIVX
       <span style="color:#00ffea;">(${percent.toFixed(2)}% burned)</span>
     `;
-
-    console.log("🔥 PRIVX Burn Tracker:", {
-      decimals,
-      totalSupply: totalSupplyRaw,
-      burnBalances,
-      totalBurned: burned.toString(),
-      percent
-    });
-
   } catch (err) {
     console.error("🔥 Error loading burn balance:", err);
     el.textContent = "Error";
   }
 }
 
-// Run automatically on load and refresh every 30s
 window.addEventListener("load", () => {
   updateBurnedBalance();
   setInterval(updateBurnedBalance, 30000);
