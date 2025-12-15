@@ -216,26 +216,26 @@
         "type": "function"
       }
     ];
-    const PRIVX_ABI = [
+   const PRIVX_ABI = [
   {
     "name": "balanceOf",
     "type": "function",
     "inputs": [{ "name": "account", "type": "address" }],
-    "outputs": [{ "type": "uint256" }],
+    "outputs": [{ "name": "", "type": "uint256" }],
     "stateMutability": "view"
   },
   {
     "name": "decimals",
     "type": "function",
     "inputs": [],
-    "outputs": [{ "type": "uint8" }],
+    "outputs": [{ "name": "", "type": "uint8" }],
     "stateMutability": "view"
   },
   {
     "name": "totalSupply",
     "type": "function",
     "inputs": [],
-    "outputs": [{ "type": "uint256" }],
+    "outputs": [{ "name": "", "type": "uint256" }],
     "stateMutability": "view"
   }
 ];
@@ -391,17 +391,19 @@ if (BigInt(allowance) < total) {
   </script>
 
   <!-- 🔒 Patched Withdraw Script (PLONK + Merkle Tree + Poseidon) -->
+<!-- ✅ Load circomlibjs Poseidon safely (works from GitHub Pages, no CORS) -->
+<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/dist/circomlibjs.min.js"></script>
+
 <script>
 const TREE_LEVELS = 20;
 let poseidon, F;
 
-// ✅ Load circomlibjs Poseidon in browser (works locally + from GitHub Pages)
+// ✅ Initialize Poseidon once circomlibjs is loaded
 (async () => {
   try {
-    const res = await import("https://unpkg.com/circomlibjs@0.0.8/dist/circomlibjs.min.js");
-    poseidon = await res.buildPoseidon();
+    poseidon = await window.circomlibjs.buildPoseidon();
     F = poseidon.F;
-    console.log("✅ Poseidon loaded successfully");
+    console.log("✅ Poseidon loaded successfully (CORS-safe)");
   } catch (err) {
     console.error("❌ Poseidon load failed:", err);
   }
