@@ -377,9 +377,24 @@
     });
   </script>
 
-<!-- 🧠 FINAL PLONK Withdraw – Fixed Path Direction & nullifierHash -->
+<!-- 🧠 FINAL PLONK Withdraw – Perfect for Your Circuit -->
 <script>
   const TREE_LEVELS = 20;
+  const FIELD_P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+
+  function fieldNormalize(x) {
+    return ((x % FIELD_P) + FIELD_P) % FIELD_P;
+  }
+
+  // Precompute zero hashes
+  let ZERO_HASHES = [];
+  (async () => {
+    ZERO_HASHES[0] = 0n;
+    for (let i = 1; i <= TREE_LEVELS; i++) {
+      ZERO_HASHES[i] = await poseidonT3(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
+    }
+    console.log("Zero hashes precomputed");
+  })();
 
   class MerkleTree {
     constructor(levels) { this.levels = levels; this.leaves = []; }
@@ -393,15 +408,15 @@
       for (let level = 0; level < this.levels; level++) {
         const isRight = index % 2 === 1;
         const siblingIndex = isRight ? index - 1 : index + 1;
-        const sibling = nodes[siblingIndex] ?? 0n;
+        const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
         path.push(sibling);
-        pathIndices.push(isRight ? 1 : 0); // 1 = right (Switcher sel)
+        pathIndices.push(isRight ? 1 : 0); // Switcher sel
         index >>= 1;
 
         const next = [];
         for (let j = 0; j < nodes.length; j += 2) {
-          const left = nodes[j] ?? 0n;
-          const right = nodes[j + 1] ?? 0n;
+          const left = nodes[j] ?? ZERO_HASHES[level];
+          const right = nodes[j + 1] ?? ZERO_HASHES[level];
           next.push(await poseidonT3(left, right));
         }
         nodes = next;
@@ -413,7 +428,7 @@
   window.withdraw = async function() {
     if (!web3 || !userAccount) return alert("Connect wallet");
     const noteInput = document.getElementById("withdrawNote").value.trim();
-    if (!noteInput) return alert("Paste your note");
+    if (!noteInput) return alert("Paste note");
 
     const match = noteInput.match(/^privx-hurricane-(\d+)-([a-f0-9]{62})-([a-f0-9]{62})$/);
     if (!match) return alert("Invalid note format");
@@ -438,7 +453,7 @@
       const commitment = await poseidonT3(nullifier, secret);
 
       const leafIndex = leaves.findIndex(l => BigInt(l) === commitment);
-      if (leafIndex === -1) return alert("Your deposit not found — check denomination/note");
+      if (leafIndex === -1) return alert("Deposit not found — wrong pool/note");
 
       const tree = new MerkleTree(TREE_LEVELS);
       leaves.forEach(l => tree.insert(BigInt(l)));
@@ -447,15 +462,15 @@
       const denomination = BigInt(DENOM_AMOUNTS[denom]);
       const nullifierHash = await poseidonT3(nullifier, denomination);
 
-      // EXACT MATCH TO YOUR CIRCUIT
+      // EXACT INPUT FOR YOUR CIRCUIT
       const input = {
-        "secret": secret.toString(),
-        "nullifier": nullifier.toString(),
-        "pathIndices": pathIndices,
-        "siblings": pathElements.map(p => p.toString()),
-        "root": root.toString(),
-        "nullifierHash": nullifierHash.toString(),
-        "denomination": denomination.toString()
+        secret: fieldNormalize(secret).toString(),
+        nullifier: fieldNormalize(nullifier).toString(),
+        pathIndices: pathIndices,
+        siblings: pathElements.map(p => fieldNormalize(p).toString()),
+        root: fieldNormalize(root).toString(),
+        nullifierHash: fieldNormalize(nullifierHash).toString(),
+        denomination: fieldNormalize(denomination).toString()
       };
 
       btn.textContent = "Generating proof (30-60s)...";
