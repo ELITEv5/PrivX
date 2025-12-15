@@ -377,9 +377,25 @@
     });
   </script>
 
-  <!-- 🔒 Final Patched Withdraw Script (PLONK + Directional Merkle + Poseidon T3) -->
+ <!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Correct Direction + Zero Hashes + Normalize) -->
 <script>
 const TREE_LEVELS = 20;
+const FIELD_P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+
+// Normalize to the same finite field as circom/snarkjs
+function fieldNormalize(x) {
+  return ((x % FIELD_P) + FIELD_P) % FIELD_P;
+}
+
+// Build contract-matching zero hashes (used for empty leaves)
+let ZERO_HASHES = [];
+(async () => {
+  let current = 0n;
+  for (let i = 0; i < TREE_LEVELS; i++) {
+    ZERO_HASHES.push(current);
+    current = await poseidonT3(current, current);
+  }
+})();
 
 class MerkleTree {
   constructor(levels) {
@@ -398,20 +414,19 @@ class MerkleTree {
 
     for (let i = 0; i < this.levels; i++) {
       const siblingIndex = index ^ 1;
-      const sibling = nodes[siblingIndex] || 0n;
+      const sibling = nodes[siblingIndex] ?? ZERO_HASHES[i];
       path.push(sibling);
       indices.push(index % 2);
       index = Math.floor(index / 2);
 
       const next = [];
       for (let j = 0; j < nodes.length; j += 2) {
-        const left = nodes[j] || 0n;
-        const right = nodes[j + 1] || 0n;
+        const left = nodes[j] ?? ZERO_HASHES[i];
+        const right = nodes[j + 1] ?? ZERO_HASHES[i];
         next.push(await poseidonT3(left, right));
       }
       nodes = next;
     }
-
     return { root: nodes[0] || 0n, path, indices };
   }
 }
@@ -437,7 +452,6 @@ window.withdraw = async function() {
     btn.disabled = true;
     btn.textContent = "Fetching deposits...";
 
-    // 🧾 Fetch all deposits
     const deposits = await shield.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
     const leaves = deposits.map(e => e.returnValues.commitment);
 
@@ -448,31 +462,31 @@ window.withdraw = async function() {
     const leafIndex = leaves.findIndex(l => BigInt(l) === commitment);
     if (leafIndex === -1) return alert("❌ Commitment not found in pool — deposit must exist on-chain.");
 
-    // 🌳 Build Merkle tree + directional proof
+    // 🌳 Build Merkle tree + proof
     const tree = new MerkleTree(TREE_LEVELS);
     leaves.forEach(l => tree.insert(BigInt(l)));
     const { root, path: pathElements, indices: pathIndices } = await tree.getProof(leafIndex);
 
-    // 🔄 Verify reconstruction (debug)
-    let checkHash = commitment;
+    // ✅ Match circuit’s direction: 0 = left, 1 = right
+    let checkRoot = commitment;
     for (let i = 0; i < pathElements.length; i++) {
       if (pathIndices[i] === 0) {
-        checkHash = await poseidonT3(checkHash, pathElements[i]); // left
+        checkRoot = await poseidonT3(checkRoot, pathElements[i]); // current left
       } else {
-        checkHash = await poseidonT3(pathElements[i], checkHash); // right
+        checkRoot = await poseidonT3(pathElements[i], checkRoot); // sibling left
       }
     }
-    console.log("Recomputed root:", "0x" + checkHash.toString(16));
+    console.log("✅ Recomputed root:", "0x" + checkRoot.toString(16));
 
-    // 🧠 PLONK witness input (matches mixer.circom)
+    // 🧠 Build witness input
     const input = {
-      secret: secret.toString(),
-      nullifier: nullifier.toString(),
+      secret: fieldNormalize(secret).toString(),
+      nullifier: fieldNormalize(nullifier).toString(),
       pathIndices,
-      siblings: pathElements.map(p => p.toString()),
-      root: root.toString(),
-      nullifierHash: (await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString(),
-      denomination: DENOM_AMOUNTS[denom] // must match contract + circuit
+      siblings: pathElements.map(p => fieldNormalize(p).toString()),
+      root: fieldNormalize(root).toString(),
+      nullifierHash: fieldNormalize(await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString(),
+      denomination: fieldNormalize(BigInt(DENOM_AMOUNTS[denom])).toString()
     };
 
     console.log("🧾 Withdraw Input:", input);
@@ -481,16 +495,14 @@ window.withdraw = async function() {
     btn.textContent = "Generating PLONK proof (30–60s)...";
     const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
 
-    console.log("✅ Proof:", proof);
-    console.log("📜 Public Signals:", publicSignals);
+    console.log("✅ Proof generated");
+    console.log("📜 Public signals:", publicSignals);
 
-    // 🧩 Format calldata
+    // 🧩 Format calldata for Solidity
     const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
     const [proofBytes, pubSignalsArr] = JSON.parse("[" + calldata.replace(/\]\[/g, "],[") + "]");
 
-    console.log("📦 Sending withdraw TX...");
     btn.textContent = "Submitting withdraw...";
-
     const tx = await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
 
     alert(`🎉 WITHDRAW SUCCESS!\nTX: ${tx.transactionHash}\nYou received ${denom} PRIVX + Proof-of-Privacy reward.`);
