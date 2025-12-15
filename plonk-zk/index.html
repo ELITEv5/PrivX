@@ -377,20 +377,20 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Switcher-Compatible + Field Normalization + Ordered Inputs) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Correct Switcher Alignment + Field Normalization + Root Match) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
   21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
 // ─────────────────────────────
-// Normalize to Circom’s field
+// Normalize BigInt to Circom field
 // ─────────────────────────────
 function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-// ✅ Precompute Poseidon zero hashes (matches on-chain tree)
+// ✅ Precompute Poseidon zero hashes (must match contract tree)
 let ZERO_HASHES = [];
 (async () => {
   ZERO_HASHES[0] = 0n;
@@ -401,7 +401,7 @@ let ZERO_HASHES = [];
 })();
 
 // ─────────────────────────────
-// Merkle Tree (leaf → root order, Circom-aligned)
+// Merkle Tree class (Circom-compatible direction)
 // ─────────────────────────────
 class MerkleTree {
   constructor(levels) {
@@ -423,7 +423,7 @@ class MerkleTree {
       const siblingIndex = isRightNode ? index - 1 : index + 1;
       const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
       path.push(sibling);
-      indices.push(isRightNode); // 0 = left, 1 = right
+      indices.push(isRightNode); // 0=left, 1=right
 
       const next = [];
       for (let j = 0; j < nodes.length; j += 2) {
@@ -476,7 +476,7 @@ window.withdraw = async function () {
     if (leafIndex === -1)
       return alert("❌ Commitment not found in this pool (check denomination or note).");
 
-    // 🌳 Build Merkle tree + proof (bottom-up)
+    // 🌳 Build Merkle tree + proof
     const tree = new MerkleTree(TREE_LEVELS);
     leaves.forEach((l) => tree.insert(BigInt(l)));
 
@@ -502,12 +502,9 @@ window.withdraw = async function () {
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
     console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
 
-    // 🧠 Build input in correct field order
+    // 🧠 Build input (aligned with Circom template PrivXMixer)
     const nfHash = await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]));
     const denomBig = BigInt(DENOM_AMOUNTS[denom]);
-
-    // ✅ Invert pathIndices for Circom Switcher semantics (sel=1 means flip)
-    const invertedPathIndices = pathIndices.map((i) => (i === 0 ? 1 : 0));
 
     const input = {
       root: fieldNormalize(proofData.root).toString(),
@@ -515,11 +512,11 @@ window.withdraw = async function () {
       denomination: fieldNormalize(denomBig).toString(),
       secret: fieldNormalize(secret).toString(),
       nullifier: fieldNormalize(nullifier).toString(),
-      pathIndices: invertedPathIndices.map((i) => i.toString()),
+      pathIndices: pathIndices.map((i) => i.toString()),
       siblings: siblings.map((s) => fieldNormalize(s).toString()),
     };
 
-    // ✅ Normalize every field
+    // ✅ Normalize all inputs
     Object.keys(input).forEach((key) => {
       if (Array.isArray(input[key])) {
         input[key] = input[key].map((v) =>
@@ -530,7 +527,7 @@ window.withdraw = async function () {
       }
     });
 
-    // ✅ Match Circom’s main signal layout
+    // ✅ Circom signal order
     const orderedInput = {
       secret: input.secret,
       nullifier: input.nullifier,
