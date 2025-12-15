@@ -304,79 +304,91 @@ function draw() {
 requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
 </script>
 
-<!-- Include Web3 once -->
-<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-
 <script>
-async function updateBurnedBalance() {
-  const el = document.getElementById("burnedBalance");
-  if (!el) return;
-  el.textContent = "Loading...";
-
-  // Token + known burn addresses
-  const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-  const BURN_ADDRESSES = [
-    "0x000000000000000000000000000000000000dEaD",
-    "0x0000000000000000000000000000000000000369"
-  ];
-
-  // ✅ Full working ABI (minimal subset of your full one)
-  const PRIVX_ABI = [
-    { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
-    { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
-    { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
-    { "name": "totalBurned", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
-    { "name": "circulatingSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" }
-  ];
-
-  try {
-    // Use connected wallet provider if available, else PulseChain RPC
-    const web3Instance = window.web3 || new Web3(new Web3.providers.HttpProvider("https://rpc.pulsechain.com"));
-    const token = new web3Instance.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
-
-    // Fetch data
-    const [decimals, totalSupply, internalBurned, ...burnBalances] = await Promise.all([
-      token.methods.decimals().call(),
-      token.methods.totalSupply().call(),
-      token.methods.totalBurned().call().catch(() => "0"),
-      ...BURN_ADDRESSES.map(a => token.methods.balanceOf(a).call().catch(() => "0"))
-    ]);
-
-    // Combine on-chain burn balances + internal burns
-    let totalBurned = BigInt(internalBurned);
-    for (const b of burnBalances) totalBurned += BigInt(b);
-
-    // Adjust for decimals
-    const divisor = 10n ** BigInt(decimals);
-    const burned = Number(totalBurned / divisor);
-    const supply = Number(BigInt(totalSupply) / divisor);
-    const percent = supply > 0 ? ((burned / supply) * 100).toFixed(2) : "0.00";
-
-    // UI update
-    el.innerHTML = `
-      <strong>${burned.toLocaleString()}</strong> PRIVX 
-      <span style="color:#00ffea;">(${percent}% burned)</span>
-    `;
-
-    console.log("🔥 PRIVX Burn Debug →", {
-      decimals,
-      internalBurned,
-      burnBalances,
-      totalBurned: burned,
-      percent
-    });
-
-  } catch (err) {
-    console.error("🔥 Error loading burn balance:", err);
-    el.textContent = "Error";
+(async () => {
+  async function getWeb3Instance() {
+    if (window.web3 && window.web3.eth) {
+      return window.web3;
+    }
+    if (typeof Web3 !== "undefined") {
+      return new Web3(window.ethereum || Web3.givenProvider);
+    }
+    return new Web3(new Web3.providers.HttpProvider("https://rpc.pulsechain.com"));
   }
-}
 
-// Auto-refresh every 30s
-window.addEventListener("load", () => {
+  async function updateBurnedBalance() {
+    const el = document.getElementById("burnedBalance");
+    if (!el) return;
+    el.textContent = "Loading...";
+
+    const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+    const BURN_ADDRESSES = [
+      "0x000000000000000000000000000000000000dEaD",
+      "0x0000000000000000000000000000000000000369"
+    ];
+
+    const PRIVX_ABI = [
+      { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
+      { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
+      { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
+      { "name": "totalBurned", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" }
+    ];
+
+    try {
+      const web3Instance = await getWeb3Instance();
+      if (!web3Instance.eth || !web3Instance.eth.Contract) {
+        throw new Error("Web3 not initialized properly");
+      }
+
+      const token = new web3Instance.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
+
+      const [decimals, totalSupply, internalBurned, ...burnBalances] = await Promise.all([
+        token.methods.decimals().call(),
+        token.methods.totalSupply().call(),
+        token.methods.totalBurned().call().catch(() => "0"),
+        ...BURN_ADDRESSES.map(a => token.methods.balanceOf(a).call().catch(() => "0"))
+      ]);
+
+      let totalBurned = BigInt(internalBurned);
+      for (const b of burnBalances) totalBurned += BigInt(b);
+
+      const divisor = 10n ** BigInt(decimals);
+      const burned = Number(totalBurned / divisor);
+      const supply = Number(BigInt(totalSupply) / divisor);
+      const percent = supply > 0 ? ((burned / supply) * 100).toFixed(2) : "0.00";
+
+      el.innerHTML = `
+        <strong>${burned.toLocaleString()}</strong> PRIVX
+        <span style="color:#00ffea;">(${percent}% burned)</span>
+      `;
+
+      console.log("🔥 PRIVX Burn Debug →", {
+        decimals, internalBurned, burnBalances, burned, percent
+      });
+
+    } catch (err) {
+      console.error("🔥 Error loading burn balance:", err);
+      el.textContent = "Error";
+    }
+  }
+
+  // Wait until Web3 is definitely available
+  await new Promise(resolve => {
+    if (window.Web3) resolve();
+    else {
+      const check = setInterval(() => {
+        if (window.Web3) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 200);
+    }
+  });
+
+  // Initial + periodic refresh
   updateBurnedBalance();
   setInterval(updateBurnedBalance, 30000);
-});
+})();
 </script>
 </body>
 </html>
