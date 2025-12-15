@@ -380,7 +380,8 @@
  <!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Correct Direction + Zero Hashes + Normalize) -->
 <script>
 const TREE_LEVELS = 20;
-const FIELD_P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+const FIELD_P =
+  21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
 // Normalize to the same finite field as circom/snarkjs
 function fieldNormalize(x) {
@@ -435,8 +436,9 @@ class MerkleTree {
   }
 }
 
-<!-- 🔒 Frontend-only Withdraw Fix (no circuit changes) -->
-<script>
+// ─────────────────────────────
+// 🔓 Withdraw Function (frontend-only logic fix)
+// ─────────────────────────────
 window.withdraw = async function () {
   const noteInput = document.getElementById("withdrawNote").value.trim();
   if (!noteInput) return alert("Paste your note first");
@@ -449,39 +451,44 @@ window.withdraw = async function () {
   const shieldAddr = SHIELD_CONTRACTS[denom];
   if (!shieldAddr) return alert("Invalid denomination");
   const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
-  const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
+  const recipient =
+    document.getElementById("recipientAddress").value.trim() || userAccount;
   const btn = document.getElementById("withdrawBtn");
 
   try {
     btn.disabled = true;
     btn.textContent = "Fetching deposits...";
 
-    const deposits = await shield.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
-    const leaves = deposits.map(e => e.returnValues.commitment);
+    const deposits = await shield.getPastEvents("Deposit", {
+      fromBlock: 0,
+      toBlock: "latest",
+    });
+    const leaves = deposits.map((e) => e.returnValues.commitment);
 
-    const FIELD_P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-    const fieldNorm = x => ((x % FIELD_P) + FIELD_P) % FIELD_P;
+    const fieldNorm = (x) => ((x % FIELD_P) + FIELD_P) % FIELD_P;
 
     const nullifier = BigInt("0x" + nullifierHex);
     const secret = BigInt("0x" + secretHex);
     const commitment = await poseidonT3(nullifier, secret);
 
-    const leafIndex = leaves.findIndex(l => BigInt(l) === commitment);
-    if (leafIndex === -1) return alert("Commitment not found in this pool");
-
-    const TREE_LEVELS = 20;
-    const ZERO = 0n;
+    const leafIndex = leaves.findIndex((l) => BigInt(l) === commitment);
+    if (leafIndex === -1)
+      return alert("Commitment not found in this pool (check network or denom)");
 
     const tree = new MerkleTree(TREE_LEVELS);
-    leaves.forEach(l => tree.insert(BigInt(l)));
-    const { root, path: siblings, indices: pathIndices } = await tree.getProof(leafIndex);
+    leaves.forEach((l) => tree.insert(BigInt(l)));
+    const { root, path: siblings, indices: pathIndices } = await tree.getProof(
+      leafIndex
+    );
 
     // ⚙️ Normalize everything
     const rootNorm = fieldNorm(root).toString();
     const nullifierNorm = fieldNorm(nullifier).toString();
     const secretNorm = fieldNorm(secret).toString();
     const denomNorm = fieldNorm(BigInt(DENOM_AMOUNTS[denom])).toString();
-    const nfHashNorm = fieldNorm(await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString();
+    const nfHashNorm = fieldNorm(
+      await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))
+    ).toString();
 
     // 🧠 Prepare input matching circuit format
     const input = {
@@ -490,25 +497,38 @@ window.withdraw = async function () {
       denomination: denomNorm,
       secret: secretNorm,
       nullifier: nullifierNorm,
-      pathIndices: pathIndices.map(i => i.toString()),
-      siblings: siblings.map(s => fieldNorm(s).toString())
+      pathIndices: pathIndices.map((i) => i.toString()),
+      siblings: siblings.map((s) => fieldNorm(s).toString()),
     };
 
     console.log("🧾 Withdraw Input (final normalized):", input);
 
     btn.textContent = "Generating proof (PLONK)...";
-    const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
+    const { proof, publicSignals } = await snarkjs.plonk.fullProve(
+      input,
+      WASM_URL,
+      ZKEY_URL
+    );
 
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
 
-    const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-    const [proofBytes, pubSignalsArr] = JSON.parse("[" + calldata.replace(/\]\[/g, "],[") + "]");
+    const calldata = await snarkjs.plonk.exportSolidityCallData(
+      proof,
+      publicSignals
+    );
+    const [proofBytes, pubSignalsArr] = JSON.parse(
+      "[" + calldata.replace(/\]\[/g, "],[") + "]"
+    );
 
     btn.textContent = "Submitting withdraw...";
-    const tx = await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
+    const tx = await shield.methods
+      .withdraw(proofBytes, pubSignalsArr, recipient)
+      .send({ from: userAccount });
 
-    alert(`🎉 Withdraw success!\nTX: ${tx.transactionHash}`);
+    alert(
+      `🎉 Withdraw success!\nTX: ${tx.transactionHash}\nYou received ${denom} PRIVX + reward.`
+    );
   } catch (err) {
     console.error("❌ Withdraw error:", err);
     alert("Withdraw failed: " + (err.message || "Check console"));
