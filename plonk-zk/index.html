@@ -476,89 +476,98 @@ window.withdraw = async function () {
     if (leafIndex === -1)
       return alert("❌ Commitment not found in this pool (check denomination or note).");
 
-    // 🌳 Build Merkle tree + proof
-    const tree = new MerkleTree(TREE_LEVELS);
-    leaves.forEach((l) => tree.insert(BigInt(l)));
-    const { root, path: siblings, indices: pathIndices } = await tree.getProof(leafIndex);
+   // 🌳 Build Merkle tree + proof (leaf → root order)
+const tree = new MerkleTree(TREE_LEVELS);
+leaves.forEach((l) => tree.insert(BigInt(l)));
 
-    // ✅ JS recompute root (sanity check)
-    let recomputed = commitment;
-    for (let i = 0; i < siblings.length; i++) {
-      if (pathIndices[i] === 0n || pathIndices[i] === 0) {
-        recomputed = await poseidonT3(recomputed, siblings[i]); // current left
-      } else {
-        recomputed = await poseidonT3(siblings[i], recomputed); // sibling left
-      }
-    }
+const proofData = await tree.getProof(leafIndex);
 
-    console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
-    console.log("✅ Tree root:", "0x" + root.toString(16));
+// ✅ Ensure path order is leaf → root (Circom expects this)
+const siblings = proofData.path.map((p) => fieldNormalize(p));
+const pathIndices = proofData.indices.map((i) => Number(i));
 
-    // 🧠 Build input in the EXACT field order Circom expects:
-    // public [root, nullifierHash, denomination]
-    const nfHash = await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]));
-    const denomBig = BigInt(DENOM_AMOUNTS[denom]);
+// 🧠 Debugging: verify order + orientation
+console.log("🔍 PathIndices (0=left,1=right):", pathIndices);
+console.log("🔍 First 5 siblings:", siblings.slice(0, 5).map((s) => "0x" + s.toString(16)));
 
-    const input = {
-      root: fieldNormalize(root).toString(),
-      nullifierHash: fieldNormalize(nfHash).toString(),
-      denomination: fieldNormalize(denomBig).toString(),
-      secret: fieldNormalize(secret).toString(),
-      nullifier: fieldNormalize(nullifier).toString(),
-      pathIndices: pathIndices.map((i) => i.toString()),
-      siblings: siblings.map((s) => fieldNormalize(s).toString()),
-    };
-
-    // ✅ Force mod-normalization on all fields before proof
-    for (const key in input) {
-      if (Array.isArray(input[key])) {
-        input[key] = input[key].map((v) =>
-          fieldNormalize(BigInt(v)).toString()
-        );
-      } else if (!isNaN(input[key])) {
-        input[key] = fieldNormalize(BigInt(input[key])).toString();
-      }
-    }
-
-    console.log("🧾 Withdraw Input (final normalized):", input);
-    console.log("🧩 Input keys order:", Object.keys(input));
-
-    btn.textContent = "Generating PLONK proof (30–60s)... ⏳";
-
-    const { proof, publicSignals } = await snarkjs.plonk.fullProve(
-      input,
-      WASM_URL,
-      ZKEY_URL
-    );
-
-    console.log("✅ Proof generated");
-    console.log("📜 Public signals:", publicSignals);
-    console.log("🧩 Expected root:", fieldNormalize(root).toString());
-    console.log(
-      "🧩 Root matches circuit?",
-      fieldNormalize(root).toString() === publicSignals[0].toString()
-    );
-
-    const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-    const [proofBytes, pubSignalsArr] = JSON.parse(
-      "[" + calldata.replace(/\]\[/g, "],[") + "]"
-    );
-
-    btn.textContent = "Submitting withdraw... 🚀";
-    const tx = await shield.methods
-      .withdraw(proofBytes, pubSignalsArr, recipient)
-      .send({ from: userAccount });
-
-    alert(
-      `🎉 WITHDRAW SUCCESS!\nTX: ${tx.transactionHash}\nYou received ${denom} PRIVX + Proof-of-Privacy reward.`
-    );
-  } catch (err) {
-    console.error("❌ Withdraw error:", err);
-    alert("Withdraw failed: " + (err.message || "Check console"));
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Generate Proof + Withdraw";
+// ✅ JS recompute root (sanity check)
+let recomputed = commitment;
+for (let i = 0; i < siblings.length; i++) {
+  if (pathIndices[i] === 0) {
+    recomputed = await poseidonT3(recomputed, siblings[i]); // current left
+  } else {
+    recomputed = await poseidonT3(siblings[i], recomputed); // sibling left
   }
+}
+
+console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
+console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
+
+// 🧠 Build input in the EXACT field order Circom expects:
+// public [root, nullifierHash, denomination]
+const nfHash = await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]));
+const denomBig = BigInt(DENOM_AMOUNTS[denom]);
+
+const input = {
+  root: fieldNormalize(proofData.root).toString(),
+  nullifierHash: fieldNormalize(nfHash).toString(),
+  denomination: fieldNormalize(denomBig).toString(),
+  secret: fieldNormalize(secret).toString(),
+  nullifier: fieldNormalize(nullifier).toString(),
+  pathIndices: pathIndices.map((i) => i.toString()),
+  siblings: siblings.map((s) => fieldNormalize(s).toString()),
+};
+
+// ✅ Final field mod-normalization on every element
+Object.keys(input).forEach((key) => {
+  if (Array.isArray(input[key])) {
+    input[key] = input[key].map((v) =>
+      fieldNormalize(BigInt(v)).toString()
+    );
+  } else if (!isNaN(input[key])) {
+    input[key] = fieldNormalize(BigInt(input[key])).toString();
+  }
+});
+
+console.log("🧾 Withdraw Input (final normalized):", input);
+console.log("🧩 Input keys order:", Object.keys(input));
+
+btn.textContent = "Generating PLONK proof (30–60s)... ⏳";
+
+const { proof, publicSignals } = await snarkjs.plonk.fullProve(
+  input,
+  WASM_URL,
+  ZKEY_URL
+);
+
+console.log("✅ Proof generated");
+console.log("📜 Public signals:", publicSignals);
+console.log("🧩 Expected root:", fieldNormalize(proofData.root).toString());
+console.log(
+  "🧩 Root matches circuit?",
+  fieldNormalize(proofData.root).toString() === publicSignals[0].toString()
+);
+
+const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+const [proofBytes, pubSignalsArr] = JSON.parse(
+  "[" + calldata.replace(/\]\[/g, "],[") + "]"
+);
+
+btn.textContent = "Submitting withdraw... 🚀";
+const tx = await shield.methods
+  .withdraw(proofBytes, pubSignalsArr, recipient)
+  .send({ from: userAccount });
+
+alert(
+  `🎉 WITHDRAW SUCCESS!\nTX: ${tx.transactionHash}\nYou received ${denom} PRIVX + Proof-of-Privacy reward.`
+);
+} catch (err) {
+console.error("❌ Withdraw error:", err);
+alert("Withdraw failed: " + (err.message || "Check console"));
+} finally {
+btn.disabled = false;
+btn.textContent = "Generate Proof + Withdraw";
+}
 };
 </script>
 
