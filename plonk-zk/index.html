@@ -448,14 +448,15 @@
         const { root, path: pathElements, indices: pathIndices } = await tree.getProof(leafIndex);
 
         const input = {
-          root: root.toString(),
-          nullifier: nullifier.toString(),
-          secret: secret.toString(),
-          nullifierHash: (await poseidonT3(nullifier, 0n)).toString(),
-          pathElements: pathElements.map(p => p.toString()),
-          pathIndices,
-          recipient: BigInt(recipient).toString()
-        };
+  root: root.toString(),
+  nullifierHash: (await poseidonT3(nullifier, 0n)).toString(),
+  nullifier: nullifier.toString(),
+  secret: secret.toString(),
+  pathElements: pathElements.map(p => p.toString()),
+  pathIndices,
+  denomination: denom // the denomination string from the note, e.g. "100"
+};
+
 
         btn.textContent = "Generating proof (30-60s)...";
         const { proof, publicSignals } = await snarkjs.plonk.fullProve(
