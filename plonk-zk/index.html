@@ -306,7 +306,6 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
 
 <!-- 🔥 PrivX Burn Tracker – Accurate & Beautiful -->
 <script>
-  const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
   const BURN_ADDRESSES = [
     "0x000000000000000000000000000000000000dEaD",
     "0x0000000000000000000000000000000000000369"
@@ -327,7 +326,7 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
     el.textContent = "Loading...";
 
     try {
-      const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
+      const token = new web3.eth.Contract(PRIVX_ABI, "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986");
       const [decimals, totalSupply, ...burnBalances] = await Promise.all([
         token.methods.decimals().call(),
         token.methods.totalSupply().call(),
@@ -353,16 +352,10 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
     setInterval(updateBurnedBalance, 30000);
   });
 </script>
-  <script>
-(async () => {
+  
+  <!-- 🧠 PLONK Withdraw Proof Generator – Final Fixed -->
+<script>
   const TREE_LEVELS = 20;
-  const SHIELD_CONTRACTS = {
-    "100": "0x1746f6fe7447A13B7554fAb9FA0b77A8a5A61821",
-    "1000": "0x0F15B28f1B9C9b3c4B7b9d7864ef79BeEBCb37b6",
-    "10000": "0x8c17b741695Cb4B7c81F8Bfc20203B47dcd8d285",
-    "100000": "0x4b393d5Bef35E225074Ed1f247D147F8c9e904F4"
-  };
-
   const SHIELD_ABI = [
     {
       "anonymous": false,
@@ -387,17 +380,30 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
     }
   ];
 
-  const { poseidon } = await import("https://cdn.jsdelivr.net/npm/circomlibjs@latest/build/circomlibjs.js");
+  let poseidon, F;
+
+  // Load circomlibjs from working fork
+  (async () => {
+    const script = document.createElement('script');
+    script.src = "https://cdn.jsdelivr.net/npm/@railgun-community/circomlibjs@latest/browser/circomlib.js";
+    script.onload = async () => {
+      poseidon = await buildPoseidon();
+      F = poseidon.F;
+      console.log("Poseidon loaded and ready");
+    };
+    script.onerror = () => console.error("Failed to load circomlibjs");
+    document.head.appendChild(script);
+  })();
 
   class MerkleTree {
     constructor(levels) { this.levels = levels; this.leaves = []; }
-    insert(leaf) { this.leaves.push(leaf); }
+    insert(leaf) { this.leaves.push(BigInt(leaf)); }
     getRoot() {
-      let nodes = this.leaves.map(l => BigInt(l));
+      let nodes = this.leaves.slice();
       for (let i = 0; i < this.levels; i++) {
         const next = [];
         for (let j = 0; j < nodes.length; j += 2) {
-          next.push(poseidon.F.toObject(poseidon([nodes[j], nodes[j + 1] || 0n])));
+          next.push(F.toObject(poseidon([nodes[j], nodes[j + 1] || 0n])));
         }
         nodes = next;
       }
@@ -405,7 +411,7 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
     }
     getProof(index) {
       let path = [], indices = [];
-      let nodes = this.leaves.map(l => BigInt(l));
+      let nodes = this.leaves.slice();
       for (let i = 0; i < this.levels; i++) {
         const sibling = index ^ 1;
         path.push(nodes[sibling] || 0n);
@@ -413,7 +419,7 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
         index >>= 1;
         const next = [];
         for (let j = 0; j < nodes.length; j += 2) {
-          next.push(poseidon.F.toObject(poseidon([nodes[j], nodes[j + 1] || 0n])));
+          next.push(F.toObject(poseidon([nodes[j], nodes[j + 1] || 0n])));
         }
         nodes = next;
       }
@@ -422,6 +428,7 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
   }
 
   window.withdraw = async function() {
+    if (!poseidon) return alert("Poseidon still loading — wait 5 seconds and try again");
     const noteInput = document.getElementById("withdrawNote").value.trim();
     if (!noteInput) return alert("Paste your note");
     if (!web3 || !userAccount) return alert("Connect wallet");
@@ -430,7 +437,12 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
     if (!match) return alert("Invalid note format");
 
     const [_, denom, nullifierHex, secretHex] = match;
-    const shieldAddr = SHIELD_CONTRACTS[denom];
+    const shieldAddr = {
+      "100": "0x1746f6fe7447A13B7554fAb9FA0b77A8a5A61821",
+      "1000": "0x0F15B28f1B9C9b3c4B7b9d7864ef79BeEBCb37b6",
+      "10000": "0x8c17b741695Cb4B7c81F8Bfc20203B47dcd8d285",
+      "100000": "0x4b393d5Bef35E225074Ed1f247D147F8c9e904F4"
+    }[denom];
     if (!shieldAddr) return alert("Invalid denomination");
 
     const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
@@ -446,10 +458,10 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
 
       const nullifier = BigInt("0x" + nullifierHex);
       const secret = BigInt("0x" + secretHex);
-      const commitment = poseidon.F.toObject(poseidon([nullifier, secret]));
+      const commitment = F.toObject(poseidon([nullifier, secret]));
 
       const leafIndex = leaves.findIndex(l => BigInt(l) === commitment);
-      if (leafIndex === -1) return alert("Deposit not found in pool");
+      if (leafIndex === -1) return alert("Your deposit not found in this pool");
 
       const tree = new MerkleTree(TREE_LEVELS);
       leaves.forEach(l => tree.insert(BigInt(l)));
@@ -459,7 +471,7 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
         root: root.toString(),
         nullifier: nullifier.toString(),
         secret: secret.toString(),
-        nullifierHash: poseidon.F.toObject(poseidon([nullifier])).toString(),
+        nullifierHash: F.toObject(poseidon([nullifier])).toString(),
         pathElements: pathElements.map(p => p.toString()),
         pathIndices,
         recipient: BigInt(recipient).toString()
@@ -487,7 +499,6 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
       btn.textContent = "Generate Proof + Withdraw";
     }
   };
-})();
 </script>
   <script>
   window.addEventListener('load', () => {
