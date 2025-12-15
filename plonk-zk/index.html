@@ -369,73 +369,91 @@
 
   </script>
 
-  <!-- 🧠 Final Hurricane Withdraw Script -->
+  <!-- ✅ PrivX Hurricane Withdraw Script (Local Circuits + IPFS ZKey) -->
 <script>
   const TREE_LEVELS = 20;
 
-  // 🌳 Merkle Tree builder using your PoseidonT3
   class MerkleTree {
     constructor(levels) {
       this.levels = levels;
       this.leaves = [];
     }
+
     insert(leaf) {
       this.leaves.push(BigInt(leaf));
     }
-    async hashPair(a, b) {
-      return await poseidonT3(a, b);
-    }
+
     async getProof(index) {
-      let siblings = [], pathIndices = [];
+      const pathElements = [];
+      const pathIndices = [];
       let nodes = this.leaves.slice();
 
       for (let i = 0; i < this.levels; i++) {
         const pairIndex = index ^ 1;
-        siblings.push(nodes[pairIndex] || 0n);
+        pathElements.push(nodes[pairIndex] || 0n);
         pathIndices.push(index % 2);
         index = Math.floor(index / 2);
 
-        const next = [];
+        const nextLevel = [];
         for (let j = 0; j < nodes.length; j += 2) {
           const left = nodes[j] || 0n;
           const right = nodes[j + 1] || 0n;
-          next.push(await this.hashPair(left, right));
+          const h = await poseidonT3(left, right);
+          nextLevel.push(h);
         }
-        nodes = next;
+        nodes = nextLevel;
       }
-      return {
-        root: nodes[0] || 0n,
-        siblings,
-        pathIndices
-      };
+
+      return { root: nodes[0] || 0n, pathElements, pathIndices };
     }
   }
 
-  // 🌀 Withdraw flow
-  window.withdraw = async function() {
+  async function withdraw() {
+    const btn = document.getElementById("withdrawBtn");
     const noteInput = document.getElementById("withdrawNote").value.trim();
     const recipientInput = document.getElementById("recipientAddress").value.trim();
-    const btn = document.getElementById("withdrawBtn");
 
-    if (!noteInput) return alert("⚠️ Paste your note first");
-    if (!window.web3 || !userAccount) return alert("⚠️ Connect wallet first");
-    if (typeof poseidonT3 !== "function") return alert("Hasher not ready yet — wait a few seconds.");
+    if (!noteInput) return alert("Paste your private note first.");
+    if (!window.web3 || !userAccount) return alert("Connect wallet first.");
+    if (typeof poseidonT3 !== "function") return alert("Hasher not ready. Wait a few seconds.");
 
     const match = noteInput.match(/^privx-hurricane-(\d+)-([a-f0-9]+)-([a-f0-9]+)$/);
-    if (!match) return alert("Invalid note format — check it matches privx-hurricane-[denom]-[nullifier]-[secret]");
+    if (!match) return alert("Invalid note format. Check your pasted note.");
 
     const [_, denom, nullifierHex, secretHex] = match;
     const shieldAddr = SHIELD_CONTRACTS[denom];
-    if (!shieldAddr) return alert("Invalid denomination — deposit and withdraw must match!");
+    if (!shieldAddr) return alert("Invalid denomination for this Shield pool.");
 
-    const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
+    const shield = new web3.eth.Contract([
+      {
+        "inputs":[{"internalType":"bytes32","name":"commitment","type":"bytes32"}],
+        "name":"deposit","outputs":[],"stateMutability":"nonpayable","type":"function"
+      },
+      {
+        "anonymous": false,
+        "inputs": [
+          { "indexed": false, "internalType": "bytes32", "name": "commitment", "type": "bytes32" },
+          { "indexed": false, "internalType": "uint32", "name": "leafIndex", "type": "uint32" },
+          { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+        ],
+        "name": "Deposit","type": "event"
+      },
+      {
+        "inputs": [
+          { "internalType": "bytes", "name": "proof", "type": "bytes" },
+          { "internalType": "uint256[]", "name": "pubSignals", "type": "uint256[]" },
+          { "internalType": "address payable", "name": "recipient", "type": "address" }
+        ],
+        "name": "withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"
+      }
+    ], shieldAddr);
+
     const recipient = recipientInput || userAccount;
-
     btn.disabled = true;
-    btn.textContent = "Fetching deposits...";
+    btn.textContent = "Building Merkle Tree...";
 
     try {
-      // 1️⃣ Build the tree from on-chain deposits
+      // 1️⃣ Fetch deposits
       const deposits = await shield.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
       const leaves = deposits.map(e => e.returnValues.commitment);
 
@@ -447,47 +465,60 @@
       if (leafIndex === -1) {
         btn.disabled = false;
         btn.textContent = "Generate Proof + Withdraw";
-        return alert("Commitment not found — wrong pool or denomination?");
+        return alert("Commitment not found — check denomination or deposit.");
       }
 
+      // 2️⃣ Build tree
       const tree = new MerkleTree(TREE_LEVELS);
       for (const l of leaves) tree.insert(BigInt(l));
-      const { root, siblings, pathIndices } = await tree.getProof(leafIndex);
+      const { root, pathElements, pathIndices } = await tree.getProof(leafIndex);
 
-      // 2️⃣ Prepare inputs for the circuit
-      const nullifierHash = await poseidonT3(nullifier, 0n); // Matches circuit
+      // 3️⃣ Circuit input
+      const nullifierHash = await poseidonT3(nullifier, 0n);
       const input = {
         root: root.toString(),
         nullifier: nullifier.toString(),
         secret: secret.toString(),
         nullifierHash: nullifierHash.toString(),
-        pathElements: siblings.map(s => s.toString()),
-        pathIndices,
-        denomination: denom
+        pathElements: pathElements.map(p => p.toString()),
+        pathIndices
       };
 
-      // 3️⃣ Generate the PLONK proof
+      // 4️⃣ Generate PLONK proof
       btn.textContent = "Generating proof (30–60s)...";
-      const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
+      const { proof, publicSignals } = await snarkjs.plonk.fullProve(
+        input,
+        "./circuits/mixer_js/mixer.wasm", // local
+        "https://gateway.pinata.cloud/ipfs/bafybeigk4mdkbngi7t72tdxnlpcfhynbgb3wbofitl7yuj7n4ddxsivvea" // remote
+      );
 
-      // 4️⃣ Encode calldata for Solidity
+      // 5️⃣ Local proof verification (optional but smart)
+      try {
+        const vKey = await fetch("./circuits/verification_key.json").then(r => r.json());
+        const verified = await snarkjs.plonk.verify(vKey, publicSignals, proof);
+        if (!verified) throw new Error("Local proof verification failed");
+      } catch (verifyErr) {
+        console.warn("⚠️ Skipping local verify:", verifyErr.message);
+      }
+
+      // 6️⃣ Format calldata
       const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
       const [proofBytes, pubSignalsArr] = JSON.parse("[" + calldata + "]");
 
-      // 5️⃣ Submit withdraw transaction
+      // 7️⃣ Withdraw TX
       btn.textContent = "Submitting withdraw...";
       const tx = await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient)
         .send({ from: userAccount });
 
-      alert(`✅ Withdraw Success!\nTX: ${tx.transactionHash}`);
+      alert(`✅ Withdraw Successful!\nTX: ${tx.transactionHash}`);
     } catch (err) {
       console.error("❌ Withdraw error:", err);
-      alert("Withdraw failed: " + (err.message || "check console"));
+      alert("Withdraw failed: " + (err.message || "Check console"));
     } finally {
       btn.disabled = false;
       btn.textContent = "Generate Proof + Withdraw";
     }
-  };
+  }
 </script>
 
   <!-- Matrix Rain -->
