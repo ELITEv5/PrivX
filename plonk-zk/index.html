@@ -538,8 +538,44 @@ window.withdraw = async function () {
       denomination: input.denomination,
     };
 
-    console.log("🧾 Withdraw Input (final normalized):", orderedInput);
-    console.log("🧩 Input keys order:", Object.keys(orderedInput));
+    // 🧠 Final Circom alignment check: try both sibling orientations
+let inputForProof = structuredClone(orderedInput);
+
+// Reverse siblings + pathIndices if Circom expects top-down
+const reversedInput = structuredClone(orderedInput);
+reversedInput.siblings = [...orderedInput.siblings].reverse();
+reversedInput.pathIndices = [...orderedInput.pathIndices].reverse();
+
+console.log("🧾 Withdraw Input (normal order):", inputForProof);
+console.log("🔁 Withdraw Input (reversed order):", reversedInput);
+
+// We’ll test the normal orientation first
+try {
+  btn.textContent = "Generating PLONK proof (normal order)... ⏳";
+  var { proof, publicSignals } = await snarkjs.plonk.fullProve(
+    inputForProof,
+    WASM_URL,
+    ZKEY_URL
+  );
+} catch (err) {
+  console.warn("⚠️ Normal orientation failed, trying reversed...");
+  // Retry with reversed sibling path
+  btn.textContent = "Generating PLONK proof (reversed order)... ⏳";
+  var { proof, publicSignals } = await snarkjs.plonk.fullProve(
+    reversedInput,
+    WASM_URL,
+    ZKEY_URL
+  );
+}
+
+console.log("✅ Proof generated");
+console.log("📜 Public signals:", publicSignals);
+console.log("🧩 Expected root:", fieldNormalize(proofData.root).toString());
+console.log(
+  "🧩 Root matches circuit?",
+  fieldNormalize(proofData.root).toString() === publicSignals[0].toString()
+);
+
 
     btn.textContent = "Generating PLONK proof (30–60s)... ⏳";
 
