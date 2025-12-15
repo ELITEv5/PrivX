@@ -304,9 +304,9 @@ function draw() {
 requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
 </script>
 
-<!-- 🔥 PrivX Burn Tracker – Merged Final Version -->
+<!-- 🔥 PrivX Universal Burn Tracker (works with or without wallet) -->
 <script>
-const BURN_TOKEN_ADDR = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986"; // renamed to avoid duplicate
+const BURN_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 const BURN_ADDRESSES = [
   "0x000000000000000000000000000000000000dEaD",
   "0x0000000000000000000000000000000000000369"
@@ -319,73 +319,71 @@ const BURN_ABI = [
   { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" }
 ];
 
-// 🕐 Wait for Web3 injection (wallet or provider)
-async function waitForWeb3() {
-  return new Promise(resolve => {
-    if (window.web3 || window.Web3) return resolve();
-    const check = setInterval(() => {
-      if (window.web3 || window.Web3) {
-        clearInterval(check);
-        resolve();
-      }
-    }, 300);
-  });
+// ⚡ Create Web3 instance — prefer wallet, else use public RPC
+function getUniversalWeb3() {
+  if (window.web3 && window.web3.eth) {
+    console.log("🌐 Using injected Web3 provider");
+    return window.web3;
+  }
+  if (window.ethereum) {
+    console.log("🌐 Using window.ethereum provider");
+    return new Web3(window.ethereum);
+  }
+  console.log("🌐 Using PulseChain public RPC fallback");
+  return new Web3("https://rpc.pulsechain.com");
 }
 
-async function getWeb3Instance() {
-  if (window.web3 && window.web3.eth) return window.web3; // already initialized
-  if (window.Web3) return new window.Web3(window.ethereum); // create new instance
-  throw new Error("Web3 not detected — please open in MetaMask or dApp browser.");
-}
-
+// 🔄 Update burn stats
 async function updateBurnedBalance() {
-  await waitForWeb3();
   const burnElem = document.getElementById("burnedBalance");
   if (!burnElem) return;
   burnElem.textContent = "Loading...";
 
   try {
-    const web3 = await getWeb3Instance();
-    const token = new web3.eth.Contract(BURN_ABI, BURN_TOKEN_ADDR);
+    const web3 = getUniversalWeb3();
+    const token = new web3.eth.Contract(BURN_ABI, BURN_TOKEN);
 
-    const [decimals, totalSupplyValue, totalBurnedValue, ...burnBalances] = await Promise.all([
+    // Fetch values safely
+    const [decimals, totalSupplyRaw, totalBurnedRaw, ...burnBalances] = await Promise.all([
       token.methods.decimals().call().catch(() => 18),
       token.methods.totalSupply().call().catch(() => "0"),
       token.methods.totalBurned?.().call().catch(() => "0"),
       ...BURN_ADDRESSES.map(addr => token.methods.balanceOf(addr).call().catch(() => "0"))
     ]);
 
-    // Combine totalBurned() + burn address balances
-    let total = BigInt(totalBurnedValue || 0n);
+    let total = BigInt(totalBurnedRaw || 0);
     for (const b of burnBalances) total += BigInt(b);
 
-    // Apply decimals only once (correct precision)
-    const adjusted = total / (10n ** BigInt(decimals));
-    const adjustedSupply = BigInt(totalSupplyValue) / (10n ** BigInt(decimals));
-
-    // Calculate burn percentage
+    const decimalsBig = BigInt(decimals);
+    const divisor = 10n ** decimalsBig;
+    const adjusted = total / divisor;
+    const adjustedSupply = BigInt(totalSupplyRaw) / divisor;
     const percent = adjustedSupply > 0n ? (Number(adjusted) / Number(adjustedSupply)) * 100 : 0;
 
-    burnElem.textContent = `${Number(adjusted).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PRIVX (${percent.toFixed(2)}% Burned)`;
+    burnElem.innerHTML = `
+      <strong>${Number(adjusted).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> PRIVX
+      <span style="color:#00ffea;">(${percent.toFixed(2)}% burned)</span>
+    `;
 
-    // 🔍 Log debug info
-    console.log("🔥 Burn Debug Info →");
-    console.log("Decimals:", decimals);
-    console.log("Total Supply (raw):", totalSupplyValue);
-    console.log("totalBurned() (raw):", totalBurnedValue);
-    console.log("Burn Balances:", burnBalances);
-    console.log("Total Burn Combined (raw):", total.toString());
-    console.log("Adjusted:", adjusted.toString());
+    console.log("🔥 Burn Tracker Debug →", {
+      decimals,
+      totalSupplyRaw,
+      totalBurnedRaw,
+      burnBalances,
+      total: total.toString(),
+      adjusted: adjusted.toString(),
+      percent
+    });
 
   } catch (err) {
     console.error("🔥 Error loading burn balance:", err);
-    burnElem.textContent = "Error";
+    const el = document.getElementById("burnedBalance");
+    if (el) el.textContent = "Error";
   }
 }
 
-// Run on load and every 30s
-window.addEventListener("load", async () => {
-  await waitForWeb3();
+// 🔁 Auto-run on load and refresh every 30s
+window.addEventListener("load", () => {
   updateBurnedBalance();
   setInterval(updateBurnedBalance, 30000);
 });
