@@ -377,7 +377,7 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Switcher Fix + Field Normalize) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Switcher Fix + Path Reversal + Field Normalize) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
@@ -487,10 +487,15 @@ window.withdraw = async function () {
     // 🔁 Circom Switcher Fix: invert indices so sel aligns with Switcher
     const pathIndicesInverted = pathIndices.map((i) => (i === 0 ? 1 : 0));
 
+    // 🔄 Circom expects top-down order → reverse arrays
+    const siblingsReversed = [...siblings].reverse();
+    const pathIndicesReversed = [...pathIndicesInverted].reverse();
+
     // 🧠 Debugging: verify alignment + order
     console.log("🔍 PathIndices (0=left,1=right):", pathIndices);
     console.log("🔁 Inverted PathIndices (for Circom Switcher):", pathIndicesInverted);
-    console.log("🔍 First 5 siblings:", siblings.slice(0, 5).map((s) => "0x" + s.toString(16)));
+    console.log("🔄 Reversed PathIndices (for Circom input):", pathIndicesReversed);
+    console.log("🔄 First 5 siblings:", siblingsReversed.slice(0, 5).map((s) => "0x" + s.toString(16)));
 
     // ✅ JS recompute root (sanity check)
     let recomputed = commitment;
@@ -515,8 +520,8 @@ window.withdraw = async function () {
       denomination: fieldNormalize(denomBig).toString(),
       secret: fieldNormalize(secret).toString(),
       nullifier: fieldNormalize(nullifier).toString(),
-      pathIndices: pathIndicesInverted.map((i) => i.toString()),
-      siblings: siblings.map((s) => fieldNormalize(s).toString()),
+      pathIndices: pathIndicesReversed.map((i) => i.toString()),
+      siblings: siblingsReversed.map((s) => fieldNormalize(s).toString()),
     };
 
     // ✅ Normalize all fields
