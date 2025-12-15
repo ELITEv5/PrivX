@@ -188,7 +188,48 @@
       "100000": "100000000000000000000000"
     };
     const ERC20_ABI = [{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}];
-    const SHIELD_ABI = [{"inputs":[{"internalType":"bytes32","name":"commitment","type":"bytes32"}],"name":"deposit","outputs":[],"stateMutability":"nonpayable","type":"function"}];
+    const SHIELD_ABI = [
+  // deposit(bytes32 _commitment)
+  {
+    "inputs": [{ "internalType": "bytes32", "name": "_commitment", "type": "bytes32" }],
+    "name": "deposit",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  // withdraw(uint256[24] proof, uint256[3] pubSignals, address recipient)
+  {
+    "inputs": [
+      { "internalType": "uint256[24]", "name": "proof", "type": "uint256[24]" },
+      { "internalType": "uint256[3]", "name": "pubSignals", "type": "uint256[3]" },
+      { "internalType": "address payable", "name": "recipient", "type": "address" }
+    ],
+    "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  // event Deposit(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp)
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "bytes32", "name": "commitment", "type": "bytes32" },
+      { "indexed": false, "internalType": "uint32", "name": "leafIndex", "type": "uint32" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "Deposit",
+    "type": "event"
+  },
+  // view function: getLastRoot()
+  {
+    "inputs": [],
+    "name": "getLastRoot",
+    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
     const WASM_URL = "./circuits/mixer_js/mixer.wasm";
     const ZKEY_URL = "https://gateway.pinata.cloud/ipfs/bafybeigk4mdkbngi7t72tdxnlpcfhynbgb3wbofitl7yuj7n4ddxsivvea";
 
