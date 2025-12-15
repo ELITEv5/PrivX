@@ -115,26 +115,44 @@
     </div>
   </div>
 
-  <!-- ✅ Load Web3 and SnarkJS -->
+  <!-- ✅ Load Web3 & SnarkJS -->
 <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.5/dist/snarkjs.min.js"></script>
 
 <script>
 let web3, userAccount, selectedDenomination;
 
-// 🧩 Tab switching
+// =============================
+// 🧠 Tab Switching Logic
+// =============================
 function switchTab(tab) {
-  document.getElementById('depositTab').classList.toggle('hidden', tab !== 'deposit');
-  document.getElementById('withdrawTab').classList.toggle('hidden', tab !== 'withdraw');
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('depositTab').classList.add('hidden');
+  document.getElementById('withdrawTab').classList.add('hidden');
+  document.getElementById(tab + 'Tab').classList.remove('hidden');
+  document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
   document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+
+  if (typeof updateFastStats === 'function') updateFastStats();
+  if (typeof updateBurnedBalance === 'function') updateBurnedBalance();
 }
+window.addEventListener('load', () => switchTab('deposit'));
 
-// 🔮 Poseidon Hasher (matches Hasher.sol)
+// =============================
+// 🔮 Poseidon Hasher (Hasher.sol compatible)
+// =============================
 const P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-const C = [12861791851186454756856465657750459816989389089376497637901611881939633773556n,5519671076407899149475471873582650243950107592374834593479994102631768852387n,10832496908481223032496354855685040477446072176891917826424127680329380157411n,197023341468610140031081920968023783964819417505440696127650404864701462882n,182251860366398770052311923749666265525174614955508549662173528391496234720n,133961901813997148524200689039311302035210029358159615165091333675391005n,21526503533429280966392593094949932105722060737862572179582474350057866930688n,22616005108334998208888373407539051456988600368523n,138521903175307636434294058242398758941602410109806n];
+const C = [
+  12861791851186454756856465657750459816989389089376497637901611881939633773556n,
+  5519671076407899149475471873582650243950107592374834593479994102631768852387n,
+  10832496908481223032496354855685040477446072176891917826424127680329380157411n,
+  197023341468610140031081920968023783964819417505440696127650404864701462882n,
+  182251860366398770052311923749666265525174614955508549662173528391496234720n,
+  133961901813997148524200689039311302035210029358159615165091333675391005n,
+  21526503533429280966392593094949932105722060737862572179582474350057866930688n,
+  22616005108334998208888373407539051456988600368523n,
+  138521903175307636434294058242398758941602410109806n
+];
 const M = 91125930183199385026155961874833132762587307477754274831086764195748117360n;
-
 function pow5(x) { const x2 = (x * x) % P; const x4 = (x2 * x2) % P; return (x4 * x) % P; }
 async function poseidonT3(a, b) {
   let x = BigInt(a) % P, y = BigInt(b) % P;
@@ -144,7 +162,9 @@ async function poseidonT3(a, b) {
   return x;
 }
 
-// 🔗 Smart Contract Config
+// =============================
+// 💰 Deposit Logic
+// =============================
 const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 const SHIELD_CONTRACTS = {
   "100": "0x1746f6fe7447A13B7554fAb9FA0b77A8a5A61821",
@@ -164,7 +184,6 @@ const ERC20_ABI = [
 ];
 const SHIELD_ABI = [{ "inputs":[{"internalType":"bytes32","name":"commitment","type":"bytes32"}],"name":"deposit","outputs":[],"stateMutability":"nonpayable","type":"function" }];
 
-// 💰 Deposit Logic
 async function deposit() {
   if (!userAccount || !selectedDenomination) return alert("⚠️ Connect wallet & select amount");
   const btn = document.getElementById('depositBtn');
@@ -178,7 +197,7 @@ async function deposit() {
     const commitmentBI = await poseidonT3(nullifierBI, secretBI);
     const commitment = "0x" + commitmentBI.toString(16).padStart(64, '0');
     const note = `privx-hurricane-${selectedDenomination}-${[...nullifier].map(b=>b.toString(16).padStart(2,'0')).join('')}-${[...secret].map(b=>b.toString(16).padStart(2,'0')).join('')}`;
-    
+
     document.getElementById('noteText').textContent = note;
     document.getElementById('depositNote').classList.remove('hidden');
 
@@ -205,27 +224,16 @@ async function deposit() {
   }
 }
 
-// 🧾 Copy Note Function
-window.copyNote = function() {
-  const noteText = document.getElementById("noteText").textContent.trim();
-  if (!noteText) return alert("No note to copy yet!");
-  navigator.clipboard.writeText(noteText)
-    .then(() => {
-      alert("✅ Note copied!");
-      const box = document.getElementById('depositNote');
-      box.style.boxShadow = '0 0 25px #00ffea';
-      setTimeout(() => box.style.boxShadow = '', 800);
-    })
-    .catch(() => alert("❌ Copy failed — please copy manually."));
-};
-
+// =============================
 // 🦊 Wallet Connect
+// =============================
 window.toggleWallet = async function() {
   if (!window.ethereum) return alert("Install MetaMask");
   try {
     await window.ethereum.request({ method: "eth_requestAccounts" });
-    try { await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x171" }] }); }
-    catch (e) {
+    try {
+      await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x171" }] });
+    } catch (e) {
       if (e.code === 4902) {
         await window.ethereum.request({
           method: "wallet_addEthereumChain",
@@ -239,11 +247,14 @@ window.toggleWallet = async function() {
     document.getElementById("walletButtonText").textContent = `${userAccount.slice(0,6)}...${userAccount.slice(-4)}`;
     document.getElementById("walletButton").classList.add("connected");
     updateDepositButton();
+    if (typeof updateBurnedBalance === "function") updateBurnedBalance();
     console.log("✅ Wallet Connected:", userAccount);
   } catch (err) { console.error("Wallet connect error:", err); }
 };
 
-// 🧠 Denomination Selector
+// =============================
+// 💳 Denomination Selector
+// =============================
 window.selectDenomination = function(denom) {
   selectedDenomination = denom;
   document.querySelectorAll('.denomination-card').forEach(c => c.classList.remove('selected'));
@@ -251,12 +262,20 @@ window.selectDenomination = function(denom) {
   updateDepositButton();
 };
 
-// 🔁 Deposit Button Sync
 function updateDepositButton() {
   const btn = document.getElementById('depositBtn');
-  if (!userAccount) { btn.textContent = "Connect Wallet First"; btn.disabled = false; btn.onclick = () => toggleWallet(); }
+  if (!userAccount) { btn.textContent = "Connect Wallet"; btn.disabled = false; btn.onclick = () => toggleWallet(); }
   else if (!selectedDenomination) { btn.textContent = "Select Denomination"; btn.disabled = true; }
   else { btn.textContent = `Shield ${selectedDenomination} PRIVX`; btn.disabled = false; btn.onclick = () => deposit(); }
+}
+
+// =============================
+// 📋 Copy Note Helper
+// =============================
+function copyNote() {
+  const noteEl = document.getElementById('noteText');
+  if (!noteEl) return;
+  navigator.clipboard.writeText(noteEl.textContent).then(() => alert("🧾 Note copied to clipboard!"));
 }
 </script>
 
@@ -282,71 +301,69 @@ function draw() {
     drops[i]++;
   });
 }
-function loop(){ draw(); requestAnimationFrame(loop); }
-loop();
+requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
 </script>
 
-<!-- 🔥 PrivX Burn Tracker – Final Fixed -->
+<!-- 🔥 PrivX Hybrid Burn Tracker -->
 <script>
-const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 const BURN_ADDRESSES = [
   "0x000000000000000000000000000000000000dEaD",
   "0x0000000000000000000000000000000000000369"
 ];
-
 const PRIVX_ABI = [
-  { "name": "totalBurned", "type": "function", "inputs": [], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" },
-  { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" },
-  { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "name": "", "type": "uint8" }], "stateMutability": "view" },
-  { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" }
+  { name: "totalSupply", type: "function", inputs: [], outputs: [{ type: "uint256" }], stateMutability: "view" },
+  { name: "decimals", type: "function", inputs: [], outputs: [{ type: "uint8" }], stateMutability: "view" },
+  { name: "balanceOf", type: "function", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }], stateMutability: "view" },
+  { name: "totalBurned", type: "function", inputs: [], outputs: [{ type: "uint256" }], stateMutability: "view" }
 ];
 
-// Wait for web3 to initialize
 async function waitForWeb3() {
   return new Promise(resolve => {
-    if (window.web3 && window.web3.eth) return resolve(window.web3);
+    if ((window.web3 && window.web3.eth) || window.Web3) return resolve();
     const check = setInterval(() => {
-      if (window.web3 && window.web3.eth) {
+      if ((window.web3 && window.web3.eth) || window.Web3) {
         clearInterval(check);
-        resolve(window.web3);
+        resolve();
       }
     }, 300);
   });
 }
 
+async function getWeb3Instance() {
+  if (window.web3 && window.web3.eth) return window.web3;
+  if (window.Web3) return new window.Web3(window.ethereum);
+  throw new Error("Web3 not detected — open MetaMask or use a dApp browser");
+}
+
 async function updateBurnedBalance() {
-  const el = document.getElementById("burnedBalance");
-  if (!el) return;
-  el.textContent = "Loading...";
+  await waitForWeb3();
+  const burnElem = document.getElementById("burnedBalance");
+  if (!burnElem) return;
+  burnElem.textContent = "Loading...";
 
   try {
-    const web3Instance = await waitForWeb3();
-    const token = new web3Instance.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
-
+    const web3 = await getWeb3Instance();
+    const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
     const [decimals, totalSupply, totalBurnedValue, ...burnBalances] = await Promise.all([
       token.methods.decimals().call().catch(() => 18),
       token.methods.totalSupply().call().catch(() => "0"),
       token.methods.totalBurned?.().call().catch(() => "0"),
       ...BURN_ADDRESSES.map(a => token.methods.balanceOf(a).call().catch(() => "0"))
     ]);
-
-    let total = BigInt(totalBurnedValue || 0);
-    burnBalances.forEach(b => total += BigInt(b));
-
-    const adjusted = Number(total / (10n ** BigInt(decimals)));
-    const supply = Number(BigInt(totalSupply) / (10n ** BigInt(decimals)));
-    const percent = supply > 0 ? ((adjusted / supply) * 100).toFixed(2) : "0.00";
-
-    el.textContent = `${adjusted.toLocaleString()} PRIVX (${percent}% Burned)`;
+    let totalBurned = BigInt(totalBurnedValue || 0);
+    for (const b of burnBalances) totalBurned += BigInt(b);
+    const decimalsBI = BigInt(decimals);
+    const burned = Number(totalBurned / (10n ** decimalsBI));
+    const supply = Number(BigInt(totalSupply) / (10n ** decimalsBI));
+    const percent = supply > 0 ? ((burned / supply) * 100).toFixed(2) : "0.00";
+    burnElem.textContent = `${burned.toLocaleString()} PRIVX (${percent}% burned)`;
   } catch (err) {
     console.error("🔥 Error loading burn balance:", err);
-    const el = document.getElementById("burnedBalance");
-    if (el) el.textContent = "Error";
+    burnElem.textContent = "Error";
   }
 }
-
-// Run after load
-window.addEventListener("load", () => {
+window.addEventListener("load", async () => {
+  await waitForWeb3();
   updateBurnedBalance();
   setInterval(updateBurnedBalance, 30000);
 });
