@@ -381,16 +381,6 @@
 <script>
   const TREE_LEVELS = 20;
 
-  // Precompute zero hashes for padding
-  let ZERO_HASHES = [];
-  (async () => {
-    ZERO_HASHES[0] = 0n;
-    for (let i = 1; i <= TREE_LEVELS; i++) {
-      ZERO_HASHES[i] = await poseidonT3(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
-    }
-    console.log("Zero hashes ready");
-  })();
-
   class MerkleTree {
     constructor(levels) { this.levels = levels; this.leaves = []; }
     insert(leaf) { this.leaves.push(BigInt(leaf)); }
@@ -398,34 +388,34 @@
     async getProof(index) {
       let path = [];
       let pathIndices = [];
-      let currentLevel = this.leaves.slice();
+      let nodes = this.leaves.slice();
 
       for (let level = 0; level < this.levels; level++) {
         const isRight = index % 2 === 1;
         const siblingIndex = isRight ? index - 1 : index + 1;
-        const sibling = currentLevel[siblingIndex] ?? ZERO_HASHES[level];
+        const sibling = nodes[siblingIndex] ?? 0n;
         path.push(sibling);
-        pathIndices.push(isRight ? 1 : 0); // 0 = left, 1 = right (for Switcher)
+        pathIndices.push(isRight ? 1 : 0); // 1 = right (for Switcher sel)
         index >>= 1;
 
-        const nextLevel = [];
-        for (let j = 0; j < currentLevel.length; j += 2) {
-          const left = currentLevel[j] ?? ZERO_HASHES[level];
-          const right = currentLevel[j + 1] ?? ZERO_HASHES[level];
-          nextLevel.push(await poseidonT3(left, right));
+        const next = [];
+        for (let j = 0; j < nodes.length; j += 2) {
+          const left = nodes[j] ?? 0n;
+          const right = nodes[j + 1] ?? 0n;
+          next.push(await poseidonT3(left, right));
         }
-        currentLevel = nextLevel;
+        nodes = next;
       }
-      return { root: currentLevel[0] || 0n, path, pathIndices };
+      return { root: nodes[0] || 0n, path, pathIndices };
     }
   }
 
   window.withdraw = async function() {
     if (!web3 || !userAccount) return alert("Connect wallet");
-    const note = document.getElementById("withdrawNote").value.trim();
-    if (!note) return alert("Paste your note");
+    const noteInput = document.getElementById("withdrawNote").value.trim();
+    if (!noteInput) return alert("Paste your note");
 
-    const match = note.match(/^privx-hurricane-(\d+)-([a-f0-9]{62})-([a-f0-9]{62})$/);
+    const match = noteInput.match(/^privx-hurricane-(\d+)-([a-f0-9]{62})-([a-f0-9]{62})$/);
     if (!match) return alert("Invalid note format");
 
     const [_, denom, nullifierHex, secretHex] = match;
@@ -448,41 +438,37 @@
       const commitment = await poseidonT3(nullifier, secret);
 
       const leafIndex = leaves.findIndex(l => BigInt(l) === commitment);
-      if (leafIndex === -1) return alert("Commitment not found — check denomination or note");
+      if (leafIndex === -1) return alert("Commitment not found — wrong pool or note");
 
       const tree = new MerkleTree(TREE_LEVELS);
       leaves.forEach(l => tree.insert(BigInt(l)));
       const { root, path: pathElements, pathIndices } = await tree.getProof(leafIndex);
 
       const denomination = BigInt(DENOM_AMOUNTS[denom]);
-      const nullifierHash = await poseidonT3(nullifier, denomination); // most common in mixers
+      const nullifierHash = await poseidonT3(nullifier, denomination);
 
       const input = {
-        root: root.toString(),
-        nullifier: nullifier.toString(),
-        secret: secret.toString(),
-        nullifierHash: nullifierHash.toString(),
-        pathElements: pathElements.map(p => p.toString()),
-        pathIndices,
-        denomination: denomination.toString()
-        // Add recipient if your circuit uses it as public input
+        "secret": secret.toString(),
+        "nullifier": nullifier.toString(),
+        "pathIndices": pathIndices,
+        "siblings": pathElements.map(p => p.toString()),
+        "root": root.toString(),
+        "nullifierHash": nullifierHash.toString(),
+        "denomination": denomination.toString()
       };
 
       btn.textContent = "Generating proof (30-60s)...";
       const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
 
       const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-      const args = calldata.split(",");
-      const proofBytes = args[0].trim();
-      const pubSignalsStr = args[1].trim();
-      const pubSignalsArr = JSON.parse(pubSignalsStr);
+      const [proofBytes, pubSignalsArr] = JSON.parse("[" + calldata.split("][")[0] + "]");
 
       btn.textContent = "Submitting withdraw...";
       const tx = await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
 
       alert(`WITHDRAW SUCCESS + 2% REWARD!\nTX: ${tx.transactionHash}`);
     } catch (err) {
-      console.error("Withdraw error:", err);
+      console.error(err);
       alert("Failed: " + (err.message || "Check console"));
     } finally {
       btn.disabled = false;
