@@ -304,91 +304,196 @@ function draw() {
 requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
 </script>
 
+<!-- 🔥 PrivX Burn Tracker – Accurate & Beautiful -->
 <script>
-(async () => {
-  async function getWeb3Instance() {
-    if (window.web3 && window.web3.eth) {
-      return window.web3;
-    }
-    if (typeof Web3 !== "undefined") {
-      return new Web3(window.ethereum || Web3.givenProvider);
-    }
-    return new Web3(new Web3.providers.HttpProvider("https://rpc.pulsechain.com"));
-  }
+  const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+  const BURN_ADDRESSES = [
+    "0x000000000000000000000000000000000000dEaD",
+    "0x0000000000000000000000000000000000000369"
+  ];
+  const PRIVX_ABI = [
+    { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
+    { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
+    { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" }
+  ];
 
   async function updateBurnedBalance() {
     const el = document.getElementById("burnedBalance");
     if (!el) return;
+    if (!web3) {
+      el.textContent = "Connect wallet";
+      return;
+    }
     el.textContent = "Loading...";
 
-    const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-    const BURN_ADDRESSES = [
-      "0x000000000000000000000000000000000000dEaD",
-      "0x0000000000000000000000000000000000000369"
-    ];
-
-    const PRIVX_BURN_ABI = [
-  { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
-  { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
-  { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
-  { "name": "totalBurned", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" }
-];
-
     try {
-      const web3Instance = await getWeb3Instance();
-      if (!web3Instance.eth || !web3Instance.eth.Contract) {
-        throw new Error("Web3 not initialized properly");
-      }
-
-      const token = new web3Instance.eth.Contract(PRIVX_BURN_ABI, PRIVX_TOKEN);
-
-      const [decimals, totalSupply, internalBurned, ...burnBalances] = await Promise.all([
+      const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
+      const [decimals, totalSupply, ...burnBalances] = await Promise.all([
         token.methods.decimals().call(),
         token.methods.totalSupply().call(),
-        token.methods.totalBurned().call().catch(() => "0"),
-        ...BURN_ADDRESSES.map(a => token.methods.balanceOf(a).call().catch(() => "0"))
+        ...BURN_ADDRESSES.map(addr => token.methods.balanceOf(addr).call())
       ]);
 
-      let totalBurned = BigInt(internalBurned);
-      for (const b of burnBalances) totalBurned += BigInt(b);
+      let totalBurned = 0n;
+      burnBalances.forEach(b => totalBurned += BigInt(b || 0));
 
-      const divisor = 10n ** BigInt(decimals);
-      const burned = Number(totalBurned / divisor);
-      const supply = Number(BigInt(totalSupply) / divisor);
-      const percent = supply > 0 ? ((burned / supply) * 100).toFixed(2) : "0.00";
+      const burnedNum = Number(totalBurned / (10n ** BigInt(decimals)));
+      const supplyNum = Number(BigInt(totalSupply) / (10n ** BigInt(decimals)));
+      const percent = supplyNum > 0 ? ((burnedNum / supplyNum) * 100).toFixed(4) : "0.0000";
 
-      el.innerHTML = `
-        <strong>${burned.toLocaleString()}</strong> PRIVX
-        <span style="color:#00ffea;">(${percent}% burned)</span>
-      `;
-
-      console.log("🔥 PRIVX Burn Debug →", {
-        decimals, internalBurned, burnBalances, burned, percent
-      });
-
+      el.innerHTML = `<strong>${burnedNum.toLocaleString()}</strong> PRIVX <span style="color:#00ffea;">(${percent}% burned)</span>`;
     } catch (err) {
-      console.error("🔥 Error loading burn balance:", err);
-      el.textContent = "Error";
+      console.error("Burn tracker error:", err);
+      el.textContent = "Error loading";
     }
   }
 
-  // Wait until Web3 is definitely available
-  await new Promise(resolve => {
-    if (window.Web3) resolve();
-    else {
-      const check = setInterval(() => {
-        if (window.Web3) {
-          clearInterval(check);
-          resolve();
-        }
-      }, 200);
-    }
+  window.addEventListener('load', () => {
+    updateBurnedBalance();
+    setInterval(updateBurnedBalance, 30000);
   });
+</script>
+  <script>
+(async () => {
+  const TREE_LEVELS = 20;
+  const SHIELD_CONTRACTS = {
+    "100": "0x1746f6fe7447A13B7554fAb9FA0b77A8a5A61821",
+    "1000": "0x0F15B28f1B9C9b3c4B7b9d7864ef79BeEBCb37b6",
+    "10000": "0x8c17b741695Cb4B7c81F8Bfc20203B47dcd8d285",
+    "100000": "0x4b393d5Bef35E225074Ed1f247D147F8c9e904F4"
+  };
 
-  // Initial + periodic refresh
-  updateBurnedBalance();
-  setInterval(updateBurnedBalance, 30000);
+  const SHIELD_ABI = [
+    {
+      "anonymous": false,
+      "inputs": [
+        { "indexed": false, "internalType": "bytes32", "name": "commitment", "type": "bytes32" },
+        { "indexed": false, "internalType": "uint32", "name": "leafIndex", "type": "uint32" },
+        { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+      ],
+      "name": "Deposit",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        { "internalType": "bytes", "name": "proof", "type": "bytes" },
+        { "internalType": "uint256[]", "name": "pubSignals", "type": "uint256[]" },
+        { "internalType": "address payable", "name": "recipient", "type": "address" }
+      ],
+      "name": "withdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ];
+
+  const { poseidon } = await import("https://cdn.jsdelivr.net/npm/circomlibjs@latest/build/circomlibjs.js");
+
+  class MerkleTree {
+    constructor(levels) { this.levels = levels; this.leaves = []; }
+    insert(leaf) { this.leaves.push(leaf); }
+    getRoot() {
+      let nodes = this.leaves.map(l => BigInt(l));
+      for (let i = 0; i < this.levels; i++) {
+        const next = [];
+        for (let j = 0; j < nodes.length; j += 2) {
+          next.push(poseidon.F.toObject(poseidon([nodes[j], nodes[j + 1] || 0n])));
+        }
+        nodes = next;
+      }
+      return nodes[0] || 0n;
+    }
+    getProof(index) {
+      let path = [], indices = [];
+      let nodes = this.leaves.map(l => BigInt(l));
+      for (let i = 0; i < this.levels; i++) {
+        const sibling = index ^ 1;
+        path.push(nodes[sibling] || 0n);
+        indices.push(index % 2);
+        index >>= 1;
+        const next = [];
+        for (let j = 0; j < nodes.length; j += 2) {
+          next.push(poseidon.F.toObject(poseidon([nodes[j], nodes[j + 1] || 0n])));
+        }
+        nodes = next;
+      }
+      return { root: nodes[0] || 0n, path, indices };
+    }
+  }
+
+  window.withdraw = async function() {
+    const noteInput = document.getElementById("withdrawNote").value.trim();
+    if (!noteInput) return alert("Paste your note");
+    if (!web3 || !userAccount) return alert("Connect wallet");
+
+    const match = noteInput.match(/^privx-hurricane-(\d+)-([a-f0-9]{62})-([a-f0-9]{62})$/);
+    if (!match) return alert("Invalid note format");
+
+    const [_, denom, nullifierHex, secretHex] = match;
+    const shieldAddr = SHIELD_CONTRACTS[denom];
+    if (!shieldAddr) return alert("Invalid denomination");
+
+    const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
+    const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
+
+    const btn = document.getElementById("withdrawBtn");
+    btn.disabled = true;
+    btn.textContent = "Fetching deposits...";
+
+    try {
+      const deposits = await shield.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
+      const leaves = deposits.map(e => e.returnValues.commitment);
+
+      const nullifier = BigInt("0x" + nullifierHex);
+      const secret = BigInt("0x" + secretHex);
+      const commitment = poseidon.F.toObject(poseidon([nullifier, secret]));
+
+      const leafIndex = leaves.findIndex(l => BigInt(l) === commitment);
+      if (leafIndex === -1) return alert("Deposit not found in pool");
+
+      const tree = new MerkleTree(TREE_LEVELS);
+      leaves.forEach(l => tree.insert(BigInt(l)));
+      const { root, path: pathElements, indices: pathIndices } = tree.getProof(leafIndex);
+
+      const input = {
+        root: root.toString(),
+        nullifier: nullifier.toString(),
+        secret: secret.toString(),
+        nullifierHash: poseidon.F.toObject(poseidon([nullifier])).toString(),
+        pathElements: pathElements.map(p => p.toString()),
+        pathIndices,
+        recipient: BigInt(recipient).toString()
+      };
+
+      btn.textContent = "Generating proof (30-60s)...";
+      const { proof, publicSignals } = await snarkjs.plonk.fullProve(
+        input,
+        "./circuits/mixer_js/mixer.wasm",
+        "https://gateway.pinata.cloud/ipfs/bafybeigk4mdkbngi7t72tdxnlpcfhynbgb3wbofitl7yuj7n4ddxsivvea"
+      );
+
+      const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+      const [proofBytes, pubSignalsArr] = JSON.parse("[" + calldata.split("][")[0] + "]");
+
+      btn.textContent = "Submitting withdraw...";
+      const tx = await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
+
+      alert(`WITHDRAW SUCCESS + 2% REWARD!\nTX: ${tx.transactionHash}`);
+    } catch (err) {
+      console.error(err);
+      alert("Withdraw failed: " + (err.message || "Check console"));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Generate Proof + Withdraw";
+    }
+  };
 })();
+</script>
+  <script>
+  window.addEventListener('load', () => {
+    document.getElementById('depositBtn').addEventListener('click', deposit);
+    document.getElementById('withdrawBtn').addEventListener('click', withdraw);
+  });
 </script>
 </body>
 </html>
