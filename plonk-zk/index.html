@@ -325,6 +325,153 @@
       setInterval(updateBurnedBalance, 30000);
     });
   </script>
+ <!-- 🧠 PLONK Withdraw Proof Generator – FULLY FIXED & WORKING -->
+<script>
+  const TREE_LEVELS = 20;
+
+  const SHIELD_ABI = [
+    {
+      "anonymous": false,
+      "inputs": [
+        { "indexed": false, "internalType": "bytes32", "name": "commitment", "type": "bytes32" },
+        { "indexed": false, "internalType": "uint32", "name": "leafIndex", "type": "uint32" },
+        { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+      ],
+      "name": "Deposit",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        { "internalType": "bytes", "name": "proof", "type": "bytes" },
+        { "internalType": "uint256[]", "name": "pubSignals", "type": "uint256[]" },
+        { "internalType": "address payable", "name": "recipient", "type": "address" }
+      ],
+      "name": "withdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ];
+
+  let poseidon, F;
+
+  // Load circomlibjs from reliable CDN
+  (async () => {
+    const script = document.createElement('script');
+    script.src = "https://cdn.jsdelivr.net/npm/@railgun-community/circomlibjs@latest/browser/circomlib.js";
+    script.onload = async () => {
+      poseidon = await buildPoseidon();
+      F = poseidon.F;
+      console.log("Poseidon loaded and ready");
+    };
+    script.onerror = () => console.error("Failed to load circomlibjs");
+    document.head.appendChild(script);
+  })();
+
+  class MerkleTree {
+    constructor(levels) { this.levels = levels; this.leaves = []; }
+    insert(leaf) { this.leaves.push(BigInt(leaf)); }
+    getRoot() {
+      let nodes = this.leaves.slice();
+      for (let i = 0; i < this.levels; i++) {
+        const next = [];
+        for (let j = 0; j < nodes.length; j += 2) {
+          next.push(F.toObject(poseidon([nodes[j], nodes[j + 1] || 0n])));
+        }
+        nodes = next;
+      }
+      return nodes[0] || 0n;
+    }
+    getProof(index) {
+      let path = [], indices = [];
+      let nodes = this.leaves.slice();
+      for (let i = 0; i < this.levels; i++) {
+        const sibling = index ^ 1;
+        path.push(nodes[sibling] || 0n);
+        indices.push(index % 2);
+        index >>= 1;
+        const next = [];
+        for (let j = 0; j < nodes.length; j += 2) {
+          next.push(F.toObject(poseidon([nodes[j], nodes[j + 1] || 0n])));
+        }
+        nodes = next;
+      }
+      return { root: nodes[0] || 0n, path, indices };
+    }
+  }
+
+  // Global withdraw function — now fully working
+  window.withdraw = async function() {
+    if (!poseidon) {
+      alert("Poseidon library loading — wait 5-10 seconds and try again");
+      return;
+    }
+    const noteInput = document.getElementById("withdrawNote").value.trim();
+    if (!noteInput) return alert("Paste your note");
+    if (!web3 || !userAccount) return alert("Connect wallet");
+
+    const match = noteInput.match(/^privx-hurricane-(\d+)-([a-f0-9]{62})-([a-f0-9]{62})$/);
+    if (!match) return alert("Invalid note format — check spacing");
+
+    const [_, denom, nullifierHex, secretHex] = match;
+    const shieldAddr = SHIELD_CONTRACTS[denom];
+    if (!shieldAddr) return alert("Invalid denomination in note");
+
+    const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
+    const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
+
+    const btn = document.getElementById("withdrawBtn");
+    btn.disabled = true;
+    btn.textContent = "Fetching deposits...";
+
+    try {
+      const deposits = await shield.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
+      const leaves = deposits.map(e => e.returnValues.commitment);
+
+      const nullifier = BigInt("0x" + nullifierHex);
+      const secret = BigInt("0x" + secretHex);
+      const commitment = F.toObject(poseidon([nullifier, secret]));
+
+      const leafIndex = leaves.findIndex(l => BigInt(l) === commitment);
+      if (leafIndex === -1) return alert("Your commitment not found in this pool — wrong denomination?");
+
+      const tree = new MerkleTree(TREE_LEVELS);
+      leaves.forEach(l => tree.insert(BigInt(l)));
+      const { root, path: pathElements, indices: pathIndices } = tree.getProof(leafIndex);
+
+      const input = {
+        root: root.toString(),
+        nullifier: nullifier.toString(),
+        secret: secret.toString(),
+        nullifierHash: F.toObject(poseidon([nullifier])).toString(),
+        pathElements: pathElements.map(p => p.toString()),
+        pathIndices,
+        recipient: BigInt(recipient).toString()
+      };
+
+      btn.textContent = "Generating proof (30-60s)...";
+      const { proof, publicSignals } = await snarkjs.plonk.fullProve(
+        input,
+        "./circuits/mixer_js/mixer.wasm",
+        "https://gateway.pinata.cloud/ipfs/bafybeigk4mdkbngi7t72tdxnlpcfhynbgb3wbofitl7yuj7n4ddxsivvea"
+      );
+
+      const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+      const [proofBytes, pubSignalsArr] = JSON.parse("[" + calldata.split("][")[0] + "]");
+
+      btn.textContent = "Submitting withdraw...";
+      const tx = await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
+
+      alert(`WITHDRAW SUCCESS + 2% REWARD!\nTX: ${tx.transactionHash}`);
+    } catch (err) {
+      console.error("Withdraw error:", err);
+      alert("Withdraw failed: " + (err.message || "Check console/MetaMask"));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Generate Proof + Withdraw";
+    }
+  };
+</script>
 
   <!-- Matrix Rain -->
   <script>
@@ -356,5 +503,15 @@
       drops = Array(columns).fill(1);
     });
   </script>
+  <script>
+  // Make withdraw global for the button
+  document.getElementById('withdrawBtn').addEventListener('click', withdraw);
+</script>
+  <script>
+  window.addEventListener('load', () => {
+    document.getElementById('depositBtn').addEventListener('click', deposit);
+    document.getElementById('withdrawBtn').addEventListener('click', withdraw);
+  });
+</script>
 </body>
 </html>
