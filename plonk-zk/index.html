@@ -377,7 +377,7 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Correct Switcher Alignment + Field Normalization + Root Match) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Auto-Orientation + Root Alignment) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
@@ -506,7 +506,7 @@ window.withdraw = async function () {
     const nfHash = await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]));
     const denomBig = BigInt(DENOM_AMOUNTS[denom]);
 
-    const input = {
+    const baseInput = {
       root: fieldNormalize(proofData.root).toString(),
       nullifierHash: fieldNormalize(nfHash).toString(),
       denomination: fieldNormalize(denomBig).toString(),
@@ -517,73 +517,53 @@ window.withdraw = async function () {
     };
 
     // ✅ Normalize all inputs
-    Object.keys(input).forEach((key) => {
-      if (Array.isArray(input[key])) {
-        input[key] = input[key].map((v) =>
+    Object.keys(baseInput).forEach((key) => {
+      if (Array.isArray(baseInput[key])) {
+        baseInput[key] = baseInput[key].map((v) =>
           fieldNormalize(BigInt(v)).toString()
         );
-      } else if (!isNaN(input[key])) {
-        input[key] = fieldNormalize(BigInt(input[key])).toString();
+      } else if (!isNaN(baseInput[key])) {
+        baseInput[key] = fieldNormalize(BigInt(baseInput[key])).toString();
       }
     });
 
-    // ✅ Circom signal order
+    // ✅ Ordered input as per Circom signal list
     const orderedInput = {
-      secret: input.secret,
-      nullifier: input.nullifier,
-      pathIndices: input.pathIndices,
-      siblings: input.siblings,
-      root: input.root,
-      nullifierHash: input.nullifierHash,
-      denomination: input.denomination,
+      secret: baseInput.secret,
+      nullifier: baseInput.nullifier,
+      pathIndices: baseInput.pathIndices,
+      siblings: baseInput.siblings,
+      root: baseInput.root,
+      nullifierHash: baseInput.nullifierHash,
+      denomination: baseInput.denomination,
     };
 
-    // 🧠 Final Circom alignment check: try both sibling orientations
-let inputForProof = structuredClone(orderedInput);
+    console.log("🧾 Withdraw Input (final normalized):", orderedInput);
+    console.log("🧩 Input keys order:", Object.keys(orderedInput));
 
-// Reverse siblings + pathIndices if Circom expects top-down
-const reversedInput = structuredClone(orderedInput);
-reversedInput.siblings = [...orderedInput.siblings].reverse();
-reversedInput.pathIndices = [...orderedInput.pathIndices].reverse();
+    // 🧠 Final Circom alignment test: try both sibling orientations
+    let inputForProof = structuredClone(orderedInput);
+    const reversedInput = structuredClone(orderedInput);
+    reversedInput.siblings = [...orderedInput.siblings].reverse();
+    reversedInput.pathIndices = [...orderedInput.pathIndices].reverse();
 
-console.log("🧾 Withdraw Input (normal order):", inputForProof);
-console.log("🔁 Withdraw Input (reversed order):", reversedInput);
-
-// We’ll test the normal orientation first
-try {
-  btn.textContent = "Generating PLONK proof (normal order)... ⏳";
-  var { proof, publicSignals } = await snarkjs.plonk.fullProve(
-    inputForProof,
-    WASM_URL,
-    ZKEY_URL
-  );
-} catch (err) {
-  console.warn("⚠️ Normal orientation failed, trying reversed...");
-  // Retry with reversed sibling path
-  btn.textContent = "Generating PLONK proof (reversed order)... ⏳";
-  var { proof, publicSignals } = await snarkjs.plonk.fullProve(
-    reversedInput,
-    WASM_URL,
-    ZKEY_URL
-  );
-}
-
-console.log("✅ Proof generated");
-console.log("📜 Public signals:", publicSignals);
-console.log("🧩 Expected root:", fieldNormalize(proofData.root).toString());
-console.log(
-  "🧩 Root matches circuit?",
-  fieldNormalize(proofData.root).toString() === publicSignals[0].toString()
-);
-
-
-    btn.textContent = "Generating PLONK proof (30–60s)... ⏳";
-
-    const { proof, publicSignals } = await snarkjs.plonk.fullProve(
-      orderedInput,
-      WASM_URL,
-      ZKEY_URL
-    );
+    btn.textContent = "Generating PLONK proof (normal order)... ⏳";
+    let proof, publicSignals;
+    try {
+      ({ proof, publicSignals } = await snarkjs.plonk.fullProve(
+        inputForProof,
+        WASM_URL,
+        ZKEY_URL
+      ));
+    } catch (err) {
+      console.warn("⚠️ Normal orientation failed, retrying reversed...");
+      btn.textContent = "Generating PLONK proof (reversed order)... ⏳";
+      ({ proof, publicSignals } = await snarkjs.plonk.fullProve(
+        reversedInput,
+        WASM_URL,
+        ZKEY_URL
+      ));
+    }
 
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
