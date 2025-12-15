@@ -304,51 +304,28 @@ function draw() {
 requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
 </script>
 
-<!-- ✅ Single Web3.js Load -->
-<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-
+<!-- ✅ Keep only ONE Web3.js include (already loaded above) -->
 <script>
-let web3, userAccount, selectedDenomination;
-
-// =============================
-// 🔗 Shared Constants
-// =============================
-const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-const BURN_ADDRESSES = [
-  "0x000000000000000000000000000000000000dEaD",
-  "0x0000000000000000000000000000000000000369"
-];
-
-const PRIVX_ABI = [
-  { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
-  { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
-  { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" }
-];
-
-// =============================
-// 🧩 Web3 Provider Logic
-// =============================
-function getWeb3Provider() {
-  if (window.ethereum) {
-    return new Web3(window.ethereum);
-  } else if (window.web3) {
-    return window.web3;
-  } else {
-    console.warn("🌐 No wallet detected — using PulseChain RPC fallback");
-    return new Web3(new Web3.providers.HttpProvider("https://rpc.pulsechain.com"));
-  }
-}
-
-// =============================
-// 🔥 Burn Tracker (real burn addresses)
-// =============================
 async function updateBurnedBalance() {
   const el = document.getElementById("burnedBalance");
   if (!el) return;
   el.textContent = "Loading...";
 
   try {
-    const web3Instance = getWeb3Provider();
+    // Reuse global web3 if wallet connected, else fallback
+    const web3Instance = web3 || new Web3(new Web3.providers.HttpProvider("https://rpc.pulsechain.com"));
+    const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+    const BURN_ADDRESSES = [
+      "0x000000000000000000000000000000000000dEaD",
+      "0x0000000000000000000000000000000000000369"
+    ];
+
+    const PRIVX_ABI = [
+      { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
+      { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
+      { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" }
+    ];
+
     const token = new web3Instance.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
 
     const [decimals, totalSupply, ...burnBalances] = await Promise.all([
@@ -370,58 +347,14 @@ async function updateBurnedBalance() {
       <span style="color:#00ffea;"> (${percent.toFixed(2)}% burned)</span>
     `;
 
-    console.log("🔥 Burn Debug", { burned: burned.toString(), percent, burnBalances });
-
+    console.log("🔥 PRIVX Burn Debug →", { burned: burned.toString(), percent, burnBalances });
   } catch (err) {
     console.error("🔥 Error loading burn balance:", err);
     el.textContent = "Error";
   }
 }
 
-// =============================
-// 🦊 Wallet Connect
-// =============================
-async function toggleWallet() {
-  if (!window.ethereum) return alert("Install MetaMask");
-  try {
-    await window.ethereum.request({ method: "eth_requestAccounts" });
-    try {
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x171" }]
-      });
-    } catch (e) {
-      if (e.code === 4902) {
-        await window.ethereum.request({
-          method: "wallet_addEthereumChain",
-          params: [{
-            chainId: "0x171",
-            chainName: "PulseChain",
-            rpcUrls: ["https://rpc.pulsechain.com"],
-            nativeCurrency: { name: "Pulse", symbol: "PLS", decimals: 18 },
-            blockExplorerUrls: ["https://scan.pulsechain.com"]
-          }]
-        });
-      }
-    }
-
-    web3 = new Web3(window.ethereum);
-    const accounts = await web3.eth.getAccounts();
-    userAccount = accounts[0];
-    document.getElementById("walletButtonText").textContent =
-      `${userAccount.slice(0,6)}...${userAccount.slice(-4)}`;
-    document.getElementById("walletButton").classList.add("connected");
-    updateDepositButton();
-    updateBurnedBalance();
-    console.log("✅ Wallet Connected:", userAccount);
-  } catch (err) {
-    console.error("Wallet connect error:", err);
-  }
-}
-
-// =============================
-// 🔁 Auto-Init
-// =============================
+// Auto-update every 30s
 window.addEventListener("load", () => {
   updateBurnedBalance();
   setInterval(updateBurnedBalance, 30000);
