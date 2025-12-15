@@ -304,16 +304,19 @@ function draw() {
 requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
 </script>
 
-<!-- 🔥 PrivX Hybrid Burn Tracker -->
+<!-- 🔥 PrivX Burn Tracker — Accurate Version -->
 <script>
+const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
 const BURN_ADDRESSES = [
   "0x000000000000000000000000000000000000dEaD",
   "0x0000000000000000000000000000000000000369"
 ];
+
 const PRIVX_ABI = [
   { name: "totalSupply", type: "function", inputs: [], outputs: [{ type: "uint256" }], stateMutability: "view" },
   { name: "decimals", type: "function", inputs: [], outputs: [{ type: "uint8" }], stateMutability: "view" },
   { name: "balanceOf", type: "function", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }], stateMutability: "view" },
+  // Optional — not all tokens implement this
   { name: "totalBurned", type: "function", inputs: [], outputs: [{ type: "uint256" }], stateMutability: "view" }
 ];
 
@@ -344,26 +347,57 @@ async function updateBurnedBalance() {
   try {
     const web3 = await getWeb3Instance();
     const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
-    const [decimals, totalSupply, totalBurnedValue, ...burnBalances] = await Promise.all([
+
+    // Try to load all relevant burn data
+    const [decimals, totalSupplyRaw] = await Promise.all([
       token.methods.decimals().call().catch(() => 18),
-      token.methods.totalSupply().call().catch(() => "0"),
-      token.methods.totalBurned?.().call().catch(() => "0"),
-      ...BURN_ADDRESSES.map(a => token.methods.balanceOf(a).call().catch(() => "0"))
+      token.methods.totalSupply().call().catch(() => "0")
     ]);
-    let totalBurned = BigInt(totalBurnedValue || 0);
-    for (const b of burnBalances) totalBurned += BigInt(b);
+
+    // Fetch all burn balances in parallel
+    const burnBalances = await Promise.all(
+      BURN_ADDRESSES.map(addr => token.methods.balanceOf(addr).call().catch(() => "0"))
+    );
+
+    // Try totalBurned() if it exists
+    let totalBurnedRaw = "0";
+    try {
+      totalBurnedRaw = await token.methods.totalBurned().call();
+    } catch {
+      console.warn("ℹ️ totalBurned() not implemented — using burn wallets only");
+    }
+
+    // Combine everything
+    let totalBurned = BigInt(totalBurnedRaw || 0);
+    burnBalances.forEach(b => totalBurned += BigInt(b));
+
     const decimalsBI = BigInt(decimals);
-    const burned = Number(totalBurned / (10n ** decimalsBI));
-    const supply = Number(BigInt(totalSupply) / (10n ** decimalsBI));
-    const percent = supply > 0 ? ((burned / supply) * 100).toFixed(2) : "0.00";
-    burnElem.textContent = `${burned.toLocaleString()} PRIVX (${percent}% burned)`;
+    const burned = Number(totalBurned) / Number(10n ** decimalsBI);
+    const supply = Number(BigInt(totalSupplyRaw)) / Number(10n ** decimalsBI);
+    const percent = supply > 0 ? ((burned / supply) * 100).toFixed(3) : "0.000";
+
+    // 🧾 Show formatted burn data
+    burnElem.innerHTML = `
+      <strong>${burned.toLocaleString(undefined, { maximumFractionDigits: 2 })}</strong> PRIVX 
+      <span style="color:#00ffea;">(${percent}% burned)</span>
+    `;
+
+    // 🔍 Log full breakdown for debugging
+    console.log("🔥 Burn tracker breakdown:");
+    console.log("Decimals:", decimals);
+    console.log("Total Supply:", totalSupplyRaw);
+    console.log("totalBurned():", totalBurnedRaw);
+    console.log("Burn addresses:", BURN_ADDRESSES);
+    console.log("Burn balances:", burnBalances);
+    console.log("Combined burned total:", totalBurned.toString());
   } catch (err) {
     console.error("🔥 Error loading burn balance:", err);
-    burnElem.textContent = "Error";
+    burnElem.textContent = "Error loading burn data";
   }
 }
-window.addEventListener("load", async () => {
-  await waitForWeb3();
+
+// Run after load + every 30s
+window.addEventListener("load", () => {
   updateBurnedBalance();
   setInterval(updateBurnedBalance, 30000);
 });
