@@ -478,16 +478,20 @@ window.withdraw = async function() {
     }
     console.log("✅ Recomputed root:", "0x" + checkRoot.toString(16));
 
-    // 🧠 Build witness input
-    const input = {
-      secret: fieldNormalize(secret).toString(),
-      nullifier: fieldNormalize(nullifier).toString(),
-      pathIndices,
-      siblings: pathElements.map(p => fieldNormalize(p).toString()),
-      root: fieldNormalize(root).toString(),
-      nullifierHash: fieldNormalize(await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString(),
-      denomination: fieldNormalize(BigInt(DENOM_AMOUNTS[denom])).toString()
-    };
+    // 🧠 Build witness input (after reversing)
+pathElements.reverse();
+pathIndices.reverse();
+
+const input = {
+  secret: fieldNormalize(secret).toString(),
+  nullifier: fieldNormalize(nullifier).toString(),
+  pathIndices,
+  siblings: pathElements.map(p => fieldNormalize(p).toString()),
+  root: fieldNormalize(root).toString(),
+  nullifierHash: fieldNormalize(await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]))).toString(),
+  denomination: fieldNormalize(BigInt(DENOM_AMOUNTS[denom])).toString()
+};
+
 
     console.log("🧾 Withdraw Input:", input);
 
