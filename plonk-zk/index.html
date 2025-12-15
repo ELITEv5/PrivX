@@ -328,11 +328,11 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
     ];
 
     const PRIVX_BURN_ABI = [
-      { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
-      { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
-      { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
-      { "name": "totalBurned", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" }
-    ];
+  { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
+  { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
+  { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
+  { "name": "totalBurned", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" }
+];
 
     try {
       const web3Instance = await getWeb3Instance();
