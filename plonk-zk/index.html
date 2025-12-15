@@ -304,117 +304,128 @@ function draw() {
 requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
 </script>
 
-<!-- ✅ Load Web3.js from CDN (required for browser environments) -->
+<!-- ✅ Single Web3.js Load -->
 <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 
-<!-- 🔥 PrivX Burn Tracker – Works with or without wallet -->
 <script>
-(async () => {
-  const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-  const BURN_ADDRESSES = [
-    "0x000000000000000000000000000000000000dEaD",
-    "0x0000000000000000000000000000000000000369"
-  ];
+let web3, userAccount, selectedDenomination;
 
-  // ✅ Clean ABI (no "u" or short types)
-  const PRIVX_ABI = [
-    {
-      "name": "totalSupply",
-      "type": "function",
-      "inputs": [],
-      "outputs": [{ "type": "uint256" }],
-      "stateMutability": "view"
-    },
-    {
-      "name": "decimals",
-      "type": "function",
-      "inputs": [],
-      "outputs": [{ "type": "uint8" }],
-      "stateMutability": "view"
-    },
-    {
-      "name": "balanceOf",
-      "type": "function",
-      "inputs": [{ "name": "account", "type": "address" }],
-      "outputs": [{ "type": "uint256" }],
-      "stateMutability": "view"
-    }
-  ];
+// =============================
+// 🔗 Shared Constants
+// =============================
+const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+const BURN_ADDRESSES = [
+  "0x000000000000000000000000000000000000dEaD",
+  "0x0000000000000000000000000000000000000369"
+];
 
-  // 🧩 Provider Logic
-  function getWeb3Provider() {
-    if (window.ethereum) {
-      console.log("🔗 Using wallet provider (MetaMask / PulseChain)");
-      return new Web3(window.ethereum);
-    }
-    console.log("🌐 No wallet detected — using PulseChain RPC fallback");
+const PRIVX_ABI = [
+  { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
+  { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
+  { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" }
+];
+
+// =============================
+// 🧩 Web3 Provider Logic
+// =============================
+function getWeb3Provider() {
+  if (window.ethereum) {
+    return new Web3(window.ethereum);
+  } else if (window.web3) {
+    return window.web3;
+  } else {
+    console.warn("🌐 No wallet detected — using PulseChain RPC fallback");
     return new Web3(new Web3.providers.HttpProvider("https://rpc.pulsechain.com"));
   }
+}
 
-  // 🧠 Main burn tracker
-  async function updateBurnedBalance() {
-    const el = document.getElementById("burnedBalance");
-    if (!el) return;
-    el.textContent = "Loading...";
+// =============================
+// 🔥 Burn Tracker (real burn addresses)
+// =============================
+async function updateBurnedBalance() {
+  const el = document.getElementById("burnedBalance");
+  if (!el) return;
+  el.textContent = "Loading...";
 
-    try {
-      const web3 = getWeb3Provider();
-      const token = new web3.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
+  try {
+    const web3Instance = getWeb3Provider();
+    const token = new web3Instance.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
 
-      // Pull data
-      const [decimals, totalSupplyRaw, ...burnBalances] = await Promise.all([
-        token.methods.decimals().call(),
-        token.methods.totalSupply().call(),
-        ...BURN_ADDRESSES.map(addr => token.methods.balanceOf(addr).call())
-      ]);
+    const [decimals, totalSupply, ...burnBalances] = await Promise.all([
+      token.methods.decimals().call(),
+      token.methods.totalSupply().call(),
+      ...BURN_ADDRESSES.map(addr => token.methods.balanceOf(addr).call())
+    ]);
 
-      // 🧮 Compute totals
-      let totalBurned = 0n;
-      for (const b of burnBalances) totalBurned += BigInt(b);
+    let totalBurned = 0n;
+    for (const b of burnBalances) totalBurned += BigInt(b);
 
-      const divisor = 10n ** BigInt(decimals);
-      const burned = totalBurned / divisor;
-      const supply = BigInt(totalSupplyRaw) / divisor;
-      const percent = supply > 0n ? (Number(burned) / Number(supply)) * 100 : 0;
+    const divisor = 10n ** BigInt(decimals);
+    const burned = totalBurned / divisor;
+    const supply = BigInt(totalSupply) / divisor;
+    const percent = supply > 0n ? (Number(burned) / Number(supply)) * 100 : 0;
 
-      // 🧾 Optional: show per-address balances
-      const details = BURN_ADDRESSES.map((addr, i) => {
-        const short = addr.slice(0, 8) + "..." + addr.slice(-4);
-        const b = Number(BigInt(burnBalances[i]) / divisor).toLocaleString();
-        return `${short}: ${b}`;
-      }).join(" | ");
+    el.innerHTML = `
+      <strong>${Number(burned).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+      <span style="color:#00ffea;"> (${percent.toFixed(2)}% burned)</span>
+    `;
 
-      // 🧱 Update UI
-      el.innerHTML = `
-        <strong>${Number(burned).toLocaleString(undefined, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        })}</strong> PRIVX
-        <span style="color:#00ffea;">(${percent.toFixed(2)}% burned)</span><br>
-        <small>${details}</small>
-      `;
+    console.log("🔥 Burn Debug", { burned: burned.toString(), percent, burnBalances });
 
-      console.log("🔥 PRIVX Burn Debug →", {
-        decimals,
-        totalSupply: totalSupplyRaw,
-        burnBalances,
-        totalBurned: burned.toString(),
-        percent
-      });
-
-    } catch (err) {
-      console.error("🔥 Error loading burn balance:", err);
-      const el = document.getElementById("burnedBalance");
-      if (el) el.textContent = "Error";
-    }
+  } catch (err) {
+    console.error("🔥 Error loading burn balance:", err);
+    el.textContent = "Error";
   }
+}
 
-  // 🔁 Run automatically
-  window.addEventListener("load", () => {
+// =============================
+// 🦊 Wallet Connect
+// =============================
+async function toggleWallet() {
+  if (!window.ethereum) return alert("Install MetaMask");
+  try {
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x171" }]
+      });
+    } catch (e) {
+      if (e.code === 4902) {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: "0x171",
+            chainName: "PulseChain",
+            rpcUrls: ["https://rpc.pulsechain.com"],
+            nativeCurrency: { name: "Pulse", symbol: "PLS", decimals: 18 },
+            blockExplorerUrls: ["https://scan.pulsechain.com"]
+          }]
+        });
+      }
+    }
+
+    web3 = new Web3(window.ethereum);
+    const accounts = await web3.eth.getAccounts();
+    userAccount = accounts[0];
+    document.getElementById("walletButtonText").textContent =
+      `${userAccount.slice(0,6)}...${userAccount.slice(-4)}`;
+    document.getElementById("walletButton").classList.add("connected");
+    updateDepositButton();
     updateBurnedBalance();
-    setInterval(updateBurnedBalance, 30000);
-  });
-})();
+    console.log("✅ Wallet Connected:", userAccount);
+  } catch (err) {
+    console.error("Wallet connect error:", err);
+  }
+}
+
+// =============================
+// 🔁 Auto-Init
+// =============================
+window.addEventListener("load", () => {
+  updateBurnedBalance();
+  setInterval(updateBurnedBalance, 30000);
+});
 </script>
 </body>
 </html>
