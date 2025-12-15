@@ -327,7 +327,7 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
       "0x0000000000000000000000000000000000000369"
     ];
 
-    const PRIVX_ABI = [
+    const PRIVX_BURN_ABI = [
       { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
       { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
       { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
@@ -340,7 +340,7 @@ requestAnimationFrame(function loop(){ draw(); requestAnimationFrame(loop); });
         throw new Error("Web3 not initialized properly");
       }
 
-      const token = new web3Instance.eth.Contract(PRIVX_ABI, PRIVX_TOKEN);
+      const token = new web3Instance.eth.Contract(PRIVX_BURN_ABI, PRIVX_TOKEN);
 
       const [decimals, totalSupply, internalBurned, ...burnBalances] = await Promise.all([
         token.methods.decimals().call(),
