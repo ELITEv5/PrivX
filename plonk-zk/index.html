@@ -379,7 +379,7 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + 2-input alignment + verified Circom consistency) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + Poseidon(2) alignment for nullifierHash + PoseidonT3 for tree) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
@@ -392,7 +392,7 @@ function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-// ✅ Precompute Poseidon zero hashes (2-input Poseidon)
+// ✅ Precompute Poseidon zero hashes (PoseidonT3, same as Hasher.sol)
 let ZERO_HASHES = [];
 (async () => {
   ZERO_HASHES[0] = 0n;
@@ -470,7 +470,7 @@ window.withdraw = async function () {
     });
 
     let leaves = deposits.map((e) => e.returnValues.commitment);
-    leaves.reverse(); // consistent ordering with Circom
+    leaves.reverse(); // oldest-first for consistent ordering
 
     const nullifier = BigInt("0x" + nullifierHex);
     const secret = BigInt("0x" + secretHex);
@@ -505,7 +505,13 @@ window.withdraw = async function () {
 
     // ✅ Correct denomination alignment (plain integer, matches circuit)
     const denomBig = BigInt(denom);
-    const nfHash = await poseidonT3(fieldNormalize(nullifier), fieldNormalize(denomBig)); // ✅ two-input variant
+
+    // ✅ Circom uses Poseidon(2) for nullifierHash — build it with circomlibjs constants
+    const poseidon2 = await window.circomlibjs.buildPoseidon();
+    const F = window.circomlibjs.F;
+    const nfHash = F.toObject(
+      poseidon2([fieldNormalize(nullifier), fieldNormalize(denomBig)])
+    );
 
     const input = {
       secret: fieldNormalize(secret).toString(),
@@ -513,7 +519,7 @@ window.withdraw = async function () {
       pathIndices: pathIndices.map((i) => i.toString()),
       siblings: siblings.map((s) => fieldNormalize(s).toString()),
       root: fieldNormalize(proofData.root).toString(),
-      nullifierHash: fieldNormalize(nfHash).toString(),
+      nullifierHash: fieldNormalize(BigInt(nfHash)).toString(),
       denomination: fieldNormalize(denomBig).toString(),
     };
 
