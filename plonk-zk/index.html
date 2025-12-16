@@ -379,7 +379,7 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + 2-input + Correct Denomination Alignment) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + 2-input alignment + verified Circom consistency) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
@@ -425,7 +425,7 @@ class MerkleTree {
       const siblingIndex = isRightNode ? index - 1 : index + 1;
       const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
       path.push(sibling);
-      indices.push(isRightNode ? 1 : 0); // ✅ correct polarity for Circom Switcher
+      indices.push(isRightNode ? 1 : 0); // ✅ matches Circom Switcher polarity
 
       const next = [];
       for (let j = 0; j < nodes.length; j += 2) {
@@ -470,7 +470,7 @@ window.withdraw = async function () {
     });
 
     let leaves = deposits.map((e) => e.returnValues.commitment);
-    leaves.reverse(); // oldest-first for consistent ordering
+    leaves.reverse(); // consistent ordering with Circom
 
     const nullifier = BigInt("0x" + nullifierHex);
     const secret = BigInt("0x" + secretHex);
@@ -493,7 +493,7 @@ window.withdraw = async function () {
     console.log("🔍 PathIndices (0=left,1=right):", pathIndices);
     console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
 
-    // JS recompute root for verification
+    // JS recompute root for sanity check
     let recomputed = commitment;
     for (let i = 0; i < siblings.length; i++) {
       const sib = siblings[i];
@@ -503,9 +503,9 @@ window.withdraw = async function () {
     }
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
 
-    // ✅ Use raw integer denomination (matches Circom public input)
+    // ✅ Correct denomination alignment (plain integer, matches circuit)
     const denomBig = BigInt(denom);
-    const nfHash = await poseidonT3(fieldNormalize(nullifier), fieldNormalize(denomBig));
+    const nfHash = await poseidonT3(fieldNormalize(nullifier), fieldNormalize(denomBig)); // ✅ two-input variant
 
     const input = {
       secret: fieldNormalize(secret).toString(),
