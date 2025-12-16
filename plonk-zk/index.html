@@ -377,138 +377,223 @@
     });
   </script>
 
-<!-- 🧠 FINAL PLONK Withdraw – Perfect for Your Circuit (Auto-Orientation + Padding) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Auto-Orientation + Root Alignment) -->
 <script>
-  const TREE_LEVELS = 20;
-  const FIELD_P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+const TREE_LEVELS = 20;
+const FIELD_P =
+  21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
-  function fieldNormalize(x) {
-    return ((x % FIELD_P) + FIELD_P) % FIELD_P;
+// ─────────────────────────────
+// Normalize BigInt to Circom field
+// ─────────────────────────────
+function fieldNormalize(x) {
+  return ((x % FIELD_P) + FIELD_P) % FIELD_P;
+}
+
+// ✅ Precompute Poseidon zero hashes (must match contract tree)
+let ZERO_HASHES = [];
+(async () => {
+  ZERO_HASHES[0] = 0n;
+  for (let i = 1; i < TREE_LEVELS; i++) {
+    ZERO_HASHES[i] = await poseidonT3(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
+  }
+  console.log("✅ Zero hashes precomputed:", ZERO_HASHES.length);
+})();
+
+// ─────────────────────────────
+// Merkle Tree class (Circom-compatible direction)
+// ─────────────────────────────
+class MerkleTree {
+  constructor(levels) {
+    this.levels = levels;
+    this.leaves = [];
   }
 
-  // Precompute zero hashes
-  let ZERO_HASHES = [];
-  (async () => {
-    ZERO_HASHES[0] = 0n;
-    for (let i = 1; i <= TREE_LEVELS; i++) {
-      ZERO_HASHES[i] = await poseidonT3(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
-    }
-    console.log("Zero hashes precomputed");
-  })();
+  insert(leaf) {
+    this.leaves.push(BigInt(leaf));
+  }
 
-  class MerkleTree {
-    constructor(levels) { this.levels = levels; this.leaves = []; }
-    insert(leaf) { this.leaves.push(BigInt(leaf)); }
+  async getProof(index) {
+    const path = [];
+    const indices = [];
+    let nodes = this.leaves.slice();
 
-    async getProof(index) {
-      let path = [];
-      let pathIndices = [];
-      let nodes = this.leaves.slice();
+    for (let level = 0; level < this.levels; level++) {
+      const isRightNode = index % 2;
+      const siblingIndex = isRightNode ? index - 1 : index + 1;
+      const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
+      path.push(sibling);
+      indices.push(isRightNode); // 0=left, 1=right
 
-      for (let level = 0; level < this.levels; level++) {
-        const isRight = index % 2 === 1;
-        const siblingIndex = isRight ? index - 1 : index + 1;
-        const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
-        path.push(sibling);
-        pathIndices.push(isRight ? 1 : 0); // 1 = right for Switcher
-        index >>= 1;
-
-        const next = [];
-        for (let j = 0; j < nodes.length; j += 2) {
-          const left = nodes[j] ?? ZERO_HASHES[level];
-          const right = nodes[j + 1] ?? ZERO_HASHES[level];
-          next.push(await poseidonT3(left, right));
-        }
-        nodes = next;
+      const next = [];
+      for (let j = 0; j < nodes.length; j += 2) {
+        const left = nodes[j] ?? ZERO_HASHES[level];
+        const right = nodes[j + 1] ?? ZERO_HASHES[level];
+        next.push(await poseidonT3(left, right));
       }
-      return { root: nodes[0] || 0n, path, pathIndices };
+      nodes = next;
+      index = Math.floor(index / 2);
     }
+
+    return { root: nodes[0] || 0n, path, indices };
   }
+}
 
-  window.withdraw = async function() {
-    if (!web3 || !userAccount) return alert("Connect wallet");
-    const noteInput = document.getElementById("withdrawNote").value.trim();
-    if (!noteInput) return alert("Paste your note");
+// ─────────────────────────────
+// 🔓 Withdraw Function
+// ─────────────────────────────
+window.withdraw = async function () {
+  const noteInput = document.getElementById("withdrawNote").value.trim();
+  if (!noteInput) return alert("Paste your private note first");
+  if (!web3 || !userAccount) return alert("Connect your wallet");
 
-    const match = noteInput.match(/^privx-hurricane-(\d+)-([a-f0-9]{62})-([a-f0-9]{62})$/);
-    if (!match) return alert("Invalid note format");
+  const match = noteInput.match(/^privx-hurricane-(\d+)-([a-f0-9]{62})-([a-f0-9]{62})$/);
+  if (!match) return alert("Invalid note format");
+  const [_, denom, nullifierHex, secretHex] = match;
 
-    const [_, denom, nullifierHex, secretHex] = match;
-    const shieldAddr = SHIELD_CONTRACTS[denom];
-    if (!shieldAddr) return alert("Invalid denomination");
+  const shieldAddr = SHIELD_CONTRACTS[denom];
+  if (!shieldAddr) return alert("Invalid denomination");
+  const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
+  const recipient =
+    document.getElementById("recipientAddress").value.trim() || userAccount;
+  const btn = document.getElementById("withdrawBtn");
 
-    const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
-    const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
-
-    const btn = document.getElementById("withdrawBtn");
+  try {
     btn.disabled = true;
     btn.textContent = "Fetching deposits...";
 
-    try {
-      const deposits = await shield.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
-      const leaves = deposits.map(e => e.returnValues.commitment);
+    const deposits = await shield.getPastEvents("Deposit", {
+      fromBlock: 0,
+      toBlock: "latest",
+    });
+    const leaves = deposits.map((e) => e.returnValues.commitment);
 
-      const nullifier = BigInt("0x" + nullifierHex);
-      const secret = BigInt("0x" + secretHex);
-      const commitment = await poseidonT3(nullifier, secret);
+    const nullifier = BigInt("0x" + nullifierHex);
+    const secret = BigInt("0x" + secretHex);
+    const commitment = await poseidonT3(nullifier, secret);
 
-      const leafIndex = leaves.findIndex(l => BigInt(l) === commitment);
-      if (leafIndex === -1) return alert("Commitment not found — wrong pool/note");
+    const leafIndex = leaves.findIndex((l) => BigInt(l) === commitment);
+    if (leafIndex === -1)
+      return alert("❌ Commitment not found in this pool (check denomination or note).");
 
-      const tree = new MerkleTree(TREE_LEVELS);
-      leaves.forEach(l => tree.insert(BigInt(l)));
-      const { root, path: pathElements, pathIndices } = await tree.getProof(leafIndex);
+    // 🌳 Build Merkle tree + proof
+    const tree = new MerkleTree(TREE_LEVELS);
+    leaves.forEach((l) => tree.insert(BigInt(l)));
 
-      // PAD TO EXACTLY 20
-      const paddedPathElements = pathElements.map(p => fieldNormalize(p).toString());
-      const paddedPathIndices = pathIndices.slice();
-      while (paddedPathElements.length < TREE_LEVELS) paddedPathElements.push("0");
-      while (paddedPathIndices.length < TREE_LEVELS) paddedPathIndices.push(0);
+    const proofData = await tree.getProof(leafIndex);
+    const siblings = proofData.path.map((p) => fieldNormalize(p));
+    const pathIndices = proofData.indices.map((i) => Number(i));
 
-      const denomination = BigInt(DENOM_AMOUNTS[denom]);
-      const nullifierHash = await poseidonT3(nullifier, denomination);
+    console.log("🔍 PathIndices (0=left,1=right):", pathIndices);
+    console.log("🔍 First 5 siblings:", siblings.slice(0, 5).map((s) => "0x" + s.toString(16)));
 
-      const baseInput = {
-        secret: fieldNormalize(secret).toString(),
-        nullifier: fieldNormalize(nullifier).toString(),
-        pathIndices: paddedPathIndices,
-        siblings: paddedPathElements,
-        root: fieldNormalize(root).toString(),
-        nullifierHash: fieldNormalize(nullifierHash).toString(),
-        denomination: fieldNormalize(denomination).toString()
-      };
-
-      // Try normal first, then reversed if needed
-      let inputForProof = structuredClone(baseInput);
-      const reversedInput = structuredClone(baseInput);
-      reversedInput.siblings = [...baseInput.siblings].reverse();
-      reversedInput.pathIndices = [...baseInput.pathIndices].reverse();
-
-      btn.textContent = "Generating proof (normal)...";
-      let proof, publicSignals;
-      try {
-        ({ proof, publicSignals } = await snarkjs.plonk.fullProve(inputForProof, WASM_URL, ZKEY_URL));
-      } catch (err) {
-        console.warn("Normal failed, trying reversed...");
-        btn.textContent = "Generating proof (reversed)...";
-        ({ proof, publicSignals } = await snarkjs.plonk.fullProve(reversedInput, WASM_URL, ZKEY_URL));
+    // ✅ JS recompute root (Switcher logic)
+    let recomputed = commitment;
+    for (let i = 0; i < siblings.length; i++) {
+      const sib = siblings[i];
+      const dir = pathIndices[i];
+      if (dir === 0) {
+        recomputed = await poseidonT3(recomputed, sib);
+      } else {
+        recomputed = await poseidonT3(sib, recomputed);
       }
-
-      const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-      const [proofBytes, pubSignalsArr] = JSON.parse("[" + calldata.split("][")[0] + "]");
-
-      btn.textContent = "Submitting withdraw...";
-      const tx = await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
-
-      alert(`WITHDRAW SUCCESS + 2% REWARD!\nTX: ${tx.transactionHash}`);
-    } catch (err) {
-      console.error("Withdraw error:", err);
-      alert("Failed: " + (err.message || "Check console"));
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Generate Proof + Withdraw";
     }
-  };
+
+    console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
+    console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
+
+    // 🧠 Build input (aligned with Circom template PrivXMixer)
+    const nfHash = await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]));
+    const denomBig = BigInt(DENOM_AMOUNTS[denom]);
+
+    const baseInput = {
+      root: fieldNormalize(proofData.root).toString(),
+      nullifierHash: fieldNormalize(nfHash).toString(),
+      denomination: fieldNormalize(denomBig).toString(),
+      secret: fieldNormalize(secret).toString(),
+      nullifier: fieldNormalize(nullifier).toString(),
+      pathIndices: pathIndices.map((i) => i.toString()),
+      siblings: siblings.map((s) => fieldNormalize(s).toString()),
+    };
+
+    // ✅ Normalize all inputs
+    Object.keys(baseInput).forEach((key) => {
+      if (Array.isArray(baseInput[key])) {
+        baseInput[key] = baseInput[key].map((v) =>
+          fieldNormalize(BigInt(v)).toString()
+        );
+      } else if (!isNaN(baseInput[key])) {
+        baseInput[key] = fieldNormalize(BigInt(baseInput[key])).toString();
+      }
+    });
+
+    // ✅ Ordered input as per Circom signal list
+    const orderedInput = {
+      secret: baseInput.secret,
+      nullifier: baseInput.nullifier,
+      pathIndices: baseInput.pathIndices,
+      siblings: baseInput.siblings,
+      root: baseInput.root,
+      nullifierHash: baseInput.nullifierHash,
+      denomination: baseInput.denomination,
+    };
+
+    console.log("🧾 Withdraw Input (final normalized):", orderedInput);
+    console.log("🧩 Input keys order:", Object.keys(orderedInput));
+
+    // 🧠 Final Circom alignment test: try both sibling orientations
+    let inputForProof = structuredClone(orderedInput);
+    const reversedInput = structuredClone(orderedInput);
+    reversedInput.siblings = [...orderedInput.siblings].reverse();
+    reversedInput.pathIndices = [...orderedInput.pathIndices].reverse();
+
+    btn.textContent = "Generating PLONK proof (normal order)... ⏳";
+    let proof, publicSignals;
+    try {
+      ({ proof, publicSignals } = await snarkjs.plonk.fullProve(
+        inputForProof,
+        WASM_URL,
+        ZKEY_URL
+      ));
+    } catch (err) {
+      console.warn("⚠️ Normal orientation failed, retrying reversed...");
+      btn.textContent = "Generating PLONK proof (reversed order)... ⏳";
+      ({ proof, publicSignals } = await snarkjs.plonk.fullProve(
+        reversedInput,
+        WASM_URL,
+        ZKEY_URL
+      ));
+    }
+
+    console.log("✅ Proof generated");
+    console.log("📜 Public signals:", publicSignals);
+    console.log("🧩 Expected root:", fieldNormalize(proofData.root).toString());
+    console.log(
+      "🧩 Root matches circuit?",
+      fieldNormalize(proofData.root).toString() === publicSignals[0].toString()
+    );
+
+    const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+    const [proofBytes, pubSignalsArr] = JSON.parse(
+      "[" + calldata.replace(/\]\[/g, "],[") + "]"
+    );
+
+    btn.textContent = "Submitting withdraw... 🚀";
+    const tx = await shield.methods
+      .withdraw(proofBytes, pubSignalsArr, recipient)
+      .send({ from: userAccount });
+
+    alert(
+      `🎉 WITHDRAW SUCCESS!\nTX: ${tx.transactionHash}\nYou received ${denom} PRIVX + Proof-of-Privacy reward.`
+    );
+  } catch (err) {
+    console.error("❌ Withdraw error:", err);
+    alert("Withdraw failed: " + (err.message || "Check console"));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Generate Proof + Withdraw";
+  }
+};
 </script>
 
   <!-- Matrix Rain -->
