@@ -379,9 +379,9 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Correct Zero Hash Builder, 2-input version) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + 2-input + Correct Denomination Alignment) -->
 <script>
-const TREE_LEVELS = 20n;
+const TREE_LEVELS = 20;
 const FIELD_P =
   21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
@@ -392,7 +392,7 @@ function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-// ✅ Precompute Poseidon zero hashes (2-input variant)
+// ✅ Precompute Poseidon zero hashes (2-input Poseidon)
 let ZERO_HASHES = [];
 (async () => {
   ZERO_HASHES[0] = 0n;
@@ -403,37 +403,40 @@ let ZERO_HASHES = [];
 })();
 
 // ─────────────────────────────
-// Merkle Tree (2-input Poseidon, Circom-compatible direction)
+// Merkle Tree (Circom-compatible direction)
 // ─────────────────────────────
 class MerkleTree {
   constructor(levels) {
     this.levels = levels;
     this.leaves = [];
   }
+
   insert(leaf) {
     this.leaves.push(BigInt(leaf));
   }
+
   async getProof(index) {
     const path = [];
     const indices = [];
     let nodes = this.leaves.slice();
 
     for (let level = 0; level < this.levels; level++) {
-  const isRightNode = index % 2;
-  const siblingIndex = isRightNode ? index - 1 : index + 1;
-  const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
-  path.push(sibling);
-  indices.push(isRightNode ? 1 : 0); // ✅ correct polarity for Circom
+      const isRightNode = index % 2;
+      const siblingIndex = isRightNode ? index - 1 : index + 1;
+      const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
+      path.push(sibling);
+      indices.push(isRightNode ? 1 : 0); // ✅ correct polarity for Circom Switcher
 
-  const next = [];
-  for (let j = 0; j < nodes.length; j += 2) {
-    const left = nodes[j] ?? ZERO_HASHES[level];
-    const right = nodes[j + 1] ?? ZERO_HASHES[level];
-    next.push(await poseidonT3(left, right));
-  }
-  nodes = next;
-  index = Math.floor(index / 2);
-}
+      const next = [];
+      for (let j = 0; j < nodes.length; j += 2) {
+        const left = nodes[j] ?? ZERO_HASHES[level];
+        const right = nodes[j + 1] ?? ZERO_HASHES[level];
+        next.push(await poseidonT3(left, right));
+      }
+      nodes = next;
+      index = Math.floor(index / 2);
+    }
+
     return { root: nodes[0] || 0n, path, indices };
   }
 }
@@ -480,7 +483,7 @@ window.withdraw = async function () {
     console.log("Total leaves:", leaves.length);
     console.log("Leaf index:", leafIndex);
 
-    const tree = new MerkleTree(Number(TREE_LEVELS));
+    const tree = new MerkleTree(TREE_LEVELS);
     leaves.forEach((l) => tree.insert(BigInt(l)));
 
     const proofData = await tree.getProof(leafIndex);
@@ -490,7 +493,7 @@ window.withdraw = async function () {
     console.log("🔍 PathIndices (0=left,1=right):", pathIndices);
     console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
 
-    // JS recompute root
+    // JS recompute root for verification
     let recomputed = commitment;
     for (let i = 0; i < siblings.length; i++) {
       const sib = siblings[i];
@@ -500,8 +503,9 @@ window.withdraw = async function () {
     }
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
 
-    const nfHash = await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]));
-    const denomBig = BigInt(DENOM_AMOUNTS[denom]);
+    // ✅ Use raw integer denomination (matches Circom public input)
+    const denomBig = BigInt(denom);
+    const nfHash = await poseidonT3(fieldNormalize(nullifier), fieldNormalize(denomBig));
 
     const input = {
       secret: fieldNormalize(secret).toString(),
@@ -516,7 +520,11 @@ window.withdraw = async function () {
     console.log("🧾 Withdraw Input:", input);
 
     btn.textContent = "Generating PLONK proof... ⏳";
-    const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
+    const { proof, publicSignals } = await snarkjs.plonk.fullProve(
+      input,
+      WASM_URL,
+      ZKEY_URL
+    );
 
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
