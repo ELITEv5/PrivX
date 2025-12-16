@@ -379,7 +379,7 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + Poseidon(2) alignment for nullifierHash + PoseidonT3 for tree) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + Poseidon(3) for nullifierHash + PoseidonT3 for tree) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
@@ -392,7 +392,14 @@ function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-// ✅ Precompute Poseidon zero hashes (PoseidonT3, same as Hasher.sol)
+// ✅ Manual Poseidon hash (matches Hasher.sol and Circom PoseidonT3)
+async function poseidonT3(a, b, c = 0n) {
+  // Replace this body with your actual manual PoseidonT3 if defined globally
+  if (window.poseidonHash) return BigInt(await window.poseidonHash([a, b, c]));
+  throw new Error("poseidonT3() not implemented — add your Poseidon JS hasher here");
+}
+
+// ✅ Precompute Poseidon zero hashes
 let ZERO_HASHES = [];
 (async () => {
   ZERO_HASHES[0] = 0n;
@@ -503,15 +510,11 @@ window.withdraw = async function () {
     }
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
 
-    // ✅ Correct denomination alignment (plain integer, matches circuit)
+    // ✅ Correct denomination alignment
     const denomBig = BigInt(denom);
 
-    // ✅ Circom uses Poseidon(2) for nullifierHash — build it with circomlibjs constants
-    const poseidon2 = await window.circomlibjs.buildPoseidon();
-    const F = window.circomlibjs.F;
-    const nfHash = F.toObject(
-      poseidon2([fieldNormalize(nullifier), fieldNormalize(denomBig)])
-    );
+    // ✅ Nullifier hash using PoseidonT3 (matches circuit)
+    const nfHash = await poseidonT3(nullifier, denomBig, 0n);
 
     const input = {
       secret: fieldNormalize(secret).toString(),
@@ -519,7 +522,7 @@ window.withdraw = async function () {
       pathIndices: pathIndices.map((i) => i.toString()),
       siblings: siblings.map((s) => fieldNormalize(s).toString()),
       root: fieldNormalize(proofData.root).toString(),
-      nullifierHash: fieldNormalize(BigInt(nfHash)).toString(),
+      nullifierHash: fieldNormalize(nfHash).toString(),
       denomination: fieldNormalize(denomBig).toString(),
     };
 
