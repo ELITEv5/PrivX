@@ -378,17 +378,17 @@
   setInterval(updateBurnedBalance, 30000);
 });
   </script>
-<!-- ✅ Load circomlibjs reliably and attach to window -->
-<script type="module">
-  import * as circomlibjs from "https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm";
-  window.circomlibjs = circomlibjs;
-  window.circomlibjsReady = true;
-  console.log("✅ circomlibjs module loaded and attached globally");
+<!-- ✅ Browser-safe circomlibjs (tested build that attaches to window) -->
+<script src="https://rawcdn.githack.com/iden3/circomlibjs/92c5829c3b18acdb77e2282af3f61d21f48b57cb/dist/circomlibjs.min.js"
+        integrity="sha384-AEzy9v7PKMySmBoYw8hquTG0pDTV/ixQbBZk+BaYz3SH8bMI1j0knOAnmKfsvpi7"
+        crossorigin="anonymous"
+        onload="console.log('✅ circomlibjs loaded (browser-safe build)'); window.circomlibjsReady = true;">
 </script>
+
 <!-- 🔒 FINAL Withdraw Script (PLONK + Poseidon(3) for nullifierHash + PoseidonT3 for tree) -->
 <script>
 async function waitForCircomlib() {
-  let retries = 20;
+  let retries = 30;
   while (!window.circomlibjs && retries-- > 0) {
     console.log('⏳ Waiting for circomlibjs...');
     await new Promise(r => setTimeout(r, 200));
@@ -401,10 +401,14 @@ const TREE_LEVELS = 20;
 const FIELD_P =
   21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
+// ─────────────────────────────
+// Normalize BigInt to Circom field
+// ─────────────────────────────
 function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
+// ✅ Helper: emulate Poseidon(3) using 2-input PoseidonT3
 async function poseidonT3_3(a, b, c) {
   return await poseidonT3(await poseidonT3(a, b), c);
 }
@@ -419,6 +423,9 @@ let ZERO_HASHES = [];
   console.log('✅ Zero hashes precomputed:', ZERO_HASHES.length);
 })();
 
+// ─────────────────────────────
+// Merkle Tree (Circom-compatible direction)
+// ─────────────────────────────
 class MerkleTree {
   constructor(levels) {
     this.levels = levels;
@@ -450,6 +457,9 @@ class MerkleTree {
   }
 }
 
+// ─────────────────────────────
+// Withdraw Function
+// ─────────────────────────────
 window.withdraw = async function () {
   await waitForCircomlib(); // ✅ Ensure circomlibjs is ready
 
@@ -512,7 +522,7 @@ window.withdraw = async function () {
 
     const denomBig = BigInt(denom);
 
-    // ✅ Proper Poseidon(3) using circomlibjs
+    // ✅ Proper Poseidon(3) using circomlibjs (matches circuit exactly)
     const poseidon3 = await window.circomlibjs.buildPoseidon();
     const F = window.circomlibjs.F;
     const nfHash = F.toObject(
