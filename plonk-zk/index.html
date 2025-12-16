@@ -370,13 +370,13 @@
 
     // Init
     window.addEventListener('load', () => {
-      document.getElementById('depositBtn').addEventListener('click', deposit);
-      document.getElementById('withdrawBtn').addEventListener('click', withdraw);
-      switchTab('deposit');
-      updateDepositButton();
-      updateBurnedBalance();
-      setInterval(updateBurnedBalance, 30000);
-    });
+  document.getElementById('depositBtn').addEventListener('click', deposit);
+  // Withdraw listener handled below in final script
+  switchTab('deposit');
+  updateDepositButton();
+  updateBurnedBalance();
+  setInterval(updateBurnedBalance, 30000);
+});
   </script>
 
 <!-- 🔒 FINAL Withdraw Script (PLONK + Poseidon(3) for nullifierHash + PoseidonT3 for tree) -->
@@ -391,9 +391,6 @@ const FIELD_P =
 function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
-
-// use the main global Poseidon implementation defined above
-const poseidonT3 = window.poseidonT3;
 
 
 // ✅ Precompute Poseidon zero hashes
@@ -511,7 +508,7 @@ window.withdraw = async function () {
     const denomBig = BigInt(denom);
 
     // ✅ Nullifier hash using PoseidonT3 (matches circuit)
-    const nfHash = await poseidonT3(nullifier, denomBig, 0n);
+    const nfHash = await poseidonT3(nullifier, denomBig);
 
     const input = {
       secret: fieldNormalize(secret).toString(),
@@ -584,14 +581,6 @@ window.withdraw = async function () {
       fontSize = innerWidth < 600 ? 10 : 14;
       columns = Math.floor(canvas.width / fontSize);
       drops = Array(columns).fill(1);
-    });
-  </script>
-
-  <!-- Button Listeners -->
-  <script>
-    window.addEventListener('load', () => {
-      document.getElementById('depositBtn').addEventListener('click', deposit);
-      document.getElementById('withdrawBtn').addEventListener('click', withdraw);
     });
   </script>
 </body>
