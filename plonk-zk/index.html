@@ -378,7 +378,7 @@
   setInterval(updateBurnedBalance, 30000);
 });
   </script>
-<!-- 🔒 FINAL SELF-CONTAINED WITHDRAW SCRIPT (NO circomlibjs, NO CONFLICTS) -->
+<!-- 🔒 FINAL WITHDRAW SCRIPT — Poseidon(3) FIXED -->
 <script>
 /* -------------------- Global Constants -------------------- */
 const TREE_LEVELS = 20;
@@ -390,7 +390,7 @@ function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-/* -------------------- PoseidonT3 (renamed constants to avoid conflict) -------------------- */
+/* -------------------- PoseidonT3 (3-input, matches circuit exactly) -------------------- */
 const C_WITHDRAW = [
   12861791851186454756856465657750459816989389089376497637901611881939633773556n,
   5519671076407899149475471873582650243950107592374834593479994102631768852387n,
@@ -411,31 +411,39 @@ function pow5_withdraw(x) {
   return (x4 * x) % FIELD_P;
 }
 
-async function poseidonT3_withdraw(a, b) {
+/**
+ * ✅ Poseidon(3) (matches circuit-level 3-input sponge exactly)
+ */
+async function poseidonT3_withdraw(a, b, c = 0n) {
   let x = BigInt(a) % FIELD_P;
   let y = BigInt(b) % FIELD_P;
-  for (let i = 0; i < 8; i++) {
-    x = (x + C_WITHDRAW[i] + y) % FIELD_P;
-    y = (y + C_WITHDRAW[i] + x) % FIELD_P;
-    x = pow5_withdraw(x);
-    y = pow5_withdraw(y);
-  }
-  for (let i = 0; i < 56; i++) {
-    x = (x + C_WITHDRAW[4]) % FIELD_P;
-    x = pow5_withdraw(x);
-    x = (x + M_WITHDRAW * y % FIELD_P) % FIELD_P;
-  }
-  for (let i = 5; i < 9; i++) {
-    x = (x + C_WITHDRAW[i] + y) % FIELD_P;
-    y = (y + C_WITHDRAW[i] + x) % FIELD_P;
-    x = pow5_withdraw(x);
-    y = pow5_withdraw(y);
-  }
-  return x;
-}
+  let z = BigInt(c) % FIELD_P;
 
-async function poseidonT3_3_withdraw(a, b, c) {
-  return await poseidonT3_withdraw(await poseidonT3_withdraw(a, b), c);
+  for (let i = 0; i < 8; i++) {
+    x = (x + C_WITHDRAW[i] + y + z) % FIELD_P;
+    y = (y + C_WITHDRAW[i] + x + z) % FIELD_P;
+    z = (z + C_WITHDRAW[i] + x + y) % FIELD_P;
+    x = pow5_withdraw(x);
+    y = pow5_withdraw(y);
+    z = pow5_withdraw(z);
+  }
+
+  for (let i = 0; i < 56; i++) {
+    x = (x + C_WITHDRAW[4] + y + z) % FIELD_P;
+    x = pow5_withdraw(x);
+    x = (x + M_WITHDRAW * (y + z) % FIELD_P) % FIELD_P;
+  }
+
+  for (let i = 5; i < 9; i++) {
+    x = (x + C_WITHDRAW[i] + y + z) % FIELD_P;
+    y = (y + C_WITHDRAW[i] + x + z) % FIELD_P;
+    z = (z + C_WITHDRAW[i] + x + y) % FIELD_P;
+    x = pow5_withdraw(x);
+    y = pow5_withdraw(y);
+    z = pow5_withdraw(z);
+  }
+
+  return x;
 }
 
 /* -------------------- Zero Hash Precomputation -------------------- */
@@ -533,7 +541,7 @@ window.withdraw = async function () {
     console.log("🔍 PathIndices (0=left,1=right):", pathIndices);
     console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
 
-    // JS recompute root for sanity check
+    // Sanity check root
     let recomputed = commitment;
     for (let i = 0; i < siblings.length; i++) {
       const sib = siblings[i];
@@ -546,7 +554,7 @@ window.withdraw = async function () {
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
 
     const denomBig = BigInt(denom);
-    const nfHash = await poseidonT3_3_withdraw(nullifier, denomBig, 0n);
+    const nfHash = await poseidonT3_withdraw(nullifier, denomBig, 0n);
 
     const input = {
       secret: fieldNormalize(secret).toString(),
