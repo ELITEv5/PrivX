@@ -379,7 +379,7 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Auto-Orientation + Root Alignment) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Root Alignment Patch v2) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
@@ -392,7 +392,7 @@ function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-// ✅ Precompute Poseidon zero hashes (must match contract tree)
+// ✅ Precompute Poseidon zero hashes (must match circuit)
 let ZERO_HASHES = [];
 (async () => {
   ZERO_HASHES[0] = 0n;
@@ -403,7 +403,7 @@ let ZERO_HASHES = [];
 })();
 
 // ─────────────────────────────
-// Merkle Tree class (Circom-compatible direction)
+// Merkle Tree class (Circom-compatible order)
 // ─────────────────────────────
 class MerkleTree {
   constructor(levels) {
@@ -468,7 +468,17 @@ window.withdraw = async function () {
       fromBlock: 0,
       toBlock: "latest",
     });
-    const leaves = deposits.map((e) => e.returnValues.commitment);
+
+    // 🧠 Auto-detect leaf orientation and correct it if needed
+    let leaves = deposits.map((e) => e.returnValues.commitment);
+    if (leaves.length > 1) {
+      const first = BigInt(leaves[0]);
+      const last = BigInt(leaves[leaves.length - 1]);
+      if (first > last) {
+        console.log("🔁 Detected reversed deposit order — correcting leaf order.");
+        leaves.reverse();
+      }
+    }
 
     const nullifier = BigInt("0x" + nullifierHex);
     const secret = BigInt("0x" + secretHex);
@@ -487,18 +497,18 @@ window.withdraw = async function () {
     const pathIndices = proofData.indices.map((i) => Number(i));
 
     console.log("🔍 PathIndices (0=left,1=right):", pathIndices);
-    console.log("🔍 First 5 siblings:", siblings.slice(0, 5).map((s) => "0x" + s.toString(16)));
+    console.log(
+      "🔍 First 5 siblings:",
+      siblings.slice(0, 5).map((s) => "0x" + s.toString(16))
+    );
 
     // ✅ JS recompute root (Switcher logic)
     let recomputed = commitment;
     for (let i = 0; i < siblings.length; i++) {
       const sib = siblings[i];
       const dir = pathIndices[i];
-      if (dir === 0) {
-        recomputed = await poseidonT3(recomputed, sib);
-      } else {
-        recomputed = await poseidonT3(sib, recomputed);
-      }
+      if (dir === 0) recomputed = await poseidonT3(recomputed, sib);
+      else recomputed = await poseidonT3(sib, recomputed);
     }
 
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
@@ -524,7 +534,7 @@ window.withdraw = async function () {
         baseInput[key] = baseInput[key].map((v) =>
           fieldNormalize(BigInt(v)).toString()
         );
-      } else if (!isNaN(baseInput[key])) {
+      } else {
         baseInput[key] = fieldNormalize(BigInt(baseInput[key])).toString();
       }
     });
@@ -543,29 +553,13 @@ window.withdraw = async function () {
     console.log("🧾 Withdraw Input (final normalized):", orderedInput);
     console.log("🧩 Input keys order:", Object.keys(orderedInput));
 
-    // 🧠 Final Circom alignment test: try both sibling orientations
-    let inputForProof = structuredClone(orderedInput);
-    const reversedInput = structuredClone(orderedInput);
-    reversedInput.siblings = [...orderedInput.siblings].reverse();
-    reversedInput.pathIndices = [...orderedInput.pathIndices].reverse();
-
-    btn.textContent = "Generating PLONK proof (normal order)... ⏳";
-    let proof, publicSignals;
-    try {
-      ({ proof, publicSignals } = await snarkjs.plonk.fullProve(
-        inputForProof,
-        WASM_URL,
-        ZKEY_URL
-      ));
-    } catch (err) {
-      console.warn("⚠️ Normal orientation failed, retrying reversed...");
-      btn.textContent = "Generating PLONK proof (reversed order)... ⏳";
-      ({ proof, publicSignals } = await snarkjs.plonk.fullProve(
-        reversedInput,
-        WASM_URL,
-        ZKEY_URL
-      ));
-    }
+    // 🧩 Generate PLONK proof
+    btn.textContent = "Generating PLONK proof... ⏳";
+    const { proof, publicSignals } = await snarkjs.plonk.fullProve(
+      orderedInput,
+      WASM_URL,
+      ZKEY_URL
+    );
 
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
