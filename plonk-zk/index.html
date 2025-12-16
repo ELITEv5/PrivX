@@ -551,6 +551,11 @@ window.withdraw = async function () {
     btn.textContent = "Generate Proof + Withdraw";
   }
 };
+  // ✅ Attach withdraw button after function is defined
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("withdrawBtn");
+  if (btn) btn.addEventListener("click", withdraw);
+});
 </script>
 
   <!-- Matrix Rain -->
