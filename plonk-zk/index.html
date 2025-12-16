@@ -379,20 +379,19 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Root Alignment Patch v2) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Root Alignment + Polarity Fix) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
   21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
-// ─────────────────────────────
-// Normalize BigInt to Circom field
-// ─────────────────────────────
 function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-// ✅ Precompute Poseidon zero hashes (must match circuit)
+// ─────────────────────────────
+// Poseidon zero hashes
+// ─────────────────────────────
 let ZERO_HASHES = [];
 (async () => {
   ZERO_HASHES[0] = 0n;
@@ -403,18 +402,16 @@ let ZERO_HASHES = [];
 })();
 
 // ─────────────────────────────
-// Merkle Tree class (Circom-compatible order)
+// Merkle Tree class (Circom-compatible)
 // ─────────────────────────────
 class MerkleTree {
   constructor(levels) {
     this.levels = levels;
     this.leaves = [];
   }
-
   insert(leaf) {
     this.leaves.push(BigInt(leaf));
   }
-
   async getProof(index) {
     const path = [];
     const indices = [];
@@ -425,7 +422,8 @@ class MerkleTree {
       const siblingIndex = isRightNode ? index - 1 : index + 1;
       const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
       path.push(sibling);
-      indices.push(isRightNode); // 0=left, 1=right
+      // 🔧 store opposite polarity to match Circom Switcher
+      indices.push(isRightNode ? 0 : 1);
 
       const next = [];
       for (let j = 0; j < nodes.length; j += 2) {
@@ -436,13 +434,12 @@ class MerkleTree {
       nodes = next;
       index = Math.floor(index / 2);
     }
-
     return { root: nodes[0] || 0n, path, indices };
   }
 }
 
 // ─────────────────────────────
-// 🔓 Withdraw Function
+// Withdraw Function
 // ─────────────────────────────
 window.withdraw = async function () {
   const noteInput = document.getElementById("withdrawNote").value.trim();
@@ -469,7 +466,7 @@ window.withdraw = async function () {
       toBlock: "latest",
     });
 
-    // 🧠 Auto-detect leaf orientation and correct it if needed
+    // 🧠 auto-detect deposit order
     let leaves = deposits.map((e) => e.returnValues.commitment);
     if (leaves.length > 1) {
       const first = BigInt(leaves[0]);
@@ -497,12 +494,9 @@ window.withdraw = async function () {
     const pathIndices = proofData.indices.map((i) => Number(i));
 
     console.log("🔍 PathIndices (0=left,1=right):", pathIndices);
-    console.log(
-      "🔍 First 5 siblings:",
-      siblings.slice(0, 5).map((s) => "0x" + s.toString(16))
-    );
+    console.log("🔍 First 5 siblings:", siblings.slice(0, 5).map((s) => "0x" + s.toString(16)));
 
-    // ✅ JS recompute root (Switcher logic)
+    // ✅ JS recompute root
     let recomputed = commitment;
     for (let i = 0; i < siblings.length; i++) {
       const sib = siblings[i];
@@ -510,11 +504,10 @@ window.withdraw = async function () {
       if (dir === 0) recomputed = await poseidonT3(recomputed, sib);
       else recomputed = await poseidonT3(sib, recomputed);
     }
-
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
     console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
 
-    // 🧠 Build input (aligned with Circom template PrivXMixer)
+    // 🧠 Build input
     const nfHash = await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]));
     const denomBig = BigInt(DENOM_AMOUNTS[denom]);
 
@@ -528,18 +521,17 @@ window.withdraw = async function () {
       siblings: siblings.map((s) => fieldNormalize(s).toString()),
     };
 
-    // ✅ Normalize all inputs
-    Object.keys(baseInput).forEach((key) => {
-      if (Array.isArray(baseInput[key])) {
-        baseInput[key] = baseInput[key].map((v) =>
+    // ✅ Normalize
+    for (const k of Object.keys(baseInput)) {
+      if (Array.isArray(baseInput[k])) {
+        baseInput[k] = baseInput[k].map((v) =>
           fieldNormalize(BigInt(v)).toString()
         );
       } else {
-        baseInput[key] = fieldNormalize(BigInt(baseInput[key])).toString();
+        baseInput[k] = fieldNormalize(BigInt(baseInput[k])).toString();
       }
-    });
+    }
 
-    // ✅ Ordered input as per Circom signal list
     const orderedInput = {
       secret: baseInput.secret,
       nullifier: baseInput.nullifier,
@@ -553,7 +545,6 @@ window.withdraw = async function () {
     console.log("🧾 Withdraw Input (final normalized):", orderedInput);
     console.log("🧩 Input keys order:", Object.keys(orderedInput));
 
-    // 🧩 Generate PLONK proof
     btn.textContent = "Generating PLONK proof... ⏳";
     const { proof, publicSignals } = await snarkjs.plonk.fullProve(
       orderedInput,
