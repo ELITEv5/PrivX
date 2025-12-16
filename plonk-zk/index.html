@@ -379,7 +379,7 @@
     });
   </script>
 
-<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Root Alignment + Polarity Fix) -->
+<!-- 🔒 FINAL Withdraw Script (PLONK + PoseidonT3 + Root Alignment + Polarity & Order Fix v3) -->
 <script>
 const TREE_LEVELS = 20;
 const FIELD_P =
@@ -396,7 +396,7 @@ let ZERO_HASHES = [];
 (async () => {
   ZERO_HASHES[0] = 0n;
   for (let i = 1; i < TREE_LEVELS; i++) {
-    ZERO_HASHES[i] = await poseidonT3(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
+    ZERO_HASHES[i] = await poseidonT3(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1], 0n);
   }
   console.log("✅ Zero hashes precomputed:", ZERO_HASHES.length);
 })();
@@ -422,14 +422,14 @@ class MerkleTree {
       const siblingIndex = isRightNode ? index - 1 : index + 1;
       const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
       path.push(sibling);
-      // 🔧 store opposite polarity to match Circom Switcher
+      // Circom Switcher expects opposite polarity
       indices.push(isRightNode ? 0 : 1);
 
       const next = [];
       for (let j = 0; j < nodes.length; j += 2) {
         const left = nodes[j] ?? ZERO_HASHES[level];
         const right = nodes[j + 1] ?? ZERO_HASHES[level];
-        next.push(await poseidonT3(left, right));
+        next.push(await poseidonT3(left, right, 0n));
       }
       nodes = next;
       index = Math.floor(index / 2);
@@ -466,24 +466,24 @@ window.withdraw = async function () {
       toBlock: "latest",
     });
 
-    // 🧠 auto-detect deposit order
+    // Always reverse: getPastEvents returns newest-first
     let leaves = deposits.map((e) => e.returnValues.commitment);
-    if (leaves.length > 1) {
-      const first = BigInt(leaves[0]);
-      const last = BigInt(leaves[leaves.length - 1]);
-      if (first > last) {
-        console.log("🔁 Detected reversed deposit order — correcting leaf order.");
-        leaves.reverse();
-      }
-    }
+    leaves.reverse();
 
     const nullifier = BigInt("0x" + nullifierHex);
     const secret = BigInt("0x" + secretHex);
-    const commitment = await poseidonT3(nullifier, secret);
+    // Poseidon T3 padded to 3 inputs
+    const commitment = await poseidonT3(nullifier, secret, 0n);
 
     const leafIndex = leaves.findIndex((l) => BigInt(l) === commitment);
     if (leafIndex === -1)
       return alert("❌ Commitment not found in this pool (check denomination or note).");
+
+    console.log("Total leaves:", leaves.length);
+    console.log("Leaf index:", leafIndex);
+    console.log("Commitment (hex):", "0x" + commitment.toString(16));
+    console.log("First 3 leaves:", leaves.slice(0, 3).map(l => "0x" + BigInt(l).toString(16)));
+    console.log("Last 3 leaves:", leaves.slice(-3).map(l => "0x" + BigInt(l).toString(16)));
 
     // 🌳 Build Merkle tree + proof
     const tree = new MerkleTree(TREE_LEVELS);
@@ -501,14 +501,15 @@ window.withdraw = async function () {
     for (let i = 0; i < siblings.length; i++) {
       const sib = siblings[i];
       const dir = pathIndices[i];
-      if (dir === 0) recomputed = await poseidonT3(recomputed, sib);
-      else recomputed = await poseidonT3(sib, recomputed);
+      recomputed = dir === 0
+        ? await poseidonT3(recomputed, sib, 0n)
+        : await poseidonT3(sib, recomputed, 0n);
     }
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
     console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
 
     // 🧠 Build input
-    const nfHash = await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]));
+    const nfHash = await poseidonT3(nullifier, BigInt(DENOM_AMOUNTS[denom]), 0n);
     const denomBig = BigInt(DENOM_AMOUNTS[denom]);
 
     const baseInput = {
@@ -521,7 +522,6 @@ window.withdraw = async function () {
       siblings: siblings.map((s) => fieldNormalize(s).toString()),
     };
 
-    // ✅ Normalize
     for (const k of Object.keys(baseInput)) {
       if (Array.isArray(baseInput[k])) {
         baseInput[k] = baseInput[k].map((v) =>
