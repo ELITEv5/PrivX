@@ -378,15 +378,13 @@
   setInterval(updateBurnedBalance, 30000);
 });
   </script>
-<!-- ✅ circomlibjs (guaranteed to expose window.circomlibjs globally) -->
-<script>
-  window.circomlibjs = undefined;
+<!-- ✅ Load circomlibjs reliably and attach to window -->
+<script type="module">
+  import * as circomlibjs from "https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm";
+  window.circomlibjs = circomlibjs;
+  window.circomlibjsReady = true;
+  console.log("✅ circomlibjs module loaded and attached globally");
 </script>
-<script
-  src="https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/dist/circomlibjs.min.js"
-  onload="console.log('✅ circomlibjs loaded'); window.circomlibjsReady = true;">
-</script>
-
 <!-- 🔒 FINAL Withdraw Script (PLONK + Poseidon(3) for nullifierHash + PoseidonT3 for tree) -->
 <script>
 async function waitForCircomlib() {
