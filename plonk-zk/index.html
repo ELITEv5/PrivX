@@ -119,7 +119,6 @@
   <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
   <!-- ✅ SNARKJS via CDN -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/dist/circomlibjs.min.js"></script>
 
   <script>
   if (window.snarkjs) {
@@ -379,7 +378,7 @@
   setInterval(updateBurnedBalance, 30000);
 });
   </script>
-
+<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/dist/circomlibjs.min.js"></script>
 <!-- 🔒 FINAL Withdraw Script (PLONK + Poseidon(3) for nullifierHash + PoseidonT3 for tree) -->
 <script>
 const TREE_LEVELS = 20;
@@ -512,10 +511,16 @@ window.withdraw = async function () {
     // ✅ Correct denomination alignment
     const denomBig = BigInt(denom);
 
-    // ✅ Nullifier hash using PoseidonT3 (3-input, matches circuit)
-    const poseidon3 = await window.circomlibjs.buildPoseidon();
+    // ✅ Proper Poseidon(3) using circomlibjs (matches circuit exactly)
+const poseidon3 = await window.circomlibjs.buildPoseidon();
 const F = window.circomlibjs.F;
-const nfHash = F.toObject(poseidon3([fieldNormalize(nullifier), fieldNormalize(denomBig), 0n]));
+const nfHash = F.toObject(
+  poseidon3([
+    fieldNormalize(nullifier),
+    fieldNormalize(denomBig),
+    0n
+  ])
+);
 
     const input = {
       secret: fieldNormalize(secret).toString(),
