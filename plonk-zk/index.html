@@ -392,12 +392,9 @@ function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-// ✅ Manual Poseidon hash (matches Hasher.sol and Circom PoseidonT3)
-async function poseidonT3(a, b, c = 0n) {
-  // Replace this body with your actual manual PoseidonT3 if defined globally
-  if (window.poseidonHash) return BigInt(await window.poseidonHash([a, b, c]));
-  throw new Error("poseidonT3() not implemented — add your Poseidon JS hasher here");
-}
+// use the main global Poseidon implementation defined above
+const poseidonT3 = window.poseidonT3;
+
 
 // ✅ Precompute Poseidon zero hashes
 let ZERO_HASHES = [];
