@@ -419,21 +419,21 @@ class MerkleTree {
     let nodes = this.leaves.slice();
 
     for (let level = 0; level < this.levels; level++) {
-      const isRightNode = index % 2;
-      const siblingIndex = isRightNode ? index - 1 : index + 1;
-      const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
-      path.push(sibling);
-      indices.push(isRightNode ? 0 : 1); // switch polarity for Circom Switcher
+  const isRightNode = index % 2;
+  const siblingIndex = isRightNode ? index - 1 : index + 1;
+  const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
+  path.push(sibling);
+  indices.push(isRightNode ? 1 : 0); // ✅ correct polarity for Circom
 
-      const next = [];
-      for (let j = 0; j < nodes.length; j += 2) {
-        const left = nodes[j] ?? ZERO_HASHES[level];
-        const right = nodes[j + 1] ?? ZERO_HASHES[level];
-        next.push(await poseidonT3(left, right));
-      }
-      nodes = next;
-      index = Math.floor(index / 2);
-    }
+  const next = [];
+  for (let j = 0; j < nodes.length; j += 2) {
+    const left = nodes[j] ?? ZERO_HASHES[level];
+    const right = nodes[j + 1] ?? ZERO_HASHES[level];
+    next.push(await poseidonT3(left, right));
+  }
+  nodes = next;
+  index = Math.floor(index / 2);
+}
     return { root: nodes[0] || 0n, path, indices };
   }
 }
