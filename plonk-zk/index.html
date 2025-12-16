@@ -392,6 +392,10 @@ function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
+// ✅ Helper: emulate Poseidon(3) using 2-input PoseidonT3
+async function poseidonT3_3(a, b, c) {
+  return await poseidonT3(await poseidonT3(a, b), c);
+}
 
 // ✅ Precompute Poseidon zero hashes
 let ZERO_HASHES = [];
@@ -507,8 +511,8 @@ window.withdraw = async function () {
     // ✅ Correct denomination alignment
     const denomBig = BigInt(denom);
 
-    // ✅ Nullifier hash using PoseidonT3 (matches circuit)
-    const nfHash = await poseidonT3(nullifier, denomBig);
+    // ✅ Nullifier hash using PoseidonT3 (3-input, matches circuit)
+    const nfHash = await poseidonT3_3(nullifier, denomBig, 0n);
 
     const input = {
       secret: fieldNormalize(secret).toString(),
@@ -551,7 +555,8 @@ window.withdraw = async function () {
     btn.textContent = "Generate Proof + Withdraw";
   }
 };
-  // ✅ Attach withdraw button after function is defined
+
+// ✅ Attach withdraw button listener
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("withdrawBtn");
   if (btn) btn.addEventListener("click", withdraw);
