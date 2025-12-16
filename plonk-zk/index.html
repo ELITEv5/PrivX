@@ -379,11 +379,10 @@
 });
   </script>
 <!-- ✅ Browser-safe circomlibjs (tested build that attaches to window) -->
-<script src="https://rawcdn.githack.com/iden3/circomlibjs/92c5829c3b18acdb77e2282af3f61d21f48b57cb/dist/circomlibjs.min.js"
-        integrity="sha384-AEzy9v7PKMySmBoYw8hquTG0pDTV/ixQbBZk+BaYz3SH8bMI1j0knOAnmKfsvpi7"
-        crossorigin="anonymous"
-        onload="console.log('✅ circomlibjs loaded (browser-safe build)'); window.circomlibjsReady = true;">
+<script src="https://cdn.jsdelivr.net/gh/iden3/circomlibjs@master/dist/circomlibjs.min.js"
+        onload="console.log('✅ circomlibjs loaded (GitHub Pages safe build)'); window.circomlibjsReady = true;">
 </script>
+
 
 <!-- 🔒 FINAL Withdraw Script (PLONK + Poseidon(3) for nullifierHash + PoseidonT3 for tree) -->
 <script>
