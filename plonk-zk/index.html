@@ -598,9 +598,9 @@ for (let i = 0; i < siblings.length; i++) {
   const sib = siblings[i];
   const dir = pathIndices[i];
   recomputed =
-    dir === 0
-      ? await poseidonT3(recomputed, sib) // left first
-      : await poseidonT3(sib, recomputed); // right first
+  dir === 0
+    ? await poseidonT3(recomputed, sib)   // ⬅️ current, sibling
+    : await poseidonT3(sib, recomputed);  // ⬅️ swapped for sel==1
 }
 
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
