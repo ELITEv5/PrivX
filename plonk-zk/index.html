@@ -622,8 +622,8 @@ window.withdraw = async function () {
 while (siblings.length < TREE_LEVELS) siblings.push(0n);
 while (pathIndices.length < TREE_LEVELS) pathIndices.push(0);
 
-// ✅ Construct fully padded + normalized input
-const input = {
+// ✅ Construct fully padded + normalized input (no duplicate const declarations)
+const finalInput = {
   secret: fieldNormalize(secret).toString(),
   nullifier: fieldNormalize(nullifier).toString(),
   pathIndices: pathIndices.map(i => i.toString()),
@@ -633,48 +633,49 @@ const input = {
   denomination: fieldNormalize(denomBig).toString(),
 };
 
-console.log("🧾 Withdraw Input (finalized):", input);
+console.log("🧾 Withdraw Input (finalized):", finalInput);
 console.log("🧩 Input array lengths:", {
-  siblings: input.siblings.length,
-  pathIndices: input.pathIndices.length,
+  siblings: finalInput.siblings.length,
+  pathIndices: finalInput.pathIndices.length,
 });
 
 btn.textContent = "Generating PLONK proof... ⏳";
 
-// ✅ Generate PLONK proof (only one declaration)
-const { proof, publicSignals } = await snarkjs.plonk.fullProve(
-  input,
-  WASM_URL,
-  ZKEY_URL
-);
+try {
+  // ✅ Generate PLONK proof using padded, normalized input
+  const { proof, publicSignals } = await snarkjs.plonk.fullProve(
+    finalInput,
+    WASM_URL,
+    ZKEY_URL
+  );
 
-console.log("✅ Proof generated");
-console.log("📜 Public signals:", publicSignals);
+  console.log("✅ Proof generated");
+  console.log("📜 Public signals:", publicSignals);
 
-// ✅ Safe calldata parsing for PLONK
-const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-const args = calldata.replace(/["[\]\s]/g, "").split(",");
-const proofBytes = args[0];
-const pubSignalsArr = args.slice(1).map(x => BigInt(x).toString());
+  // ✅ Safe calldata parsing for PLONK
+  const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+  const args = calldata.replace(/["[\]\s]/g, "").split(",");
+  const proofBytes = args[0];
+  const pubSignalsArr = args.slice(1).map(x => BigInt(x).toString());
 
-console.log("🧩 proofBytes:", proofBytes);
-console.log("🧩 pubSignalsArr:", pubSignalsArr);
+  console.log("🧩 proofBytes:", proofBytes);
+  console.log("🧩 pubSignalsArr:", pubSignalsArr);
 
-btn.textContent = "Submitting withdraw... 🚀";
+  btn.textContent = "Submitting withdraw... 🚀";
 
-const tx = await shield.methods
-  .withdraw(proofBytes, pubSignalsArr, recipient)
-  .send({ from: userAccount });
+  // ✅ On-chain withdraw
+  const tx = await shield.methods
+    .withdraw(proofBytes, pubSignalsArr, recipient)
+    .send({ from: userAccount });
 
-alert(`🎉 WITHDRAW SUCCESS!\nTX: ${tx.transactionHash}`);
-
-  } catch (err) {
-    console.error("❌ Withdraw error:", err);
-    alert("Withdraw failed: " + (err.message || "Check console"));
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Generate Proof + Withdraw";
-  }
+  alert(`🎉 WITHDRAW SUCCESS!\nTX: ${tx.transactionHash}`);
+} catch (err) {
+  console.error("❌ Withdraw error:", err);
+  alert("Withdraw failed: " + (err.message || "Check console"));
+} finally {
+  btn.disabled = false;
+  btn.textContent = "Generate Proof + Withdraw";
+}
 };
 
 /* -------------------- Attach Button Listener -------------------- */
