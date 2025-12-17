@@ -592,18 +592,22 @@ window.withdraw = async function () {
     console.log("🔍 PathIndices:", pathIndices);
     console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
 
-    // ✅ Matches Circom Switcher: sel=0 → (L,R), sel=1 → (R,L)
+    // ✅ JS recompute of Merkle root (matches Circom Switcher.circom exactly)
 let recomputed = commitment;
 for (let i = 0; i < siblings.length; i++) {
   const sib = siblings[i];
   const dir = pathIndices[i];
+
+  // Circom Switcher: sel==0 → Poseidon(L,R)
+  //                  sel==1 → Poseidon(R,L)
   recomputed =
-  dir === 0
-    ? await poseidonT3(recomputed, sib)   // ⬅️ current, sibling
-    : await poseidonT3(sib, recomputed);  // ⬅️ swapped for sel==1
+    dir === 0
+      ? await poseidonT3(recomputed, sib)   // left node
+      : await poseidonT3(sib, recomputed);  // right node
 }
 
-    console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
+console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
+
 
     const denomBig = BigInt(denom);
     const nfHash = await poseidonT3_withdraw(nullifier, denomBig, 0n);
