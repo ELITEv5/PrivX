@@ -497,10 +497,10 @@ async function poseidonT3_withdraw(a, b, c = 0n) {
 /* -------------------- Zero Hash Precomputation -------------------- */
 let ZERO_HASHES = [];
 (async () => {
-  ZERO_HASHES[0] = 0n;
-  for (let i = 1; i < TREE_LEVELS; i++) {
-    ZERO_HASHES[i] = await poseidonT3_withdraw(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
-  }
+  ZERO_HASHES[0] = await poseidonT3(0n, 0n);
+for (let i = 1; i < TREE_LEVELS; i++) {
+  ZERO_HASHES[i] = await poseidonT3(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
+}
   console.log("✅ Zero hashes precomputed:", ZERO_HASHES.length);
 })();
 
