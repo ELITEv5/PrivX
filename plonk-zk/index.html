@@ -614,14 +614,14 @@ for (let i = 0; i < siblings.length; i++) {
 
     // ✅ Construct fully padded + normalized input (only one declaration)
     const input = {
-      secret: fieldNormalize(secret).toString(),
-      nullifier: fieldNormalize(nullifier).toString(),
-      pathIndices: pathIndices.map(i => i.toString()),
-      siblings: siblings.map(s => fieldNormalize(s).toString()),
-      root: fieldNormalize(proofData.root).toString(),
-      nullifierHash: fieldNormalize(nfHash).toString(),
-      denomination: fieldNormalize(denomBig).toString(),
-    };
+  secret: fieldNormalize(secret).toString(),
+  nullifier: fieldNormalize(nullifier).toString(),
+  pathIndices: pathIndices.map((i) => i.toString()),
+  siblings: siblings.map((s) => fieldNormalize(s).toString()),
+  root: fieldNormalize(recomputed).toString(), // ✅ fix here
+  nullifierHash: fieldNormalize(nfHash).toString(),
+  denomination: fieldNormalize(denomBig).toString(),
+};
 
     console.log("🧾 Finalized Withdraw Input:", input);
     console.log("🧩 Input array lengths:", {
