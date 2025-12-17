@@ -530,7 +530,7 @@ class MerkleTree {
       for (let j = 0; j < nodes.length; j += 2) {
         const left = nodes[j] ?? ZERO_HASHES[level];
         const right = nodes[j + 1] ?? ZERO_HASHES[level];
-        next.push(await poseidonT3(left, right));
+        next.push(await poseidonT3(left, right)); // ✅ Poseidon(2) for Merkle tree
       }
       nodes = next;
       index = Math.floor(index / 2);
