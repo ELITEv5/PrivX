@@ -286,15 +286,20 @@ async function deposit() {
     document.getElementById("noteText").textContent = note;
     document.getElementById("depositNote").classList.remove("hidden");
 
-    const amount = DENOM_AMOUNTS[selectedDenomination];
+    // 🔢 Calculate total (with 0.3% fee)
+    const amount = BigInt(DENOM_AMOUNTS[selectedDenomination]);
+    const fee = (amount * 3n) / 1000n; // 0.3% of amount
+    const totalAmount = (amount + fee).toString();
+
     const shieldAddr = SHIELD_CONTRACTS[selectedDenomination];
     const privx = new web3.eth.Contract(ERC20_ABI, PRIVX_TOKEN);
     const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
 
+    // ✅ Approve total (amount + fee)
     const allowance = await privx.methods.allowance(userAccount, shieldAddr).call();
-    if (BigInt(allowance) < BigInt(amount)) {
-      btn.textContent = "Approving PRIVX...";
-      await privx.methods.approve(shieldAddr, amount).send({ from: userAccount });
+    if (BigInt(allowance) < BigInt(totalAmount)) {
+      btn.textContent = "Approving PRIVX + Fee...";
+      await privx.methods.approve(shieldAddr, totalAmount).send({ from: userAccount });
     }
 
     btn.textContent = "Depositing...";
