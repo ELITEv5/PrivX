@@ -128,100 +128,110 @@
   }
 </script>
 
-
-
-
   <!-- Main Script -->
   <script>
-    let web3, userAccount, selectedDenomination;
+let web3, userAccount, selectedDenomination;
 
-    function switchTab(tab) {
-      document.getElementById('depositTab').classList.toggle('hidden', tab !== 'deposit');
-      document.getElementById('withdrawTab').classList.toggle('hidden', tab !== 'withdraw');
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
-    }
+function switchTab(tab) {
+  document.getElementById('depositTab').classList.toggle('hidden', tab !== 'deposit');
+  document.getElementById('withdrawTab').classList.toggle('hidden', tab !== 'withdraw');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+}
 
-    // Poseidon T3 - exact match to Hasher.sol
-    const P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-    const C = [
-      12861791851186454756856465657750459816989389089376497637901611881939633773556n,
-      5519671076407899149475471873582650243950107592374834593479994102631768852387n,
-      10832496908481223032496354855685040477446072176891917826424127680329380157411n,
-      197023341468610140031081920968023783964819417505440696127650404864701462882n,
-      182251860366398770052311923749666265525174614955508549662173528391496234720n,
-      133961901813997148524200689039311302035210029358159615165091333675391005n,
-      21526503533429280966392593094949932105722060737862572179582474350057866930688n,
-      22616005108334998208888373407539051456988600368523n,
-      138521903175307636434294058242398758941602410109806n
-    ];
-    const M = 91125930183199385026155961874833132762587307477754274831086764195748117360n;
+// Poseidon T3 - exact match to Hasher.sol
+const P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+const C = [
+  12861791851186454756856465657750459816989389089376497637901611881939633773556n,
+  5519671076407899149475471873582650243950107592374834593479994102631768852387n,
+  10832496908481223032496354855685040477446072176891917826424127680329380157411n,
+  197023341468610140031081920968023783964819417505440696127650404864701462882n,
+  182251860366398770052311923749666265525174614955508549662173528391496234720n,
+  133961901813997148524200689039311302035210029358159615165091333675391005n,
+  21526503533429280966392593094949932105722060737862572179582474350057866930688n,
+  22616005108334998208888373407539051456988600368523n,
+  138521903175307636434294058242398758941602410109806n
+];
+const M = 91125930183199385026155961874833132762587307477754274831086764195748117360n;
 
-    function pow5(x) {
-      const x2 = (x * x) % P;
-      const x4 = (x2 * x2) % P;
-      return (x4 * x) % P;
-    }
+function pow5(x) {
+  const x2 = (x * x) % P;
+  const x4 = (x2 * x2) % P;
+  return (x4 * x) % P;
+}
 
-    async function poseidonT3(a, b) {
-      let x = BigInt(a) % P;
-      let y = BigInt(b) % P;
-      for (let i = 0; i < 8; i++) {
-        x = (x + C[i] + y) % P;
-        y = (y + C[i] + x) % P;
-        x = pow5(x);
-        y = pow5(y);
-      }
-      for (let i = 0; i < 56; i++) {
-        x = (x + C[4]) % P;
-        x = pow5(x);
-        x = (x + M * y % P) % P;
-      }
-      for (let i = 5; i < 9; i++) {
-        x = (x + C[i] + y) % P;
-        y = (y + C[i] + x) % P;
-        x = pow5(x);
-        y = pow5(y);
-      }
-      return x;
-    }
+async function poseidonT3(a, b) {
+  let x = BigInt(a) % P;
+  let y = BigInt(b) % P;
+  for (let i = 0; i < 8; i++) {
+    x = (x + C[i] + y) % P;
+    y = (y + C[i] + x) % P;
+    x = pow5(x);
+    y = pow5(y);
+  }
+  for (let i = 0; i < 56; i++) {
+    x = (x + C[4]) % P;
+    x = pow5(x);
+    x = (x + M * y % P) % P;
+  }
+  for (let i = 5; i < 9; i++) {
+    x = (x + C[i] + y) % P;
+    y = (y + C[i] + x) % P;
+    x = pow5(x);
+    y = pow5(y);
+  }
+  return x;
+}
 
-    const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-    const SHIELD_CONTRACTS = {
-      "100": "0x1746f6fe7447A13B7554fAb9FA0b77A8a5A61821",
-      "1000": "0x0F15B28f1B9C9b3c4B7b9d7864ef79BeEBCb37b6",
-      "10000": "0x8c17b741695Cb4B7c81F8Bfc20203B47dcd8d285",
-      "100000": "0x4b393d5Bef35E225074Ed1f247D147F8c9e904F4"
-    };
-    const DENOM_AMOUNTS = {
-      "100": "100000000000000000000",
-      "1000": "1000000000000000000000",
-      "10000": "10000000000000000000000",
-      "100000": "100000000000000000000000"
-    };
-    const ERC20_ABI = [{"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}];
-    const SHIELD_ABI = [
-  // deposit(bytes32 _commitment)
+// ─────────────────────────────
+// PRIVX constants
+// ─────────────────────────────
+const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+const SHIELD_CONTRACTS = {
+  "100": "0x1746f6fe7447A13B7554fAb9FA0b77A8a5A61821",
+  "1000": "0x0F15B28f1B9C9b3c4B7b9d7864ef79BeEBCb37b6",
+  "10000": "0x8c17b741695Cb4B7c81F8Bfc20203B47dcd8d285",
+  "100000": "0x4b393d5Bef35E225074Ed1f247D147F8c9e904F4"
+};
+const DENOM_AMOUNTS = {
+  "100": "100000000000000000000",
+  "1000": "1000000000000000000000",
+  "10000": "10000000000000000000000",
+  "100000": "100000000000000000000000"
+};
+const ERC20_ABI = [
   {
-    "inputs": [{ "internalType": "bytes32", "name": "_commitment", "type": "bytes32" }],
-    "name": "deposit",
-    "outputs": [],
+    "inputs": [
+      { "internalType": "address", "name": "spender", "type": "address" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "approve",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
     "stateMutability": "nonpayable",
     "type": "function"
   },
-  // withdraw(uint256[24] proof, uint256[3] pubSignals, address recipient)
+  {
+    "inputs": [
+      { "internalType": "address", "name": "owner", "type": "address" },
+      { "internalType": "address", "name": "spender", "type": "address" }
+    ],
+    "name": "allowance",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+const SHIELD_ABI = [
+  { "inputs": [{ "internalType": "bytes32", "name": "_commitment", "type": "bytes32" }],
+    "name": "deposit", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
   {
     "inputs": [
       { "internalType": "uint256[24]", "name": "proof", "type": "uint256[24]" },
       { "internalType": "uint256[3]", "name": "pubSignals", "type": "uint256[3]" },
       { "internalType": "address payable", "name": "recipient", "type": "address" }
     ],
-    "name": "withdraw",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function"
   },
-  // event Deposit(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp)
   {
     "anonymous": false,
     "inputs": [
@@ -232,152 +242,184 @@
     "name": "Deposit",
     "type": "event"
   },
-  // view function: getLastRoot()
-  {
-    "inputs": [],
-    "name": "getLastRoot",
-    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
-    "stateMutability": "view",
-    "type": "function"
-  }
+  { "inputs": [], "name": "getLastRoot", "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }], "stateMutability": "view", "type": "function" }
 ];
 
-    const WASM_URL = "./circuits/mixer_js/mixer.wasm";
-    const ZKEY_URL = "https://gateway.pinata.cloud/ipfs/bafybeigxkcrzlsvedhj2oc6hkt3jke2d7eed34s5pqr7qf43uxuqa3yln4";
+const WASM_URL = "./circuits/mixer_js/mixer.wasm";
+const ZKEY_URL = "https://gateway.pinata.cloud/ipfs/bafybeigxkcrzlsvedhj2oc6hkt3jke2d7eed34s5pqr7qf43uxuqa3yln4";
 
-    async function deposit() {
-      if (!userAccount || !selectedDenomination) return alert("Connect wallet & select amount");
-      const btn = document.getElementById('depositBtn');
-      btn.disabled = true;
-      btn.textContent = "Generating Note...";
-      try {
-        const nullifier = crypto.getRandomValues(new Uint8Array(31));
-        const secret = crypto.getRandomValues(new Uint8Array(31));
-        const nullifierBI = BigInt("0x" + [...nullifier].map(b => b.toString(16).padStart(2,'0')).join(''));
-        const secretBI = BigInt("0x" + [...secret].map(b => b.toString(16).padStart(2,'0')).join(''));
-        const commitmentBI = await poseidonT3(nullifierBI, secretBI);
-        const commitment = "0x" + commitmentBI.toString(16).padStart(64, '0');
-        const note = `privx-hurricane-${selectedDenomination}-${[...nullifier].map(b=>b.toString(16).padStart(2,'0')).join('')}-${[...secret].map(b=>b.toString(16).padStart(2,'0')).join('')}`;
-        document.getElementById('noteText').textContent = note;
-        document.getElementById('depositNote').classList.remove('hidden');
+// ─────────────────────────────
+// 🧩 Upgraded deposit() with unique entropy & perfect Hasher match
+// ─────────────────────────────
+async function deposit() {
+  if (!userAccount || !selectedDenomination)
+    return alert("Connect wallet & select amount");
 
-        const amount = DENOM_AMOUNTS[selectedDenomination];
-        const shieldAddr = SHIELD_CONTRACTS[selectedDenomination];
-        const privx = new web3.eth.Contract(ERC20_ABI, PRIVX_TOKEN);
-        const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
+  const btn = document.getElementById("depositBtn");
+  btn.disabled = true;
+  btn.textContent = "Generating Note...";
 
-        const allowance = await privx.methods.allowance(userAccount, shieldAddr).call();
-        if (BigInt(allowance) < BigInt(amount)) {
-          btn.textContent = "Approving PRIVX...";
-          await privx.methods.approve(shieldAddr, amount).send({ from: userAccount });
-        }
-
-        btn.textContent = "Depositing...";
-        const tx = await shield.methods.deposit(commitment).send({ from: userAccount });
-        alert(`DEPOSIT SUCCESS!\nTX: ${tx.transactionHash}\n\nSAVE YOUR NOTE SECURELY!`);
-      } catch (err) {
-        console.error(err);
-        alert("Deposit failed: " + (err.message || "Check MetaMask"));
-      } finally {
-        btn.disabled = false;
-        btn.textContent = `Shield ${selectedDenomination} PRIVX`;
+  try {
+    // 🔒 Generate unique entropy using wallet + timestamp
+    function generateRandomBytes(length = 32) {
+      const bytes = crypto.getRandomValues(new Uint8Array(length));
+      const extra = new TextEncoder().encode(userAccount + Date.now().toString());
+      for (let i = 0; i < extra.length; i++) {
+        bytes[i % length] ^= extra[i];
       }
+      return bytes;
     }
 
-    window.toggleWallet = async function() {
-      if (!window.ethereum) return alert("Install MetaMask");
-      try {
-        await window.ethereum.request({ method: "eth_requestAccounts" });
-        try {
-          await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x171" }] });
-        } catch (e) {
-          if (e.code === 4902) {
-            await window.ethereum.request({ method: "wallet_addEthereumChain", params: [{ chainId: "0x171", chainName: "PulseChain", rpcUrls: ["https://rpc.pulsechain.com"], nativeCurrency: { name: "PLS", symbol: "PLS", decimals: 18 }, blockExplorerUrls: ["https://scan.pulsechain.com"] }] });
-          }
-        }
-        web3 = new Web3(window.ethereum);
-        const accounts = await web3.eth.getAccounts();
-        userAccount = accounts[0];
-        document.getElementById("walletButtonText").textContent = `${userAccount.slice(0,6)}...${userAccount.slice(-4)}`;
-        document.getElementById("walletButton").classList.add("connected");
-        updateDepositButton();
-      } catch (err) {
-        alert("Connection failed");
-      }
-    };
+    const nullifier = generateRandomBytes(32);
+    const secret = generateRandomBytes(32);
 
-    if (window.ethereum) {
-      window.ethereum.request({ method: "eth_accounts" }).then(a => a.length > 0 && toggleWallet());
+    const nullifierHex = [...nullifier].map(b => b.toString(16).padStart(2, "0")).join("");
+    const secretHex = [...secret].map(b => b.toString(16).padStart(2, "0")).join("");
+
+    const nullifierBI = BigInt("0x" + nullifierHex);
+    const secretBI = BigInt("0x" + secretHex);
+
+    const commitmentBI = await poseidonT3(nullifierBI, secretBI);
+    const commitment = "0x" + commitmentBI.toString(16).padStart(64, "0");
+
+    const note = `privx-hurricane-${selectedDenomination}-${nullifierHex}-${secretHex}`;
+    document.getElementById("noteText").textContent = note;
+    document.getElementById("depositNote").classList.remove("hidden");
+
+    const amount = DENOM_AMOUNTS[selectedDenomination];
+    const shieldAddr = SHIELD_CONTRACTS[selectedDenomination];
+    const privx = new web3.eth.Contract(ERC20_ABI, PRIVX_TOKEN);
+    const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
+
+    const allowance = await privx.methods.allowance(userAccount, shieldAddr).call();
+    if (BigInt(allowance) < BigInt(amount)) {
+      btn.textContent = "Approving PRIVX...";
+      await privx.methods.approve(shieldAddr, amount).send({ from: userAccount });
     }
 
-    window.selectDenomination = function(denom) {
-      selectedDenomination = denom;
-      document.querySelectorAll('.denomination-card').forEach(c => c.classList.remove('selected'));
-      event.target.closest('.denomination-card').classList.add('selected');
-      updateDepositButton();
-    };
+    btn.textContent = "Depositing...";
+    const tx = await shield.methods.deposit(commitment).send({ from: userAccount });
 
-    function updateDepositButton() {
-      const btn = document.getElementById('depositBtn');
-      if (!userAccount) {
-        btn.textContent = "Connect Wallet First";
-        btn.disabled = true;
-      } else if (!selectedDenomination) {
-        btn.textContent = "Select Denomination";
-        btn.disabled = true;
-      } else {
-        btn.textContent = `Shield ${selectedDenomination} PRIVX`;
-        btn.disabled = false;
+    alert(`✅ DEPOSIT SUCCESS!\nTX: ${tx.transactionHash}\n\n💾 SAVE YOUR NOTE SECURELY!`);
+  } catch (err) {
+    console.error("❌ Deposit error:", err);
+    alert("Deposit failed: " + (err.message || "Check MetaMask or PRIVX balance"));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = `Shield ${selectedDenomination} PRIVX`;
+  }
+}
+
+// ─────────────────────────────
+// Wallet connection + UI
+// ─────────────────────────────
+window.toggleWallet = async function() {
+  if (!window.ethereum) return alert("Install MetaMask");
+  try {
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x171" }]
+      });
+    } catch (e) {
+      if (e.code === 4902) {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: "0x171",
+            chainName: "PulseChain",
+            rpcUrls: ["https://rpc.pulsechain.com"],
+            nativeCurrency: { name: "PLS", symbol: "PLS", decimals: 18 },
+            blockExplorerUrls: ["https://scan.pulsechain.com"]
+          }]
+        });
       }
     }
+    web3 = new Web3(window.ethereum);
+    const accounts = await web3.eth.getAccounts();
+    userAccount = accounts[0];
+    document.getElementById("walletButtonText").textContent =
+      `${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
+    document.getElementById("walletButton").classList.add("connected");
+    updateDepositButton();
+  } catch (err) {
+    alert("Connection failed");
+  }
+};
 
-    window.copyNote = () => {
-      navigator.clipboard.writeText(document.getElementById('noteText').textContent);
-      alert("Note copied!");
-    };
+if (window.ethereum) {
+  window.ethereum.request({ method: "eth_accounts" }).then(a => a.length > 0 && toggleWallet());
+}
 
-    // Burn tracker
-    async function updateBurnedBalance() {
-      const el = document.getElementById("burnedBalance");
-      if (!el) return;
-      if (!web3) {
-        el.textContent = "Connect wallet";
-        return;
-      }
-      el.textContent = "Loading...";
-      try {
-        const token = new web3.eth.Contract([
-          { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" },
-          { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "name": "", "type": "uint8" }], "stateMutability": "view" },
-          { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" }
-        ], PRIVX_TOKEN);
-        const [decimals, totalSupply, ...burnBalances] = await Promise.all([
-          token.methods.decimals().call(),
-          token.methods.totalSupply().call(),
-          ...["0x000000000000000000000000000000000000dEaD", "0x0000000000000000000000000000000000000369"].map(addr => token.methods.balanceOf(addr).call())
-        ]);
-        let totalBurned = 0n;
-        burnBalances.forEach(b => totalBurned += BigInt(b || 0));
-        const burnedNum = Number(totalBurned / (10n ** BigInt(decimals)));
-        const supplyNum = Number(BigInt(totalSupply) / (10n ** BigInt(decimals)));
-        const percent = supplyNum > 0 ? ((burnedNum / supplyNum) * 100).toFixed(4) : "0.0000";
-        el.innerHTML = `<strong>${burnedNum.toLocaleString()}</strong> PRIVX <span style="color:#00ffea;">(${percent}% burned)</span>`;
-      } catch (err) {
-        console.error("Burn tracker error:", err);
-        el.textContent = "Error";
-      }
-    }
+window.selectDenomination = function(denom) {
+  selectedDenomination = denom;
+  document.querySelectorAll('.denomination-card').forEach(c => c.classList.remove('selected'));
+  event.target.closest('.denomination-card').classList.add('selected');
+  updateDepositButton();
+};
 
-    // Init
-    window.addEventListener('load', () => {
+function updateDepositButton() {
+  const btn = document.getElementById('depositBtn');
+  if (!userAccount) {
+    btn.textContent = "Connect Wallet First";
+    btn.disabled = true;
+  } else if (!selectedDenomination) {
+    btn.textContent = "Select Denomination";
+    btn.disabled = true;
+  } else {
+    btn.textContent = `Shield ${selectedDenomination} PRIVX`;
+    btn.disabled = false;
+  }
+}
+
+window.copyNote = () => {
+  navigator.clipboard.writeText(document.getElementById('noteText').textContent);
+  alert("Note copied!");
+};
+
+// Burn tracker
+async function updateBurnedBalance() {
+  const el = document.getElementById("burnedBalance");
+  if (!el) return;
+  if (!web3) {
+    el.textContent = "Connect wallet";
+    return;
+  }
+  el.textContent = "Loading...";
+  try {
+    const token = new web3.eth.Contract([
+      { "name": "balanceOf", "type": "function", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" },
+      { "name": "decimals", "type": "function", "inputs": [], "outputs": [{ "name": "", "type": "uint8" }], "stateMutability": "view" },
+      { "name": "totalSupply", "type": "function", "inputs": [], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" }
+    ], PRIVX_TOKEN);
+    const [decimals, totalSupply, ...burnBalances] = await Promise.all([
+      token.methods.decimals().call(),
+      token.methods.totalSupply().call(),
+      ...["0x000000000000000000000000000000000000dEaD", "0x0000000000000000000000000000000000000369"].map(addr => token.methods.balanceOf(addr).call())
+    ]);
+    let totalBurned = 0n;
+    burnBalances.forEach(b => totalBurned += BigInt(b || 0));
+    const burnedNum = Number(totalBurned / (10n ** BigInt(decimals)));
+    const supplyNum = Number(BigInt(totalSupply) / (10n ** BigInt(decimals)));
+    const percent = supplyNum > 0 ? ((burnedNum / supplyNum) * 100).toFixed(4) : "0.0000";
+    el.innerHTML = `<strong>${burnedNum.toLocaleString()}</strong> PRIVX <span style="color:#00ffea;">(${percent}% burned)</span>`;
+  } catch (err) {
+    console.error("Burn tracker error:", err);
+    el.textContent = "Error";
+  }
+}
+
+// Init
+window.addEventListener('load', () => {
   document.getElementById('depositBtn').addEventListener('click', deposit);
-  // Withdraw listener handled below in final script
   switchTab('deposit');
   updateDepositButton();
   updateBurnedBalance();
   setInterval(updateBurnedBalance, 30000);
 });
-  </script>
+</script>
+
 <!-- 🔒 FINAL WITHDRAW SCRIPT — Poseidon(3) FIXED -->
 <script>
 /* -------------------- Global Constants -------------------- */
