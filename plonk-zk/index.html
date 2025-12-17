@@ -616,32 +616,32 @@ window.withdraw = async function () {
       denomination: fieldNormalize(denomBig).toString(),
     };
 
-    console.log("🧾 Withdraw Input:", input);
-
-    btn.textContent = "Generating PLONK proof... ⏳";
-    const { proof, publicSignals } = await snarkjs.plonk.fullProve(
-      input,
-      WASM_URL,
-      ZKEY_URL
-    );
-
     console.log("🧾 Withdraw Input (before normalization):", input);
 
-// 🔧 Ensure Merkle proof arrays are correctly sized and normalized
+// 🔧 Ensure Merkle proof arrays are correctly sized
 while (siblings.length < TREE_LEVELS) siblings.push(0n);
 while (pathIndices.length < TREE_LEVELS) pathIndices.push(0);
 
-input.siblings = siblings.map(s => fieldNormalize(s).toString());
-input.pathIndices = pathIndices.map(i => i.toString());
+// ✅ Construct fully padded + normalized input
+const input = {
+  secret: fieldNormalize(secret).toString(),
+  nullifier: fieldNormalize(nullifier).toString(),
+  pathIndices: pathIndices.map(i => i.toString()),
+  siblings: siblings.map(s => fieldNormalize(s).toString()),
+  root: fieldNormalize(proofData.root).toString(),
+  nullifierHash: fieldNormalize(nfHash).toString(),
+  denomination: fieldNormalize(denomBig).toString(),
+};
 
-console.log("🧩 Finalized input check:", {
-  root: input.root,
-  siblingsLen: input.siblings.length,
-  pathIndicesLen: input.pathIndices.length,
+console.log("🧾 Withdraw Input (finalized):", input);
+console.log("🧩 Input array lengths:", {
+  siblings: input.siblings.length,
+  pathIndices: input.pathIndices.length,
 });
 
 btn.textContent = "Generating PLONK proof... ⏳";
 
+// ✅ Generate PLONK proof (only one declaration)
 const { proof, publicSignals } = await snarkjs.plonk.fullProve(
   input,
   WASM_URL,
