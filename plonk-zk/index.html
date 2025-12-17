@@ -426,10 +426,10 @@ window.addEventListener('load', () => {
   setInterval(updateBurnedBalance, 30000);
 });
 </script>
-<!-- 🔒 FINAL WITHDRAW SCRIPT — Poseidon(2) + Poseidon(3) FIXED & CIRCOM-SAFE -->
+<!-- 🔒 FINAL WITHDRAW SCRIPT — Poseidon(2)/Poseidon(3) FIXED & PLONK SAFE -->
 <script>
-/* -------------------- Global Constants -------------------- */
-const TREE_LEVELS = 20;
+/* -------------------- Constants -------------------- */
+const TREE_LEVELS = 20n;
 const FIELD_P =
   21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
@@ -438,8 +438,8 @@ function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-/* -------------------- Poseidon Core Constants -------------------- */
-const C_WITHDRAW = [
+/* -------------------- Poseidon Core (same as Hasher.sol) -------------------- */
+const C = [
   12861791851186454756856465657750459816989389089376497637901611881939633773556n,
   5519671076407899149475471873582650243950107592374834593479994102631768852387n,
   10832496908481223032496354855685040477446072176891917826424127680329380157411n,
@@ -450,57 +450,74 @@ const C_WITHDRAW = [
   22616005108334998208888373407539051456988600368523n,
   138521903175307636434294058242398758941602410109806n
 ];
-const M_WITHDRAW =
-  91125930183199385026155961874833132762587307477754274831086764195748117360n;
+const M = 91125930183199385026155961874833132762587307477754274831086764195748117360n;
 
-function pow5_withdraw(x) {
+function pow5(x) {
   const x2 = (x * x) % FIELD_P;
   const x4 = (x2 * x2) % FIELD_P;
   return (x4 * x) % FIELD_P;
 }
 
-/* -------------------- Poseidon(2) – For commitment & Merkle nodes -------------------- */
-async function poseidonT2(a, b) {
+/* -------------------- Poseidon(2) for commitments & Merkle hashing -------------------- */
+async function poseidon2(a, b) {
   let x = BigInt(a) % FIELD_P;
   let y = BigInt(b) % FIELD_P;
 
   for (let i = 0; i < 8; i++) {
-    x = (x + C_WITHDRAW[i] + y) % FIELD_P;
-    y = (y + C_WITHDRAW[i] + x) % FIELD_P;
-    x = pow5_withdraw(x);
-    y = pow5_withdraw(y);
+    x = (x + C[i] + y) % FIELD_P;
+    y = (y + C[i] + x) % FIELD_P;
+    x = pow5(x);
+    y = pow5(y);
   }
 
-  return (x + y + M_WITHDRAW) % FIELD_P;
+  for (let i = 0; i < 56; i++) {
+    x = (x + C[4]) % FIELD_P;
+    x = pow5(x);
+    x = (x + M * y % FIELD_P) % FIELD_P;
+  }
+
+  for (let i = 5; i < 9; i++) {
+    x = (x + C[i] + y) % FIELD_P;
+    y = (y + C[i] + x) % FIELD_P;
+    x = pow5(x);
+    y = pow5(y);
+  }
+
+  return x;
 }
 
-/* -------------------- Poseidon(3) – For nullifierHash (matches circuit exactly) -------------------- */
-async function poseidonT3(a, b, c = 0n) {
+/* -------------------- Poseidon(3) for nullifierHash -------------------- */
+async function poseidon3(a, b, c = 0n) {
   let x = BigInt(a) % FIELD_P;
   let y = BigInt(b) % FIELD_P;
   let z = BigInt(c) % FIELD_P;
 
   for (let i = 0; i < 8; i++) {
-    x = (x + C_WITHDRAW[i] + y + z) % FIELD_P;
-    y = (y + C_WITHDRAW[i] + x + z) % FIELD_P;
-    z = (z + C_WITHDRAW[i] + x + y) % FIELD_P;
-    x = pow5_withdraw(x);
-    y = pow5_withdraw(y);
-    z = pow5_withdraw(z);
+    x = (x + C[i] + y + z) % FIELD_P;
+    y = (y + C[i] + x + z) % FIELD_P;
+    z = (z + C[i] + x + y) % FIELD_P;
+    x = pow5(x);
+    y = pow5(y);
+    z = pow5(z);
   }
 
-  return (x + y + z + M_WITHDRAW) % FIELD_P;
+  for (let i = 0; i < 56; i++) {
+    x = (x + C[4]) % FIELD_P;
+    x = pow5(x);
+    x = (x + M * (y + z) % FIELD_P) % FIELD_P;
+  }
+
+  for (let i = 5; i < 9; i++) {
+    x = (x + C[i] + y + z) % FIELD_P;
+    y = (y + C[i] + x + z) % FIELD_P;
+    z = (z + C[i] + x + y) % FIELD_P;
+    x = pow5(x);
+    y = pow5(y);
+    z = pow5(z);
+  }
+
+  return x;
 }
-
-/* -------------------- Zero Hash Precomputation -------------------- */
-let ZERO_HASHES = [];
-(async () => {
-  ZERO_HASHES[0] = await poseidonT2(0n, 0n);
-  for (let i = 1; i < TREE_LEVELS; i++) {
-    ZERO_HASHES[i] = await poseidonT2(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
-  }
-  console.log("✅ Zero hashes precomputed:", ZERO_HASHES.length);
-})();
 
 /* -------------------- Merkle Tree -------------------- */
 class MerkleTree {
@@ -508,11 +525,9 @@ class MerkleTree {
     this.levels = levels;
     this.leaves = [];
   }
-
   insert(leaf) {
     this.leaves.push(BigInt(leaf));
   }
-
   async getProof(index) {
     const path = [];
     const indices = [];
@@ -521,15 +536,15 @@ class MerkleTree {
     for (let level = 0; level < this.levels; level++) {
       const isRightNode = index % 2;
       const siblingIndex = isRightNode ? index - 1 : index + 1;
-      const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
+      const sibling = nodes[siblingIndex] ?? 0n;
       path.push(sibling);
       indices.push(isRightNode ? 1 : 0);
 
       const next = [];
       for (let j = 0; j < nodes.length; j += 2) {
-        const left = nodes[j] ?? ZERO_HASHES[level];
-        const right = nodes[j + 1] ?? ZERO_HASHES[level];
-        next.push(await poseidonT2(left, right)); // ✅ Poseidon(2)
+        const left = nodes[j] ?? 0n;
+        const right = nodes[j + 1] ?? 0n;
+        next.push(await poseidon2(left, right));
       }
       nodes = next;
       index = Math.floor(index / 2);
@@ -547,9 +562,10 @@ window.withdraw = async function () {
 
   const match = noteInput.match(/^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/);
   if (!match) return alert("Invalid note format");
-  const [_, denom, nullifierHexRaw, secretHexRaw] = match;
-  const nullifierHex = nullifierHexRaw.toLowerCase();
-  const secretHex = secretHexRaw.toLowerCase();
+
+  const [_, denom, nullifierHex, secretHex] = match;
+  const nullifier = BigInt("0x" + nullifierHex);
+  const secret = BigInt("0x" + secretHex);
 
   const shieldAddr = SHIELD_CONTRACTS[denom];
   if (!shieldAddr) return alert("Invalid denomination");
@@ -569,53 +585,40 @@ window.withdraw = async function () {
     let leaves = deposits.map((e) => e.returnValues.commitment);
     leaves.reverse();
 
-    const nullifier = BigInt("0x" + nullifierHex);
-    const secret = BigInt("0x" + secretHex);
-
-    const commitment = await poseidonT2(nullifier, secret); // ✅ Poseidon(2)
+    const commitment = await poseidon2(nullifier, secret);
     const leafIndex = leaves.findIndex((l) => BigInt(l) === commitment);
+
     if (leafIndex === -1)
       return alert("❌ Commitment not found in this pool (check denomination or note).");
 
-    console.log("Total leaves:", leaves.length);
-    console.log("Leaf index:", leafIndex);
-
-    const tree = new MerkleTree(TREE_LEVELS);
+    const tree = new MerkleTree(Number(TREE_LEVELS));
     leaves.forEach((l) => tree.insert(BigInt(l)));
 
     const proofData = await tree.getProof(leafIndex);
-    const siblings = proofData.path.map((p) => fieldNormalize(p));
-    const pathIndices = proofData.indices.map((i) => Number(i));
+    const siblings = proofData.path.map(fieldNormalize);
+    const pathIndices = proofData.indices.map(Number);
 
-    console.log("🔍 PathIndices:", pathIndices);
-    console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
-
-    // ✅ Recompute root (matches Circom Switcher)
+    // ✅ Recompute root (matches Switcher)
     let recomputed = commitment;
     for (let i = 0; i < siblings.length; i++) {
       const sib = siblings[i];
       const dir = pathIndices[i];
-      recomputed =
-        dir === 0
-          ? await poseidonT2(recomputed, sib)
-          : await poseidonT2(sib, recomputed);
+      recomputed = dir === 0 ? await poseidon2(sib, recomputed) : await poseidon2(recomputed, sib);
     }
-
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
 
     const denomBig = BigInt(denom);
-    const nfHash = await poseidonT3(nullifier, denomBig, 0n);
+    const nfHash = await poseidon3(nullifier, denomBig, 0n);
 
-    // 🔧 Ensure Merkle proof arrays are correctly sized
+    // ✅ Build proof input
     while (siblings.length < TREE_LEVELS) siblings.push(0n);
     while (pathIndices.length < TREE_LEVELS) pathIndices.push(0);
 
-    // ✅ Construct fully padded input
     const input = {
       secret: fieldNormalize(secret).toString(),
       nullifier: fieldNormalize(nullifier).toString(),
-      pathIndices: pathIndices.map(i => i.toString()),
-      siblings: siblings.map(s => fieldNormalize(s).toString()),
+      pathIndices: pathIndices.map(String),
+      siblings: siblings.map((s) => fieldNormalize(s).toString()),
       root: fieldNormalize(proofData.root).toString(),
       nullifierHash: fieldNormalize(nfHash).toString(),
       denomination: fieldNormalize(denomBig).toString(),
@@ -629,11 +632,8 @@ window.withdraw = async function () {
 
     btn.textContent = "Generating PLONK proof... ⏳";
 
-    const { proof, publicSignals } = await snarkjs.plonk.fullProve(
-      input,
-      WASM_URL,
-      ZKEY_URL
-    );
+    // ✅ Generate PLONK proof
+    const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
 
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
@@ -641,7 +641,7 @@ window.withdraw = async function () {
     const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
     const args = calldata.replace(/["[\]\s]/g, "").split(",");
     const proofBytes = args[0];
-    const pubSignalsArr = args.slice(1).map(x => BigInt(x).toString());
+    const pubSignalsArr = args.slice(1).map((x) => BigInt(x).toString());
 
     console.log("🧩 proofBytes:", proofBytes);
     console.log("🧩 pubSignalsArr:", pubSignalsArr);
