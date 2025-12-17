@@ -641,6 +641,16 @@ for (let i = 0; i < siblings.length; i++) {
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
 
+    console.log("🔬 Final proof input check:");
+Object.entries(input).forEach(([k, v]) => {
+  if (Array.isArray(v)) {
+    console.log(`${k}: [${v.length}]`);
+  } else {
+    console.log(`${k}: ${v}`);
+  }
+});
+
+
     // ✅ Safe calldata parsing for PLONK
     const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
     const args = calldata.replace(/["[\]\s]/g, "").split(",");
