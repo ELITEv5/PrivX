@@ -426,7 +426,7 @@ window.addEventListener('load', () => {
   setInterval(updateBurnedBalance, 30000);
 });
 </script>
-<!-- 🔒 FINAL WITHDRAW SCRIPT — Poseidon(3) FIXED & PLONK SAFE -->
+<!-- 🔒 FINAL WITHDRAW SCRIPT — Poseidon(2) + Poseidon(3) FIXED & CIRCOM-SAFE -->
 <script>
 /* -------------------- Global Constants -------------------- */
 const TREE_LEVELS = 20;
@@ -438,7 +438,7 @@ function fieldNormalize(x) {
   return ((x % FIELD_P) + FIELD_P) % FIELD_P;
 }
 
-/* -------------------- PoseidonT3 (3-input, matches circuit exactly) -------------------- */
+/* -------------------- Poseidon Core Constants -------------------- */
 const C_WITHDRAW = [
   12861791851186454756856465657750459816989389089376497637901611881939633773556n,
   5519671076407899149475471873582650243950107592374834593479994102631768852387n,
@@ -459,10 +459,23 @@ function pow5_withdraw(x) {
   return (x4 * x) % FIELD_P;
 }
 
-/**
- * ✅ Poseidon(3) Hasher (matches Circom Poseidon(3) exactly)
- */
-async function poseidonT3_withdraw(a, b, c = 0n) {
+/* -------------------- Poseidon(2) – For commitment & Merkle nodes -------------------- */
+async function poseidonT2(a, b) {
+  let x = BigInt(a) % FIELD_P;
+  let y = BigInt(b) % FIELD_P;
+
+  for (let i = 0; i < 8; i++) {
+    x = (x + C_WITHDRAW[i] + y) % FIELD_P;
+    y = (y + C_WITHDRAW[i] + x) % FIELD_P;
+    x = pow5_withdraw(x);
+    y = pow5_withdraw(y);
+  }
+
+  return (x + y + M_WITHDRAW) % FIELD_P;
+}
+
+/* -------------------- Poseidon(3) – For nullifierHash (matches circuit exactly) -------------------- */
+async function poseidonT3(a, b, c = 0n) {
   let x = BigInt(a) % FIELD_P;
   let y = BigInt(b) % FIELD_P;
   let z = BigInt(c) % FIELD_P;
@@ -476,32 +489,16 @@ async function poseidonT3_withdraw(a, b, c = 0n) {
     z = pow5_withdraw(z);
   }
 
-  for (let i = 0; i < 56; i++) {
-    x = (x + C_WITHDRAW[4] + y + z) % FIELD_P;
-    x = pow5_withdraw(x);
-    x = (x + M_WITHDRAW * (y + z) % FIELD_P) % FIELD_P;
-  }
-
-  for (let i = 5; i < 9; i++) {
-    x = (x + C_WITHDRAW[i] + y + z) % FIELD_P;
-    y = (y + C_WITHDRAW[i] + x + z) % FIELD_P;
-    z = (z + C_WITHDRAW[i] + x + y) % FIELD_P;
-    x = pow5_withdraw(x);
-    y = pow5_withdraw(y);
-    z = pow5_withdraw(z);
-  }
-
-  return x;
+  return (x + y + z + M_WITHDRAW) % FIELD_P;
 }
 
 /* -------------------- Zero Hash Precomputation -------------------- */
 let ZERO_HASHES = [];
 (async () => {
-  // ✅ Proper base for Poseidon(2)
-ZERO_HASHES[0] = await poseidonT3(0n, 0n);
-for (let i = 1; i < TREE_LEVELS; i++) {
-  ZERO_HASHES[i] = await poseidonT3(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
-}
+  ZERO_HASHES[0] = await poseidonT2(0n, 0n);
+  for (let i = 1; i < TREE_LEVELS; i++) {
+    ZERO_HASHES[i] = await poseidonT2(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
+  }
   console.log("✅ Zero hashes precomputed:", ZERO_HASHES.length);
 })();
 
@@ -511,9 +508,11 @@ class MerkleTree {
     this.levels = levels;
     this.leaves = [];
   }
+
   insert(leaf) {
     this.leaves.push(BigInt(leaf));
   }
+
   async getProof(index) {
     const path = [];
     const indices = [];
@@ -530,7 +529,7 @@ class MerkleTree {
       for (let j = 0; j < nodes.length; j += 2) {
         const left = nodes[j] ?? ZERO_HASHES[level];
         const right = nodes[j + 1] ?? ZERO_HASHES[level];
-        next.push(await poseidonT3(left, right)); // ✅ Poseidon(2) for Merkle tree
+        next.push(await poseidonT2(left, right)); // ✅ Poseidon(2)
       }
       nodes = next;
       index = Math.floor(index / 2);
@@ -554,7 +553,6 @@ window.withdraw = async function () {
 
   const shieldAddr = SHIELD_CONTRACTS[denom];
   if (!shieldAddr) return alert("Invalid denomination");
-
   const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
   const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
   const btn = document.getElementById("withdrawBtn");
@@ -568,14 +566,14 @@ window.withdraw = async function () {
       toBlock: "latest",
     });
 
-    let leaves = deposits.map(e => e.returnValues.commitment);
+    let leaves = deposits.map((e) => e.returnValues.commitment);
     leaves.reverse();
 
     const nullifier = BigInt("0x" + nullifierHex);
     const secret = BigInt("0x" + secretHex);
-    const commitment = await poseidonT3(nullifier, secret);
 
-    const leafIndex = leaves.findIndex(l => BigInt(l) === commitment);
+    const commitment = await poseidonT2(nullifier, secret); // ✅ Poseidon(2)
+    const leafIndex = leaves.findIndex((l) => BigInt(l) === commitment);
     if (leafIndex === -1)
       return alert("❌ Commitment not found in this pool (check denomination or note).");
 
@@ -583,49 +581,45 @@ window.withdraw = async function () {
     console.log("Leaf index:", leafIndex);
 
     const tree = new MerkleTree(TREE_LEVELS);
-    leaves.forEach(l => tree.insert(BigInt(l)));
+    leaves.forEach((l) => tree.insert(BigInt(l)));
 
     const proofData = await tree.getProof(leafIndex);
-    const siblings = proofData.path.map(p => fieldNormalize(p));
-    const pathIndices = proofData.indices.map(i => Number(i));
+    const siblings = proofData.path.map((p) => fieldNormalize(p));
+    const pathIndices = proofData.indices.map((i) => Number(i));
 
     console.log("🔍 PathIndices:", pathIndices);
     console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
 
-    // ✅ JS recompute of Merkle root (matches Circom Switcher.circom exactly)
-let recomputed = commitment;
-for (let i = 0; i < siblings.length; i++) {
-  const sib = siblings[i];
-  const dir = pathIndices[i];
+    // ✅ Recompute root (matches Circom Switcher)
+    let recomputed = commitment;
+    for (let i = 0; i < siblings.length; i++) {
+      const sib = siblings[i];
+      const dir = pathIndices[i];
+      recomputed =
+        dir === 0
+          ? await poseidonT2(recomputed, sib)
+          : await poseidonT2(sib, recomputed);
+    }
 
-  // Circom Switcher: sel==0 → Poseidon(L,R)
-  //                  sel==1 → Poseidon(R,L)
-  recomputed =
-    dir === 0
-      ? await poseidonT3(recomputed, sib)   // left node
-      : await poseidonT3(sib, recomputed);  // right node
-}
-
-console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
-
+    console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
 
     const denomBig = BigInt(denom);
-    const nfHash = await poseidonT3_withdraw(nullifier, denomBig, 0n);
+    const nfHash = await poseidonT3(nullifier, denomBig, 0n);
 
     // 🔧 Ensure Merkle proof arrays are correctly sized
     while (siblings.length < TREE_LEVELS) siblings.push(0n);
     while (pathIndices.length < TREE_LEVELS) pathIndices.push(0);
 
-    // ✅ Construct fully padded + normalized input (only one declaration)
+    // ✅ Construct fully padded input
     const input = {
-  secret: fieldNormalize(secret).toString(),
-  nullifier: fieldNormalize(nullifier).toString(),
-  pathIndices: pathIndices.map((i) => i.toString()),
-  siblings: siblings.map((s) => fieldNormalize(s).toString()),
-  root: fieldNormalize(recomputed).toString(), // ✅ fix here
-  nullifierHash: fieldNormalize(nfHash).toString(),
-  denomination: fieldNormalize(denomBig).toString(),
-};
+      secret: fieldNormalize(secret).toString(),
+      nullifier: fieldNormalize(nullifier).toString(),
+      pathIndices: pathIndices.map(i => i.toString()),
+      siblings: siblings.map(s => fieldNormalize(s).toString()),
+      root: fieldNormalize(proofData.root).toString(),
+      nullifierHash: fieldNormalize(nfHash).toString(),
+      denomination: fieldNormalize(denomBig).toString(),
+    };
 
     console.log("🧾 Finalized Withdraw Input:", input);
     console.log("🧩 Input array lengths:", {
@@ -635,7 +629,6 @@ console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
 
     btn.textContent = "Generating PLONK proof... ⏳";
 
-    // ✅ Generate PLONK proof
     const { proof, publicSignals } = await snarkjs.plonk.fullProve(
       input,
       WASM_URL,
@@ -645,17 +638,6 @@ console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
 
-    console.log("🔬 Final proof input check:");
-Object.entries(input).forEach(([k, v]) => {
-  if (Array.isArray(v)) {
-    console.log(`${k}: [${v.length}]`);
-  } else {
-    console.log(`${k}: ${v}`);
-  }
-});
-
-
-    // ✅ Safe calldata parsing for PLONK
     const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
     const args = calldata.replace(/["[\]\s]/g, "").split(",");
     const proofBytes = args[0];
@@ -666,7 +648,6 @@ Object.entries(input).forEach(([k, v]) => {
 
     btn.textContent = "Submitting withdraw... 🚀";
 
-    // ✅ On-chain withdraw
     const tx = await shield.methods
       .withdraw(proofBytes, pubSignalsArr, recipient)
       .send({ from: userAccount });
