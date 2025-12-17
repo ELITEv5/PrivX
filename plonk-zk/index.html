@@ -529,7 +529,7 @@ class MerkleTree {
       for (let j = 0; j < nodes.length; j += 2) {
         const left = nodes[j] ?? ZERO_HASHES[level];
         const right = nodes[j + 1] ?? ZERO_HASHES[level];
-        next.push(await poseidonT3_withdraw(left, right));
+        next.push(await poseidonT3(left, right));
       }
       nodes = next;
       index = Math.floor(index / 2);
@@ -597,9 +597,10 @@ window.withdraw = async function () {
       const sib = siblings[i];
       const dir = pathIndices[i];
       recomputed =
-        dir === 0
-          ? await poseidonT3_withdraw(recomputed, sib)
-          : await poseidonT3_withdraw(sib, recomputed);
+  dir === 0
+    ? await poseidonT3(recomputed, sib)
+    : await poseidonT3(sib, recomputed);
+
     }
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
 
