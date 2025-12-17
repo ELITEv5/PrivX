@@ -424,8 +424,7 @@ window.addEventListener('load', () => {
   setInterval(updateBurnedBalance, 30000);
 });
 </script>
-
-<!-- 🔒 FINAL WITHDRAW SCRIPT — Poseidon(3) FIXED -->
+<!-- 🔒 FINAL WITHDRAW SCRIPT — Poseidon(3) FIXED & PLONK SAFE -->
 <script>
 /* -------------------- Global Constants -------------------- */
 const TREE_LEVELS = 20;
@@ -459,7 +458,7 @@ function pow5_withdraw(x) {
 }
 
 /**
- * ✅ Poseidon(3) (matches circuit-level 3-input sponge exactly)
+ * ✅ Poseidon(3) Hasher (matches Circom Poseidon(3) exactly)
  */
 async function poseidonT3_withdraw(a, b, c = 0n) {
   let x = BigInt(a) % FIELD_P;
@@ -544,15 +543,17 @@ window.withdraw = async function () {
   if (!noteInput) return alert("Paste your private note first");
   if (!web3 || !userAccount) return alert("Connect your wallet");
 
-  const match = noteInput.match(/^privx-hurricane-(\d+)-([a-f0-9]{62})-([a-f0-9]{62})$/);
+  // ✅ Regex fix — 64-char hex for 32-byte nullifier/secret
+  const match = noteInput.match(/^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/);
   if (!match) return alert("Invalid note format");
-  const [_, denom, nullifierHex, secretHex] = match;
+  const [_, denom, nullifierHexRaw, secretHexRaw] = match;
+  const nullifierHex = nullifierHexRaw.toLowerCase();
+  const secretHex = secretHexRaw.toLowerCase();
 
   const shieldAddr = SHIELD_CONTRACTS[denom];
   if (!shieldAddr) return alert("Invalid denomination");
   const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
-  const recipient =
-    document.getElementById("recipientAddress").value.trim() || userAccount;
+  const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
   const btn = document.getElementById("withdrawBtn");
 
   try {
@@ -565,7 +566,7 @@ window.withdraw = async function () {
     });
 
     let leaves = deposits.map((e) => e.returnValues.commitment);
-    leaves.reverse(); // oldest-first
+    leaves.reverse();
 
     const nullifier = BigInt("0x" + nullifierHex);
     const secret = BigInt("0x" + secretHex);
@@ -585,10 +586,10 @@ window.withdraw = async function () {
     const siblings = proofData.path.map((p) => fieldNormalize(p));
     const pathIndices = proofData.indices.map((i) => Number(i));
 
-    console.log("🔍 PathIndices (0=left,1=right):", pathIndices);
+    console.log("🔍 PathIndices:", pathIndices);
     console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
 
-    // Sanity check root
+    // ✅ Root sanity check
     let recomputed = commitment;
     for (let i = 0; i < siblings.length; i++) {
       const sib = siblings[i];
@@ -625,10 +626,14 @@ window.withdraw = async function () {
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
 
+    // ✅ Safe calldata parsing for PLONK
     const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-    const [proofBytes, pubSignalsArr] = JSON.parse(
-      "[" + calldata.replace(/\]\[/g, "],[") + "]"
-    );
+    const args = calldata.replace(/["[\]\s]/g, "").split(",");
+    const proofBytes = args[0];
+    const pubSignalsArr = args.slice(1).map(x => BigInt(x).toString());
+
+    console.log("🧩 proofBytes:", proofBytes);
+    console.log("🧩 pubSignalsArr:", pubSignalsArr);
 
     btn.textContent = "Submitting withdraw... 🚀";
     const tx = await shield.methods
