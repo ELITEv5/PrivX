@@ -247,8 +247,10 @@ const SHIELD_ABI = [
   { "inputs": [], "name": "getLastRoot", "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }], "stateMutability": "view", "type": "function" }
 ];
 
-const WASM_URL = "./circuits/mixer_js/mixer.wasm";
-const ZKEY_URL = "https://gateway.pinata.cloud/ipfs/bafybeigxkcrzlsvedhj2oc6hkt3jke2d7eed34s5pqr7qf43uxuqa3yln4";
+// ✅ Correct WASM & ZKEY sources
+const WASM_URL = "./plonk-zk/build/mixer_js/mixer.wasm?v=6";
+const ZKEY_URL = "https://amaranth-rear-platypus-218.mypinata.cloud/ipfs/bafybeigxkcrzlsvedhj2oc6hkt3jke2d7eed34s5pqr7qf43uxuqa3yln4";
+
 
 // ─────────────────────────────
 // 🧩 Upgraded deposit() with unique entropy & perfect Hasher match
