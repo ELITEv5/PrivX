@@ -429,29 +429,25 @@ window.addEventListener('load', () => {
 });
 </script>
   
-<!-- Load CircomlibJS before anything that calls buildPoseidon -->
-<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/dist/circomlibjs.min.js"></script>
+<!-- ✅ Load CircomlibJS (correct link) -->
+<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/browser.js"></script>
 
-<!-- ✅ Withdraw logic (Circomlib synced) -->
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
   if (!window.circomlibjs) {
-    console.error("❌ CircomlibJS not found — check script tag load order.");
+    console.error("❌ CircomlibJS not found — check CDN link!");
     return;
   }
 
   const TREE_LEVELS = 20;
-  const FIELD_P =
-    21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+  const FIELD_P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
   function fieldNormalize(x) {
     return ((x % FIELD_P) + FIELD_P) % FIELD_P;
   }
 
-  /* ---------------- Poseidon Initialization ---------------- */
   const poseidon = await window.circomlibjs.buildPoseidon();
   const F = poseidon.F;
-
   console.log("✅ Circomlib Poseidon initialized — synced with circom/poseidon.circom");
 
   ZERO_HASHES[0] = poseidon2(0n, 0n);
