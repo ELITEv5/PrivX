@@ -575,62 +575,100 @@ class MerkleTree {
 
 /* -------------------- Withdraw Logic -------------------- */
 window.withdraw = async function () {
+  const noteInput = document.getElementById("withdrawNote").value.trim();
+  if (!noteInput) return alert("Paste your private note first");
+  if (!web3 || !userAccount) return alert("Connect your wallet");
+
+  const match = noteInput.match(/^privx-hurricane-(\d+)-([a-f0-9]{62})-([a-f0-9]{62})$/);
+  if (!match) return alert("Invalid note format");
+  const [_, denom, nullifierHex, secretHex] = match;
+
+  const shieldAddr = SHIELD_CONTRACTS[denom];
+  if (!shieldAddr) return alert("Invalid denomination");
+  const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
+  const recipient =
+    document.getElementById("recipientAddress").value.trim() || userAccount;
+  const btn = document.getElementById("withdrawBtn");
+
   try {
     btn.disabled = true;
     btn.textContent = "Fetching deposits...";
 
-    // ... your existing setup logic above this stays unchanged ...
+    const deposits = await shield.getPastEvents("Deposit", {
+      fromBlock: 0,
+      toBlock: "latest",
+    });
 
-    // ✅ Root recompute (matches Switcher.circom)
+    let leaves = deposits.map((e) => e.returnValues.commitment);
+    leaves.reverse(); // oldest-first
+
+    const nullifier = BigInt("0x" + nullifierHex);
+    const secret = BigInt("0x" + secretHex);
+    const commitment = await poseidonT3_withdraw(nullifier, secret);
+
+    const leafIndex = leaves.findIndex((l) => BigInt(l) === commitment);
+    if (leafIndex === -1)
+      return alert("❌ Commitment not found in this pool (check denomination or note).");
+
+    console.log("Total leaves:", leaves.length);
+    console.log("Leaf index:", leafIndex);
+
+    const tree = new MerkleTree(TREE_LEVELS);
+    leaves.forEach((l) => tree.insert(BigInt(l)));
+
+    const proofData = await tree.getProof(leafIndex);
+    const siblings = proofData.path.map((p) => fieldNormalize(p));
+    const pathIndices = proofData.indices.map((i) => Number(i));
+
+    console.log("🔍 PathIndices (0=left,1=right):", pathIndices);
+    console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
+
+    // Sanity check root
     let recomputed = commitment;
     for (let i = 0; i < siblings.length; i++) {
       const sib = siblings[i];
       const dir = pathIndices[i];
       recomputed =
         dir === 0
-          ? await poseidonT3(sib, recomputed)
-          : await poseidonT3(recomputed, sib);
+          ? await poseidonT3_withdraw(recomputed, sib)
+          : await poseidonT3_withdraw(sib, recomputed);
     }
-
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
 
     const denomBig = BigInt(denom);
     const nfHash = await poseidonT3_withdraw(nullifier, denomBig, 0n);
 
-    while (siblings.length < TREE_LEVELS) siblings.push(0n);
-    while (pathIndices.length < TREE_LEVELS) pathIndices.push(0);
-
     const input = {
       secret: fieldNormalize(secret).toString(),
       nullifier: fieldNormalize(nullifier).toString(),
-      pathIndices: pathIndices.map(i => i.toString()),
-      siblings: siblings.map(s => fieldNormalize(s).toString()),
+      pathIndices: pathIndices.map((i) => i.toString()),
+      siblings: siblings.map((s) => fieldNormalize(s).toString()),
       root: fieldNormalize(proofData.root).toString(),
       nullifierHash: fieldNormalize(nfHash).toString(),
       denomination: fieldNormalize(denomBig).toString(),
     };
 
-    console.log("🧾 Finalized Withdraw Input:", input);
-    console.log("🧩 Input array lengths:", {
-      siblings: input.siblings.length,
-      pathIndices: input.pathIndices.length,
-    });
+    console.log("🧾 Withdraw Input:", input);
 
     btn.textContent = "Generating PLONK proof... ⏳";
-    const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
+    const { proof, publicSignals } = await snarkjs.plonk.fullProve(
+      input,
+      WASM_URL,
+      ZKEY_URL
+    );
+
     console.log("✅ Proof generated");
     console.log("📜 Public signals:", publicSignals);
 
     const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-    const args = calldata.replace(/["[\]\s]/g, "").split(",");
-    const proofBytes = args[0];
-    const pubSignalsArr = args.slice(1).map(x => BigInt(x).toString());
-
-    console.log("🧩 proofBytes:", proofBytes);
-    console.log("🧩 pubSignalsArr:", pubSignalsArr);
+    const [proofBytes, pubSignalsArr] = JSON.parse(
+      "[" + calldata.replace(/\]\[/g, "],[") + "]"
+    );
 
     btn.textContent = "Submitting withdraw... 🚀";
-    const tx = await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
+    const tx = await shield.methods
+      .withdraw(proofBytes, pubSignalsArr, recipient)
+      .send({ from: userAccount });
 
     alert(`🎉 WITHDRAW SUCCESS!\nTX: ${tx.transactionHash}`);
   } catch (err) {
@@ -648,5 +686,36 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btn) btn.addEventListener("click", withdraw);
 });
 </script>
+
+  <!-- Matrix Rain -->
+  <script>
+    const canvas = document.getElementById('matrix-bg');
+    const ctx = canvas.getContext('2d');
+    canvas.width = innerWidth; canvas.height = innerHeight;
+    let fontSize = innerWidth < 600 ? 10 : 14;
+    const chars = '01PRIVXHURRICANE';
+    let columns = Math.floor(canvas.width / fontSize);
+    let drops = Array(columns).fill(1);
+    function draw() {
+      ctx.fillStyle = 'rgba(0,0,0,0.05)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#8A2BE2';
+      ctx.font = fontSize + 'px monospace';
+      drops.forEach((y,i) => {
+        const text = chars[Math.floor(Math.random()*chars.length)];
+        ctx.fillText(text, i*fontSize, y*fontSize);
+        if(y*fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
+      });
+    }
+    function loop(){ draw(); requestAnimationFrame(loop); }
+    loop();
+    addEventListener('resize', () => {
+      canvas.width = innerWidth; canvas.height = innerHeight;
+      fontSize = innerWidth < 600 ? 10 : 14;
+      columns = Math.floor(canvas.width / fontSize);
+      drops = Array(columns).fill(1);
+    });
+  </script>
 </body>
 </html>
