@@ -625,24 +625,49 @@ window.withdraw = async function () {
       ZKEY_URL
     );
 
-    console.log("✅ Proof generated");
-    console.log("📜 Public signals:", publicSignals);
+    console.log("🧾 Withdraw Input (before normalization):", input);
 
-    // ✅ Safe calldata parsing for PLONK
-    const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-    const args = calldata.replace(/["[\]\s]/g, "").split(",");
-    const proofBytes = args[0];
-    const pubSignalsArr = args.slice(1).map(x => BigInt(x).toString());
+// 🔧 Ensure Merkle proof arrays are correctly sized and normalized
+while (siblings.length < TREE_LEVELS) siblings.push(0n);
+while (pathIndices.length < TREE_LEVELS) pathIndices.push(0);
 
-    console.log("🧩 proofBytes:", proofBytes);
-    console.log("🧩 pubSignalsArr:", pubSignalsArr);
+input.siblings = siblings.map(s => fieldNormalize(s).toString());
+input.pathIndices = pathIndices.map(i => i.toString());
 
-    btn.textContent = "Submitting withdraw... 🚀";
-    const tx = await shield.methods
-      .withdraw(proofBytes, pubSignalsArr, recipient)
-      .send({ from: userAccount });
+console.log("🧩 Finalized input check:", {
+  root: input.root,
+  siblingsLen: input.siblings.length,
+  pathIndicesLen: input.pathIndices.length,
+});
 
-    alert(`🎉 WITHDRAW SUCCESS!\nTX: ${tx.transactionHash}`);
+btn.textContent = "Generating PLONK proof... ⏳";
+
+const { proof, publicSignals } = await snarkjs.plonk.fullProve(
+  input,
+  WASM_URL,
+  ZKEY_URL
+);
+
+console.log("✅ Proof generated");
+console.log("📜 Public signals:", publicSignals);
+
+// ✅ Safe calldata parsing for PLONK
+const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+const args = calldata.replace(/["[\]\s]/g, "").split(",");
+const proofBytes = args[0];
+const pubSignalsArr = args.slice(1).map(x => BigInt(x).toString());
+
+console.log("🧩 proofBytes:", proofBytes);
+console.log("🧩 pubSignalsArr:", pubSignalsArr);
+
+btn.textContent = "Submitting withdraw... 🚀";
+
+const tx = await shield.methods
+  .withdraw(proofBytes, pubSignalsArr, recipient)
+  .send({ from: userAccount });
+
+alert(`🎉 WITHDRAW SUCCESS!\nTX: ${tx.transactionHash}`);
+
   } catch (err) {
     console.error("❌ Withdraw error:", err);
     alert("Withdraw failed: " + (err.message || "Check console"));
