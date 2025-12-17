@@ -572,7 +572,7 @@ window.withdraw = async function () {
 
     const nullifier = BigInt("0x" + nullifierHex);
     const secret = BigInt("0x" + secretHex);
-    const commitment = await poseidonT3_withdraw(nullifier, secret);
+    const commitment = await poseidonT3(nullifier, secret);
 
     const leafIndex = leaves.findIndex((l) => BigInt(l) === commitment);
     if (leafIndex === -1)
