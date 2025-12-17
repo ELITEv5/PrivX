@@ -497,7 +497,8 @@ async function poseidonT3_withdraw(a, b, c = 0n) {
 /* -------------------- Zero Hash Precomputation -------------------- */
 let ZERO_HASHES = [];
 (async () => {
-  ZERO_HASHES[0] = await poseidonT3(0n, 0n);
+  // ✅ Proper base for Poseidon(2)
+ZERO_HASHES[0] = await poseidonT3(0n, 0n);
 for (let i = 1; i < TREE_LEVELS; i++) {
   ZERO_HASHES[i] = await poseidonT3(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
 }
@@ -596,10 +597,12 @@ window.withdraw = async function () {
     for (let i = 0; i < siblings.length; i++) {
       const sib = siblings[i];
       const dir = pathIndices[i];
-      recomputed =
+      // ✅ Matches Circom Switcher logic exactly
+recomputed =
   dir === 0
-    ? await poseidonT3(recomputed, sib)
-    : await poseidonT3(sib, recomputed);
+    ? await poseidonT3(sib, recomputed)   // sel=0 → L,R so our leaf = recomputed, sibling = sib
+    : await poseidonT3(recomputed, sib);  // sel=1 → swapped, so leaf goes first
+
 
     }
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
