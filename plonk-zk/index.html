@@ -494,26 +494,27 @@ async function poseidonT3_withdraw(a, b, c = 0n) {
   return x;
 }
 
-/* -------------------- Zero Hash Precomputation -------------------- */
+/* -------------------- Zero Hash Precomputation (Poseidon2) -------------------- */
 let ZERO_HASHES = [];
 (async () => {
-  // ✅ Proper base for Poseidon(2)
-ZERO_HASHES[0] = await poseidonT3(0n, 0n);
-for (let i = 1; i < TREE_LEVELS; i++) {
-  ZERO_HASHES[i] = await poseidonT3(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
-}
+  ZERO_HASHES[0] = await poseidonT3(0n, 0n);
+  for (let i = 1; i < TREE_LEVELS; i++) {
+    ZERO_HASHES[i] = await poseidonT3(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
+  }
   console.log("✅ Zero hashes precomputed:", ZERO_HASHES.length);
 })();
 
-/* -------------------- Merkle Tree -------------------- */
+/* -------------------- Merkle Tree (Poseidon2 for nodes) -------------------- */
 class MerkleTree {
   constructor(levels) {
     this.levels = levels;
     this.leaves = [];
   }
+
   insert(leaf) {
     this.leaves.push(BigInt(leaf));
   }
+
   async getProof(index) {
     const path = [];
     const indices = [];
@@ -530,7 +531,7 @@ class MerkleTree {
       for (let j = 0; j < nodes.length; j += 2) {
         const left = nodes[j] ?? ZERO_HASHES[level];
         const right = nodes[j + 1] ?? ZERO_HASHES[level];
-        next.push(await poseidonT3(left, right)); // ✅ Poseidon(2) for Merkle tree
+        next.push(await poseidonT3(left, right)); // ✅ Poseidon(2)
       }
       nodes = next;
       index = Math.floor(index / 2);
@@ -540,72 +541,20 @@ class MerkleTree {
   }
 }
 
-/* -------------------- Withdraw Logic -------------------- */
-window.withdraw = async function () {
-  const noteInput = document.getElementById("withdrawNote").value.trim();
-  if (!noteInput) return alert("Paste your private note first");
-  if (!web3 || !userAccount) return alert("Connect your wallet");
+/* -------------------- Root Recompute (matches Switcher.circom) -------------------- */
+let recomputed = commitment;
+for (let i = 0; i < siblings.length; i++) {
+  const sib = siblings[i];
+  const dir = pathIndices[i];
 
-  const match = noteInput.match(/^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/);
-  if (!match) return alert("Invalid note format");
-  const [_, denom, nullifierHexRaw, secretHexRaw] = match;
-  const nullifierHex = nullifierHexRaw.toLowerCase();
-  const secretHex = secretHexRaw.toLowerCase();
+  // ✅ Matches Circom Switcher: sel = 1 ⇒ swap L/R
+  recomputed =
+    dir === 0
+      ? await poseidonT3(sib, recomputed) // left sibling
+      : await poseidonT3(recomputed, sib); // right sibling
+}
 
-  const shieldAddr = SHIELD_CONTRACTS[denom];
-  if (!shieldAddr) return alert("Invalid denomination");
-
-  const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
-  const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
-  const btn = document.getElementById("withdrawBtn");
-
-  try {
-    btn.disabled = true;
-    btn.textContent = "Fetching deposits...";
-
-    const deposits = await shield.getPastEvents("Deposit", {
-      fromBlock: 0,
-      toBlock: "latest",
-    });
-
-    let leaves = deposits.map(e => e.returnValues.commitment);
-    leaves.reverse();
-
-    const nullifier = BigInt("0x" + nullifierHex);
-    const secret = BigInt("0x" + secretHex);
-    const commitment = await poseidonT3(nullifier, secret);
-
-    const leafIndex = leaves.findIndex(l => BigInt(l) === commitment);
-    if (leafIndex === -1)
-      return alert("❌ Commitment not found in this pool (check denomination or note).");
-
-    console.log("Total leaves:", leaves.length);
-    console.log("Leaf index:", leafIndex);
-
-    const tree = new MerkleTree(TREE_LEVELS);
-    leaves.forEach(l => tree.insert(BigInt(l)));
-
-    const proofData = await tree.getProof(leafIndex);
-    const siblings = proofData.path.map(p => fieldNormalize(p));
-    const pathIndices = proofData.indices.map(i => Number(i));
-
-    console.log("🔍 PathIndices:", pathIndices);
-    console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
-
-    // ✅ Root sanity check
-    let recomputed = commitment;
-    for (let i = 0; i < siblings.length; i++) {
-      const sib = siblings[i];
-      const dir = pathIndices[i];
-      // ✅ Matches Circom Switcher logic exactly
-recomputed =
-  dir === 0
-    ? await poseidonT3(sib, recomputed)   // sel=0 → L,R so our leaf = recomputed, sibling = sib
-    : await poseidonT3(recomputed, sib);  // sel=1 → swapped, so leaf goes first
-
-
-    }
-    console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
+console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
 
     const denomBig = BigInt(denom);
     const nfHash = await poseidonT3_withdraw(nullifier, denomBig, 0n);
