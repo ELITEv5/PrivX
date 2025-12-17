@@ -592,19 +592,17 @@ window.withdraw = async function () {
     console.log("🔍 PathIndices:", pathIndices);
     console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
 
-    // ✅ Root sanity check
-    let recomputed = commitment;
-    for (let i = 0; i < siblings.length; i++) {
-      const sib = siblings[i];
-      const dir = pathIndices[i];
-      // ✅ Matches Circom Switcher logic exactly
-recomputed =
-  dir === 0
-    ? await poseidonT3(sib, recomputed)   // sel=0 → L,R so our leaf = recomputed, sibling = sib
-    : await poseidonT3(recomputed, sib);  // sel=1 → swapped, so leaf goes first
+    // ✅ Matches Circom Switcher: sel=0 → (L,R), sel=1 → (R,L)
+let recomputed = commitment;
+for (let i = 0; i < siblings.length; i++) {
+  const sib = siblings[i];
+  const dir = pathIndices[i];
+  recomputed =
+    dir === 0
+      ? await poseidonT3(recomputed, sib) // left first
+      : await poseidonT3(sib, recomputed); // right first
+}
 
-
-    }
     console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
 
     const denomBig = BigInt(denom);
