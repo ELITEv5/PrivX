@@ -403,7 +403,7 @@
   return { pathIndices, siblings };
 }
 
-  async function withdraw() {
+    async function withdraw() {
     const noteInput = document.getElementById("withdrawNote").value.trim();
     if (!noteInput) return alert("Paste your private note first");
     if (!userAccount) return alert("Connect your wallet first");
@@ -422,17 +422,26 @@
     let root;
     try {
       root = await shield.methods.getLastRoot().call();
+      console.log("On-chain root:", root);
     } catch (e) {
       return alert("Failed to fetch root");
     }
-    let pathIndices, siblings;
+    let pathIndices, siblings, leafIndex;
     try {
+      const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
+      events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
+      const leaves = events.map(e => BigInt(e.returnValues.commitment));
+      leafIndex = leaves.findIndex(c => c === commitment);
+      console.log("Leaf index:", leafIndex);
       const proof = await getMerkleProof(shield, commitment);
       pathIndices = proof.pathIndices;
       siblings = proof.siblings;
+      console.log("Path indices:", pathIndices);
+      console.log("Siblings:", siblings.map(s => "0x" + BigInt(s).toString(16).padStart(64, "0")));
     } catch (e) {
       return alert(e.message);
     }
+
     const input = {
       nullifier: nullifier.toString(),
       secret: secret.toString(),
@@ -442,6 +451,7 @@
       nullifierHash: nullifierHash.toString(),
       denomination: denomination.toString()
     };
+
     const btn = document.getElementById("withdrawBtn");
     btn.disabled = true;
     btn.textContent = "Generating Plonk Proof... (10–60s)";
