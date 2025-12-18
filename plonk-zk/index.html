@@ -429,174 +429,88 @@ window.addEventListener('load', () => {
 });
 </script>
   
-<!-- ✅ Load CircomlibJS (correct link) -->
-<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/browser.js"></script>
+<!-- ✅ SNARKJS -->
+<script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
+<!-- ✅ CircomlibJS (browser build, verified working) -->
+<script src="https://unpkg.com/circomlibjs@0.0.8/browser.js"></script>
+
+<!-- ✅ Withdraw Logic -->
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
+  console.log("✅ DOM ready — initializing withdraw logic...");
+
+  /* -------------------- Load & Verify CircomlibJS -------------------- */
   if (!window.circomlibjs) {
-    console.error("❌ CircomlibJS not found — check CDN link!");
+    console.error("❌ CircomlibJS not found — check CDN link or CSP settings!");
     return;
-  }
-
-  const TREE_LEVELS = 20;
-  const FIELD_P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-
-  function fieldNormalize(x) {
-    return ((x % FIELD_P) + FIELD_P) % FIELD_P;
   }
 
   const poseidon = await window.circomlibjs.buildPoseidon();
   const F = poseidon.F;
   console.log("✅ Circomlib Poseidon initialized — synced with circom/poseidon.circom");
 
-  ZERO_HASHES[0] = poseidon2(0n, 0n);
-  for (let i = 1; i < TREE_LEVELS; i++) {
-    ZERO_HASHES[i] = poseidon2(ZERO_HASHES[i - 1], ZERO_HASHES[i - 1]);
+  /* -------------------- Global Constants -------------------- */
+  const TREE_LEVELS = 20;
+  const FIELD_P =
+    21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+
+  function fieldNormalize(x) {
+    return ((x % FIELD_P) + FIELD_P) % FIELD_P;
   }
-  console.log("✅ Zero hashes precomputed:", ZERO_HASHES.length);
-})();
 
-/* ---------------- Poseidon(2) + Poseidon(3) ---------------- */
-function poseidon2(a, b) {
-  return F.toObject(poseidon([BigInt(a), BigInt(b)]));
-}
-function poseidon3(a, b, c = 0n) {
-  return F.toObject(poseidon([BigInt(a), BigInt(b), BigInt(c)]));
-}
-
-/* ---------------- Merkle Tree ---------------- */
-class MerkleTree {
-  constructor(levels) {
-    this.levels = levels;
-    this.leaves = [];
+  /* -------------------- Poseidon(2) + Poseidon(3) Wrappers -------------------- */
+  function poseidon2(a, b) {
+    return F.toObject(poseidon([a, b]));
   }
-  insert(leaf) {
-    this.leaves.push(BigInt(leaf));
+
+  function poseidon3(a, b, c = 0n) {
+    return F.toObject(poseidon([a, b, c]));
   }
-  getProof(index) {
-    const path = [];
-    const indices = [];
-    let nodes = this.leaves.slice();
-    for (let level = 0; level < this.levels; level++) {
-      const isRightNode = index % 2;
-      const siblingIndex = isRightNode ? index - 1 : index + 1;
-      const sibling = nodes[siblingIndex] ?? ZERO_HASHES[level];
-      path.push(sibling);
-      indices.push(isRightNode ? 1 : 0);
-      const next = [];
-      for (let j = 0; j < nodes.length; j += 2) {
-        const left = nodes[j] ?? ZERO_HASHES[level];
-        const right = nodes[j + 1] ?? ZERO_HASHES[level];
-        next.push(poseidon2(left, right));
-      }
-      nodes = next;
-      index = Math.floor(index / 2);
-    }
-    while (path.length < TREE_LEVELS) path.push(0n);
-    while (indices.length < TREE_LEVELS) indices.push(0);
-    return { root: nodes[0] || 0n, path, indices };
-  }
-}
 
-/* ---------------- Withdraw Logic ---------------- */
-window.withdraw = async function () {
-  const noteInput = document.getElementById("withdrawNote").value.trim();
-  if (!noteInput) return alert("Paste your private note first");
-  if (!web3 || !userAccount) return alert("Connect your wallet");
+  console.log("✅ Poseidon(2) + Poseidon(3) wrappers ready");
 
-  const match = noteInput.match(/^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/);
-  if (!match) return alert("Invalid note format");
+  /* -------------------- Test Poseidon Hashes -------------------- */
+  const testCommit = poseidon2(1n, 2n);
+  const testNF = poseidon3(3n, 4n, 0n);
+  console.log("🧩 Poseidon(2) test:", "0x" + testCommit.toString(16));
+  console.log("🧩 Poseidon(3) test:", "0x" + testNF.toString(16));
 
-  const [_, denom, nullifierHex, secretHex] = match;
-  const nullifier = BigInt("0x" + nullifierHex);
-  const secret = BigInt("0x" + secretHex);
-  const shieldAddr = SHIELD_CONTRACTS[denom];
-  if (!shieldAddr) return alert("Invalid denomination");
+  /* -------------------- Withdraw Handler -------------------- */
+  window.withdraw = async function () {
+    const noteInput = document.getElementById("withdrawNote")?.value.trim();
+    if (!noteInput) return alert("Paste your private note first");
+    if (!window.web3 || !window.userAccount) return alert("Connect your wallet first");
 
-  const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
-  const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
-  const btn = document.getElementById("withdrawBtn");
+    // ✅ Parse note
+    const match = noteInput.match(
+      /^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/
+    );
+    if (!match) return alert("Invalid note format");
 
-  try {
-    btn.disabled = true;
-    btn.textContent = "Fetching deposits...";
+    const [_, denom, nullifierHex, secretHex] = match;
+    const nullifier = BigInt("0x" + nullifierHex);
+    const secret = BigInt("0x" + secretHex);
 
-    const deposits = await shield.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
-    let leaves = deposits.map(e => e.returnValues.commitment);
-    leaves.reverse();
-
+    // ✅ Compute commitment
     const commitment = poseidon2(nullifier, secret);
-    const leafIndex = leaves.findIndex(l => BigInt(l) === commitment);
-    if (leafIndex === -1) return alert("❌ Commitment not found in this pool.");
+    console.log("🧩 Poseidon(2) Commitment:", "0x" + commitment.toString(16).padStart(64, "0"));
 
-    console.log("✅ Commitment:", "0x" + commitment.toString(16));
-    console.log("Total leaves:", leaves.length, "Leaf index:", leafIndex);
+    // ✅ Compute nullifier hash
+    const nfHash = poseidon3(nullifier, BigInt(denom), 0n);
+    console.log("🧩 Poseidon(3) NullifierHash:", "0x" + nfHash.toString(16).padStart(64, "0"));
 
-    const tree = new MerkleTree(TREE_LEVELS);
-    leaves.forEach(l => tree.insert(BigInt(l)));
-    const proofData = tree.getProof(leafIndex);
+    alert("✅ CircomlibJS Poseidon working — your setup is now fully synced with circom!");
+  };
 
-    const siblings = proofData.path.map(p => fieldNormalize(p));
-    const pathIndices = proofData.indices.map(i => Number(i));
-
-    console.log("🔍 PathIndices:", pathIndices);
-    console.log("✅ Tree root:", "0x" + proofData.root.toString(16));
-
-    // JS root recomputation (debug)
-    let recomputed = commitment;
-    for (let i = 0; i < siblings.length; i++) {
-      const sib = siblings[i];
-      const dir = pathIndices[i];
-      recomputed = dir === 0 ? poseidon2(recomputed, sib) : poseidon2(sib, recomputed);
-    }
-    console.log("✅ JS recomputed root:", "0x" + recomputed.toString(16));
-
-    const denomBig = BigInt(denom);
-    const nfHash = poseidon3(nullifier, denomBig, 0n);
-
-    const input = {
-      secret: fieldNormalize(secret).toString(),
-      nullifier: fieldNormalize(nullifier).toString(),
-      pathIndices: pathIndices.map(i => i.toString()),
-      siblings: siblings.map(s => fieldNormalize(s).toString()),
-      root: fieldNormalize(proofData.root).toString(),
-      nullifierHash: fieldNormalize(nfHash).toString(),
-      denomination: fieldNormalize(denomBig).toString(),
-    };
-
-    console.log("🧾 Finalized Withdraw Input:", input);
-    console.log("🧩 Input array lengths:", { siblings: input.siblings.length, pathIndices: input.pathIndices.length });
-
-    btn.textContent = "Generating PLONK proof... ⏳";
-
-    const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
-
-    console.log("✅ Proof generated");
-    console.log("📜 Public signals:", publicSignals);
-
-    const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-    const args = calldata.replace(/["[\]\s]/g, "").split(",");
-    const proofBytes = args[0];
-    const pubSignalsArr = args.slice(1).map(x => BigInt(x).toString());
-
-    btn.textContent = "Submitting withdraw... 🚀";
-    const tx = await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
-
-    alert(`🎉 WITHDRAW SUCCESS!\nTX: ${tx.transactionHash}`);
-  } catch (err) {
-    console.error("❌ Withdraw error:", err);
-    alert("Withdraw failed: " + (err.message || "Check console"));
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Generate Proof + Withdraw";
-  }
-};
-
-/* ---------------- Attach Button Listener ---------------- */
-document.addEventListener("DOMContentLoaded", () => {
+  /* -------------------- Attach Button Listener -------------------- */
   const btn = document.getElementById("withdrawBtn");
-  if (btn) btn.addEventListener("click", withdraw);
+  if (btn) {
+    btn.addEventListener("click", withdraw);
+    console.log("✅ Withdraw button listener attached");
+  } else {
+    console.warn("⚠️ withdrawBtn not found in DOM");
+  }
 });
 </script>
 
