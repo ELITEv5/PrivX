@@ -432,87 +432,96 @@ window.addEventListener('load', () => {
 <!-- ✅ SNARKJS -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ CircomlibJS (Browser UMD build - exposes `window.circomlib`) -->
-<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/dist/browser.js"></script>
+<!-- ✅ CircomlibJS Fallback Loader (ESM → UMD) -->
 <script>
-  // Patch: Some versions expose `window.circomlib`, not `window.circomlibjs`
-  if (window.circomlib && !window.circomlibjs) {
-    window.circomlibjs = window.circomlib;
-  }
-  console.log("✅ CircomlibJS browser build loaded:", !!window.circomlibjs);
-</script>
+  window.global = window;           // Needed for circomlibjs internals
+  window.process = { env: {} };     // Shim Node process for keccak
+  window.Buffer = { from: s => new TextEncoder().encode(s) };
 
+  (async () => {
+    try {
+      // Try dynamic ESM import (modern browsers)
+      const lib = await import("https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm");
+      window.circomlibjs = lib;
+      console.log("✅ CircomlibJS ESM loaded successfully:", !!window.circomlibjs.buildPoseidon);
+    } catch (err) {
+      console.warn("⚠️ ESM import failed, falling back to browser.js UMD build...");
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/dist/browser.js";
+      script.onload = () => {
+        window.circomlibjs = window.circomlib || window.circomlibjs;
+        console.log("✅ CircomlibJS UMD fallback loaded:", !!window.circomlibjs);
+      };
+      document.head.appendChild(script);
+    }
+  })();
+</script>
 
 <!-- ✅ Withdraw Logic -->
 <script>
-document.addEventListener("DOMContentLoaded", async () => {
-  console.log("✅ DOM ready — initializing withdraw logic...");
-
-  /* -------------------- Load & Verify CircomlibJS -------------------- */
-  if (!window.circomlibjs || !window.circomlibjs.buildPoseidon) {
-    console.error("❌ CircomlibJS not found — check CDN or CSP settings!");
-    return;
+(async function waitForCircomlib() {
+  // Wait for CircomlibJS to finish loading (ESM or UMD)
+  while (!window.circomlibjs || !window.circomlibjs.buildPoseidon) {
+    console.log("⏳ Waiting for CircomlibJS to load...");
+    await new Promise(r => setTimeout(r, 300));
   }
 
-  const poseidon = await window.circomlibjs.buildPoseidon();
-  const F = poseidon.F;
-  console.log("✅ Circomlib Poseidon initialized — synced with circom/poseidon.circom");
+  document.addEventListener("DOMContentLoaded", async () => {
+    console.log("✅ DOM ready — initializing withdraw logic...");
 
-  /* -------------------- Global Constants -------------------- */
-  const TREE_LEVELS = 20;
-  const FIELD_P =
-    21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+    const poseidon = await window.circomlibjs.buildPoseidon();
+    const F = poseidon.F;
+    console.log("✅ Circomlib Poseidon initialized — synced with circom/poseidon.circom");
 
-  const fieldNormalize = x => ((x % FIELD_P) + FIELD_P) % FIELD_P;
+    const TREE_LEVELS = 20;
+    const FIELD_P =
+      21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+    const fieldNormalize = x => ((x % FIELD_P) + FIELD_P) % FIELD_P;
 
-  /* -------------------- Poseidon(2) + Poseidon(3) Wrappers -------------------- */
-  const poseidon2 = (a, b) => F.toObject(poseidon([a, b]));
-  const poseidon3 = (a, b, c = 0n) => F.toObject(poseidon([a, b, c]));
+    // Poseidon wrappers
+    const poseidon2 = (a, b) => F.toObject(poseidon([a, b]));
+    const poseidon3 = (a, b, c = 0n) => F.toObject(poseidon([a, b, c]));
+    console.log("✅ Poseidon(2) + Poseidon(3) wrappers ready");
 
-  console.log("✅ Poseidon(2) + Poseidon(3) wrappers ready");
+    // Quick self-test
+    const testCommit = poseidon2(1n, 2n);
+    const testNF = poseidon3(3n, 4n, 0n);
+    console.log("🧩 Poseidon(2) test:", "0x" + testCommit.toString(16));
+    console.log("🧩 Poseidon(3) test:", "0x" + testNF.toString(16));
 
-  /* -------------------- Quick Self-Test -------------------- */
-  const testCommit = poseidon2(1n, 2n);
-  const testNF = poseidon3(3n, 4n, 0n);
-  console.log("🧩 Poseidon(2) test:", "0x" + testCommit.toString(16));
-  console.log("🧩 Poseidon(3) test:", "0x" + testNF.toString(16));
+    // Withdraw handler
+    window.withdraw = async function () {
+      const noteInput = document.getElementById("withdrawNote")?.value.trim();
+      if (!noteInput) return alert("Paste your private note first");
+      if (!window.web3 || !window.userAccount) return alert("Connect your wallet first");
 
-  /* -------------------- Withdraw Handler -------------------- */
-  window.withdraw = async function () {
-    const noteInput = document.getElementById("withdrawNote")?.value.trim();
-    if (!noteInput) return alert("Paste your private note first");
-    if (!window.web3 || !window.userAccount) return alert("Connect your wallet first");
+      const match = noteInput.match(
+        /^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/
+      );
+      if (!match) return alert("Invalid note format");
 
-    // ✅ Parse note
-    const match = noteInput.match(
-      /^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/
-    );
-    if (!match) return alert("Invalid note format");
+      const [_, denom, nullifierHex, secretHex] = match;
+      const nullifier = BigInt("0x" + nullifierHex);
+      const secret = BigInt("0x" + secretHex);
 
-    const [_, denom, nullifierHex, secretHex] = match;
-    const nullifier = BigInt("0x" + nullifierHex);
-    const secret = BigInt("0x" + secretHex);
+      const commitment = poseidon2(nullifier, secret);
+      console.log("🧩 Poseidon(2) Commitment:", "0x" + commitment.toString(16).padStart(64, "0"));
 
-    // ✅ Compute commitment (Poseidon(2))
-    const commitment = poseidon2(nullifier, secret);
-    console.log("🧩 Poseidon(2) Commitment:", "0x" + commitment.toString(16).padStart(64, "0"));
+      const nfHash = poseidon3(nullifier, BigInt(denom), 0n);
+      console.log("🧩 Poseidon(3) NullifierHash:", "0x" + nfHash.toString(16).padStart(64, "0"));
 
-    // ✅ Compute nullifier hash (Poseidon(3))
-    const nfHash = poseidon3(nullifier, BigInt(denom), 0n);
-    console.log("🧩 Poseidon(3) NullifierHash:", "0x" + nfHash.toString(16).padStart(64, "0"));
+      alert("✅ CircomlibJS Poseidon working — fully synced with your circom circuit!");
+    };
 
-    alert("✅ CircomlibJS Poseidon working — fully synced with your circom circuit!");
-  };
-
-  /* -------------------- Attach Button Listener -------------------- */
-  const btn = document.getElementById("withdrawBtn");
-  if (btn) {
-    btn.addEventListener("click", withdraw);
-    console.log("✅ Withdraw button listener attached");
-  } else {
-    console.warn("⚠️ withdrawBtn not found in DOM");
-  }
-});
+    const btn = document.getElementById("withdrawBtn");
+    if (btn) {
+      btn.addEventListener("click", withdraw);
+      console.log("✅ Withdraw button listener attached");
+    } else {
+      console.warn("⚠️ withdrawBtn not found in DOM");
+    }
+  });
+})();
 </script>
 
   <!-- Matrix Rain -->
