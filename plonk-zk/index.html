@@ -432,7 +432,7 @@ window.addEventListener('load', () => {
 <!-- ✅ SNARKJS -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ CircomlibJS Fallback Loader (Guaranteed working) -->
+<!-- ✅ CircomlibJS Local/Hosted Loader (Final GitHub Pages Version) -->
 <script>
   window.global = window;
   window.process = { env: {} };
@@ -440,25 +440,24 @@ window.addEventListener('load', () => {
 
   (async () => {
     try {
-      // Try ESM first
-      const lib = await import("https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm");
+      // ✅ Load directly from your GitHub-hosted ESM file
+      const lib = await import("https://elitev5.github.io/PrivX/plonk-zk/circuits/circomlibjs.esm.js");
       window.circomlibjs = lib;
-      console.log("✅ CircomlibJS ESM loaded successfully:", !!window.circomlibjs.buildPoseidon);
+      console.log("✅ CircomlibJS (GitHub) ESM loaded successfully:", !!window.circomlibjs.buildPoseidon);
     } catch (err) {
-      console.warn("⚠️ ESM import failed, falling back to browser.js UMD build...");
+      console.warn("⚠️ ESM import failed, falling back to local UMD browser.js build...");
       const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/dist/browser.js";
+      script.src = "./plonk-zk/circuits/circomlibjs.browser.js"; // optional fallback if added
       script.onload = async () => {
-        // Wait until circomlib defines itself globally
         for (let i = 0; i < 50; i++) {
           if (window.circomlib || window.circomlibjs) {
             window.circomlibjs = window.circomlib || window.circomlibjs;
-            console.log("✅ CircomlibJS UMD fallback initialized:", !!window.circomlibjs.buildPoseidon);
+            console.log("✅ CircomlibJS (local) UMD fallback initialized:", !!window.circomlibjs.buildPoseidon);
             return;
           }
           await new Promise(r => setTimeout(r, 100));
         }
-        console.error("❌ CircomlibJS UMD never initialized — check CSP or network");
+        console.error("❌ CircomlibJS UMD never initialized — check local path");
       };
       document.head.appendChild(script);
     }
