@@ -432,13 +432,12 @@ window.addEventListener('load', () => {
 <!-- ✅ SNARKJS -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ CircomlibJS (browser build, verified working) -->
+<!-- ✅ CircomlibJS (ESM build, verified working) -->
 <script type="module">
-  import { buildPoseidon } from "https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm";
-  window.buildPoseidon = buildPoseidon;
-  console.log("Circomlibjs ESM loaded");
+  import * as circomlibjs from "https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm";
+  window.circomlibjs = circomlibjs; // ✅ make available globally
+  console.log("✅ CircomlibJS v0.1.7 ESM loaded and exported to window");
 </script>
-
 
 <!-- ✅ Withdraw Logic -->
 <script>
@@ -446,13 +445,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   console.log("✅ DOM ready — initializing withdraw logic...");
 
   /* -------------------- Load & Verify CircomlibJS -------------------- */
-  if (!window.circomlibjs) {
+  if (!window.circomlibjs || !window.circomlibjs.buildPoseidon) {
     console.error("❌ CircomlibJS not found — check CDN link or CSP settings!");
     return;
   }
 
-  const poseidon = await window.buildPoseidon();
-const F = poseidon.F;
+  const poseidon = await window.circomlibjs.buildPoseidon();
+  const F = poseidon.F;
   console.log("✅ Circomlib Poseidon initialized — synced with circom/poseidon.circom");
 
   /* -------------------- Global Constants -------------------- */
@@ -460,22 +459,15 @@ const F = poseidon.F;
   const FIELD_P =
     21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
-  function fieldNormalize(x) {
-    return ((x % FIELD_P) + FIELD_P) % FIELD_P;
-  }
+  const fieldNormalize = x => ((x % FIELD_P) + FIELD_P) % FIELD_P;
 
   /* -------------------- Poseidon(2) + Poseidon(3) Wrappers -------------------- */
-  function poseidon2(a, b) {
-    return F.toObject(poseidon([a, b]));
-  }
-
-  function poseidon3(a, b, c = 0n) {
-    return F.toObject(poseidon([a, b, c]));
-  }
+  const poseidon2 = (a, b) => F.toObject(poseidon([a, b]));
+  const poseidon3 = (a, b, c = 0n) => F.toObject(poseidon([a, b, c]));
 
   console.log("✅ Poseidon(2) + Poseidon(3) wrappers ready");
 
-  /* -------------------- Test Poseidon Hashes -------------------- */
+  /* -------------------- Quick Self-Test -------------------- */
   const testCommit = poseidon2(1n, 2n);
   const testNF = poseidon3(3n, 4n, 0n);
   console.log("🧩 Poseidon(2) test:", "0x" + testCommit.toString(16));
