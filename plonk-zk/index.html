@@ -123,7 +123,7 @@
   <script>
     let web3, userAccount, selectedDenomination;
 
-    // Shared Poseidon T3 – exact match to your contract & circuit
+    // Poseidon T3
     const P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
     const C = [
       12861791851186454756856465657750459816989389089376497637901611881939633773556n,
@@ -193,7 +193,6 @@
       { "inputs": [{ "name": "owner", "type": "address" }, { "name": "spender", "type": "address" }], "name": "allowance", "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
     ];
 
-    // Correct Plonk ABI
     const SHIELD_ABI = [
       { "inputs": [{ "internalType": "bytes32", "name": "_commitment", "type": "bytes32" }], "name": "deposit", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
       { "inputs": [
@@ -209,7 +208,6 @@
         ], "name": "Deposit", "type": "event" }
     ];
 
-    // Tab switching
     function switchTab(tab) {
       document.getElementById('depositTab').classList.toggle('hidden', tab !== 'deposit');
       document.getElementById('withdrawTab').classList.toggle('hidden', tab !== 'withdraw');
@@ -217,7 +215,6 @@
       document.getElementById('withdrawTabBtn').classList.toggle('active', tab === 'withdraw');
     }
 
-    // Deposit
     async function deposit() {
       if (!userAccount || !selectedDenomination) return alert("Connect wallet & select amount");
       const btn = document.getElementById("depositBtn");
@@ -261,7 +258,6 @@
       }
     }
 
-    // Wallet connection
     async function toggleWallet() {
       if (!window.ethereum) return alert("Install MetaMask/Rabby");
       try {
@@ -297,7 +293,6 @@
       window.ethereum.request({ method: "eth_accounts" }).then(a => a.length > 0 && toggleWallet());
     }
 
-    // Denomination selection
     function selectDenomination(denom) {
       selectedDenomination = denom;
       document.querySelectorAll('.denomination-card').forEach(c => c.classList.remove('selected'));
@@ -307,16 +302,8 @@
 
     function updateDepositButton() {
       const btn = document.getElementById('depositBtn');
-      if (!userAccount) {
-        btn.textContent = "Connect Wallet First";
-        btn.disabled = true;
-      } else if (!selectedDenomination) {
-        btn.textContent = "Select Denomination";
-        btn.disabled = true;
-      } else {
-        btn.textContent = `Shield ${selectedDenomination} PRIVX`;
-        btn.disabled = false;
-      }
+      btn.textContent = userAccount ? (selectedDenomination ? `Shield ${selectedDenomination} PRIVX` : "Select Denomination") : "Connect Wallet First";
+      btn.disabled = !userAccount || !selectedDenomination;
     }
 
     function copyNote() {
@@ -324,23 +311,22 @@
       alert("Note copied!");
     }
 
-    // Burn tracker
+    // Burn tracker – hardcoded decimals = 18 (PRIVX is standard ERC20)
     async function updateBurnedBalance() {
       const el = document.getElementById("burnedBalance");
-      if (!web3 || !el) return;
+      if (!web3 || !el) return el.innerHTML = "Connect wallet";
       el.textContent = "Loading...";
       try {
         const token = new web3.eth.Contract([
           { "name": "balanceOf", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" },
-          { "name": "decimals", "inputs": [], "outputs": [{ "name": "", "type": "uint8" }], "stateMutability": "view" },
           { "name": "totalSupply", "inputs": [], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" }
         ], PRIVX_TOKEN);
-        const [decimals, totalSupply, dead, fire] = await Promise.all([
-          token.methods.decimals().call(),
+        const [totalSupply, dead, fire] = await Promise.all([
           token.methods.totalSupply().call(),
           token.methods.balanceOf("0x000000000000000000000000000000000000dEaD").call(),
           token.methods.balanceOf("0x0000000000000000000000000000000000000369").call()
         ]);
+        const decimals = 18; // Hardcoded – PRIVX uses 18 decimals
         const burned = BigInt(dead) + BigInt(fire);
         const burnedNum = Number(burned / (10n ** BigInt(decimals)));
         const supplyNum = Number(BigInt(totalSupply) / (10n ** BigInt(decimals)));
@@ -348,17 +334,17 @@
         el.innerHTML = `<strong>${burnedNum.toLocaleString()}</strong> PRIVX <span style="color:#00ffea;">(${pct}% burned)</span>`;
       } catch (err) {
         console.error(err);
-        el.textContent = "Error";
+        el.textContent = "Error loading burn data";
       }
     }
 
-    // Merkle proof helper
+    // Improved Merkle proof with better zero-padding
     async function getMerkleProof(contract, targetCommitment) {
       const events = await contract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
       events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
       const leaves = events.map(e => BigInt(e.returnValues.commitment));
       const idx = leaves.findIndex(c => c === targetCommitment);
-      if (idx === -1) throw new Error("Your deposit not found in tree");
+      if (idx === -1) throw new Error("Deposit not found in tree – try a different note");
       const proof = { pathIndices: [], siblings: [] };
       let i = idx;
       for (let d = 0; d < 20; d++) {
@@ -372,7 +358,6 @@
       return proof;
     }
 
-    // Withdraw (Plonk)
     async function withdraw() {
       const note = document.getElementById("withdrawNote").value.trim();
       if (!note) return alert("Paste your private note");
@@ -392,7 +377,14 @@
       const shield = new web3.eth.Contract(SHIELD_ABI, SHIELD_CONTRACTS[denomStr]);
       const root = await shield.methods.getLastRoot().call();
 
-      const { pathIndices, siblings } = await getMerkleProof(shield, commitment);
+      let pathIndices, siblings;
+      try {
+        const proof = await getMerkleProof(shield, commitment);
+        pathIndices = proof.pathIndices;
+        siblings = proof.siblings;
+      } catch (e) {
+        return alert(e.message);
+      }
 
       const input = {
         nullifier: nullifier.toString(),
@@ -406,7 +398,7 @@
 
       const btn = document.getElementById("withdrawBtn");
       btn.disabled = true;
-      btn.textContent = "Generating Plonk Proof... (10–60s)";
+      btn.textContent = "Generating Plonk Proof...";
 
       try {
         const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
@@ -427,15 +419,12 @@
       }
     }
 
-    // Init
     window.addEventListener("load", () => {
       document.getElementById("walletButton").onclick = toggleWallet;
       document.getElementById("depositBtn").onclick = deposit;
       document.getElementById("withdrawBtn").onclick = withdraw;
-
       document.getElementById("depositTabBtn").addEventListener("click", () => switchTab("deposit"));
       document.getElementById("withdrawTabBtn").addEventListener("click", () => switchTab("withdraw"));
-
       switchTab("deposit");
       updateDepositButton();
       updateBurnedBalance();
