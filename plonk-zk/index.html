@@ -432,8 +432,8 @@ window.addEventListener('load', () => {
 <!-- ✅ SNARKJS -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ Local CircomlibJS (self-contained UMD) -->
-<script src="./plonk-zk/circuits/circomlibjs.browser.js"></script>
+<!-- ✅ Local CircomlibJS (absolute path) -->
+<script src="https://elitev5.github.io/PrivX/plonk-zk/circuits/circomlibjs.browser.js"></script>
 
 <!-- ✅ Withdraw Logic -->
 <script>
@@ -441,9 +441,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   console.log("✅ SNARKJS loaded via CDN:", !!window.snarkjs);
   console.log("✅ DOM ready — initializing withdraw logic...");
 
-  /* -------------------- Load & Verify CircomlibJS -------------------- */
   if (!window.circomlibjs && !window.circomlib) {
-    console.error("❌ CircomlibJS not found — check your local path (./plonk-zk/circuits/circomlibjs.browser.js)");
+    console.error("❌ CircomlibJS not found — check path or CSP");
     return;
   }
 
@@ -460,25 +459,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   const F = poseidon.F;
-  console.log("✅ Circomlib Poseidon synced with circom/poseidon.circom");
-
-  /* -------------------- Global Constants -------------------- */
-  const TREE_LEVELS = 20;
-  const FIELD_P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-
-  const fieldNormalize = x => ((x % FIELD_P) + FIELD_P) % FIELD_P;
-
-  /* -------------------- Poseidon(2) + Poseidon(3) Wrappers -------------------- */
   const poseidon2 = (a, b) => F.toObject(poseidon([a, b]));
   const poseidon3 = (a, b, c = 0n) => F.toObject(poseidon([a, b, c]));
 
   console.log("✅ Poseidon(2) + Poseidon(3) wrappers ready");
 
-  /* -------------------- Quick Self-Test -------------------- */
   const testCommit = poseidon2(1n, 2n);
   const testNF = poseidon3(3n, 4n, 0n);
   console.log("🧩 Poseidon(2) test:", "0x" + testCommit.toString(16));
   console.log("🧩 Poseidon(3) test:", "0x" + testNF.toString(16));
+});
+</script>
 
   /* -------------------- Withdraw Handler -------------------- */
   window.withdraw = async function () {
