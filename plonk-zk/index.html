@@ -123,7 +123,7 @@
   <script>
     let web3, userAccount, selectedDenomination;
 
-    // Poseidon T3
+    // Poseidon T3 – exact match
     const P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
     const C = [
       12861791851186454756856465657750459816989389089376497637901611881939633773556n,
@@ -171,7 +171,6 @@
       return poseidonT3(poseidonT3(a, b), c);
     }
 
-    // Constants
     const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
     const SHIELD_CONTRACTS = {
       "100": "0xCa770DdEaAB4eab30928BfF824b6a0367a948E71",
@@ -189,23 +188,51 @@
     const ZKEY_URL = "https://amaranth-rear-platypus-218.mypinata.cloud/ipfs/bafybeigxkcrzlsvedhj2oc6hkt3jke2d7eed34s5pqr7qf43uxuqa3yln4";
 
     const ERC20_ABI = [
-      { "inputs": [{ "name": "spender", "type": "address" }, { "name": "amount", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "", "type": "bool" }], "stateMutability": "nonpayable", "type": "function" },
-      { "inputs": [{ "name": "owner", "type": "address" }, { "name": "spender", "type": "address" }], "name": "allowance", "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
+      {
+        "inputs": [
+          { "internalType": "address", "name": "spender", "type": "address" },
+          { "internalType": "uint256", "name": "amount", "type": "uint256" }
+        ],
+        "name": "approve",
+        "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "address", "name": "owner", "type": "address" },
+          { "internalType": "address", "name": "spender", "type": "address" }
+        ],
+        "name": "allowance",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+      }
     ];
 
     const SHIELD_ABI = [
-      { "inputs": [{ "internalType": "bytes32", "name": "_commitment", "type": "bytes32" }], "name": "deposit", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-      { "inputs": [
+      { "inputs": [{ "internalType": "bytes32", "name": "_commitment", "type": "bytes32" }],
+        "name": "deposit", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      {
+        "inputs": [
           { "internalType": "bytes", "name": "_proof", "type": "bytes" },
           { "internalType": "uint256[3]", "name": "_pubSignals", "type": "uint256[3]" },
           { "internalType": "address payable", "name": "recipient", "type": "address" }
-        ], "name": "withdraw", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+        ],
+        "name": "withdraw",
+        "outputs": [], "stateMutability": "nonpayable", "type": "function"
+      },
       { "inputs": [], "name": "getLastRoot", "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }], "stateMutability": "view", "type": "function" },
-      { "anonymous": false, "inputs": [
+      {
+        "anonymous": false,
+        "inputs": [
           { "indexed": true, "internalType": "bytes32", "name": "commitment", "type": "bytes32" },
           { "indexed": false, "internalType": "uint32", "name": "leafIndex", "type": "uint32" },
           { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
-        ], "name": "Deposit", "type": "event" }
+        ],
+        "name": "Deposit",
+        "type": "event"
+      }
     ];
 
     function switchTab(tab) {
@@ -221,37 +248,42 @@
       btn.disabled = true;
       btn.textContent = "Generating Note...";
       try {
-        function generateRandomBytes(len = 32) {
-          const bytes = crypto.getRandomValues(new Uint8Array(len));
-          const extra = new TextEncoder().encode(userAccount + Date.now());
-          for (let i = 0; i < extra.length; i++) bytes[i % len] ^= extra[i];
+        function generateRandomBytes(length = 32) {
+          const bytes = crypto.getRandomValues(new Uint8Array(length));
+          const extra = new TextEncoder().encode(userAccount + Date.now().toString());
+          for (let i = 0; i < extra.length; i++) {
+            bytes[i % length] ^= extra[i];
+          }
           return bytes;
         }
-        const nullifier = generateRandomBytes();
-        const secret = generateRandomBytes();
+        const nullifier = generateRandomBytes(32);
+        const secret = generateRandomBytes(32);
         const nullifierHex = [...nullifier].map(b => b.toString(16).padStart(2, "0")).join("");
         const secretHex = [...secret].map(b => b.toString(16).padStart(2, "0")).join("");
-        const commitment = poseidonT3(BigInt("0x" + nullifierHex), BigInt("0x" + secretHex));
-        const commitmentHex = "0x" + commitment.toString(16).padStart(64, "0");
+        const nullifierBI = BigInt("0x" + nullifierHex);
+        const secretBI = BigInt("0x" + secretHex);
+        const commitmentBI = poseidonT3(nullifierBI, secretBI);
+        const commitment = "0x" + commitmentBI.toString(16).padStart(64, "0");
         const note = `privx-hurricane-${selectedDenomination}-${nullifierHex}-${secretHex}`;
         document.getElementById("noteText").textContent = note;
         document.getElementById("depositNote").classList.remove("hidden");
         const amount = BigInt(DENOM_AMOUNTS[selectedDenomination]);
-        const fee = amount * 3n / 1000n;
-        const total = (amount + fee).toString();
-        const shield = new web3.eth.Contract(SHIELD_ABI, SHIELD_CONTRACTS[selectedDenomination]);
-        const token = new web3.eth.Contract(ERC20_ABI, PRIVX_TOKEN);
-        const allowance = await token.methods.allowance(userAccount, shield.options.address).call();
-        if (BigInt(allowance) < BigInt(total)) {
-          btn.textContent = "Approving...";
-          await token.methods.approve(shield.options.address, total).send({ from: userAccount });
+        const fee = (amount * 3n) / 1000n;
+        const totalAmount = (amount + fee).toString();
+        const shieldAddr = SHIELD_CONTRACTS[selectedDenomination];
+        const privx = new web3.eth.Contract(ERC20_ABI, PRIVX_TOKEN);
+        const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
+        const allowance = await privx.methods.allowance(userAccount, shieldAddr).call();
+        if (BigInt(allowance) < BigInt(totalAmount)) {
+          btn.textContent = "Approving PRIVX + Fee...";
+          await privx.methods.approve(shieldAddr, totalAmount).send({ from: userAccount });
         }
         btn.textContent = "Depositing...";
-        const tx = await shield.methods.deposit(commitmentHex).send({ from: userAccount });
-        alert(`✅ Deposit successful!\nTX: ${tx.transactionHash}\n\nSAVE YOUR NOTE!`);
+        const tx = await shield.methods.deposit(commitment).send({ from: userAccount });
+        alert(`✅ DEPOSIT SUCCESS!\nTX: ${tx.transactionHash}\n\n💾 SAVE YOUR NOTE SECURELY!`);
       } catch (err) {
-        console.error(err);
-        alert("Deposit failed: " + (err.message || "Check console"));
+        console.error("Deposit error:", err);
+        alert("Deposit failed: " + (err.message || "Check MetaMask or PRIVX balance"));
       } finally {
         btn.disabled = false;
         btn.textContent = `Shield ${selectedDenomination} PRIVX`;
@@ -259,11 +291,14 @@
     }
 
     async function toggleWallet() {
-      if (!window.ethereum) return alert("Install MetaMask/Rabby");
+      if (!window.ethereum) return alert("Install MetaMask");
       try {
         await window.ethereum.request({ method: "eth_requestAccounts" });
         try {
-          await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x171" }] });
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x171" }]
+          });
         } catch (e) {
           if (e.code === 4902) {
             await window.ethereum.request({
@@ -281,13 +316,14 @@
         web3 = new Web3(window.ethereum);
         const accounts = await web3.eth.getAccounts();
         userAccount = accounts[0];
-        document.getElementById("walletButtonText").textContent = `${userAccount.slice(0,6)}...${userAccount.slice(-4)}`;
+        document.getElementById("walletButtonText").textContent =
+          `${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
         document.getElementById("walletButton").classList.add("connected");
         updateDepositButton();
       } catch (err) {
         alert("Connection failed");
       }
-    }
+    };
 
     if (window.ethereum) {
       window.ethereum.request({ method: "eth_accounts" }).then(a => a.length > 0 && toggleWallet());
@@ -302,8 +338,16 @@
 
     function updateDepositButton() {
       const btn = document.getElementById('depositBtn');
-      btn.textContent = userAccount ? (selectedDenomination ? `Shield ${selectedDenomination} PRIVX` : "Select Denomination") : "Connect Wallet First";
-      btn.disabled = !userAccount || !selectedDenomination;
+      if (!userAccount) {
+        btn.textContent = "Connect Wallet First";
+        btn.disabled = true;
+      } else if (!selectedDenomination) {
+        btn.textContent = "Select Denomination";
+        btn.disabled = true;
+      } else {
+        btn.textContent = `Shield ${selectedDenomination} PRIVX`;
+        btn.disabled = false;
+      }
     }
 
     function copyNote() {
@@ -311,72 +355,79 @@
       alert("Note copied!");
     }
 
-    // Burn tracker – hardcoded decimals = 18 (PRIVX is standard ERC20)
+    // Fixed burn tracker – only balanceOf calls (no decimals/totalSupply)
     async function updateBurnedBalance() {
       const el = document.getElementById("burnedBalance");
-      if (!web3 || !el) return el.innerHTML = "Connect wallet";
+      if (!el) return;
+      if (!web3) {
+        el.textContent = "Connect wallet";
+        return;
+      }
       el.textContent = "Loading...";
       try {
         const token = new web3.eth.Contract([
-          { "name": "balanceOf", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" },
-          { "name": "totalSupply", "inputs": [], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view" }
+          { "name": "balanceOf", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
         ], PRIVX_TOKEN);
-        const [totalSupply, dead, fire] = await Promise.all([
-          token.methods.totalSupply().call(),
+        const [dead, fire] = await Promise.all([
           token.methods.balanceOf("0x000000000000000000000000000000000000dEaD").call(),
           token.methods.balanceOf("0x0000000000000000000000000000000000000369").call()
         ]);
-        const decimals = 18; // Hardcoded – PRIVX uses 18 decimals
-        const burned = BigInt(dead) + BigInt(fire);
-        const burnedNum = Number(burned / (10n ** BigInt(decimals)));
-        const supplyNum = Number(BigInt(totalSupply) / (10n ** BigInt(decimals)));
-        const pct = supplyNum ? (burnedNum / supplyNum * 100).toFixed(4) : "0.0000";
-        el.innerHTML = `<strong>${burnedNum.toLocaleString()}</strong> PRIVX <span style="color:#00ffea;">(${pct}% burned)</span>`;
+        const totalBurned = BigInt(dead) + BigInt(fire);
+        const burnedNum = Number(totalBurned / 10n ** 18n); // PRIVX uses 18 decimals (standard)
+        el.innerHTML = `<strong>${burnedNum.toLocaleString()}</strong> PRIVX burned`;
       } catch (err) {
-        console.error(err);
-        el.textContent = "Error loading burn data";
+        console.error("Burn tracker error:", err);
+        el.textContent = "Error";
       }
     }
 
-    // Improved Merkle proof with better zero-padding
-    async function getMerkleProof(contract, targetCommitment) {
-      const events = await contract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
-      events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
+    // Merkle proof with zero padding
+    async function getMerkleProof(shieldContract, commitment) {
+      const treeDepth = 20;
+      const events = await shieldContract.getPastEvents("Deposit", {
+        fromBlock: 0,
+        toBlock: "latest"
+      });
+      events.sort((a, b) => a.returnValues.leafIndex - b.returnValues.leafIndex);
       const leaves = events.map(e => BigInt(e.returnValues.commitment));
-      const idx = leaves.findIndex(c => c === targetCommitment);
-      if (idx === -1) throw new Error("Deposit not found in tree – try a different note");
-      const proof = { pathIndices: [], siblings: [] };
-      let i = idx;
-      for (let d = 0; d < 20; d++) {
-        const isLeft = i % 2 === 0;
-        const siblingIdx = isLeft ? i + 1 : i - 1;
-        const sibling = siblingIdx < leaves.length ? leaves[siblingIdx] : 0n;
-        proof.pathIndices.push(isLeft ? 0 : 1);
-        proof.siblings.push(sibling.toString());
-        i = Math.floor(i / 2);
+      const leafIndex = leaves.findIndex(c => c === commitment);
+      if (leafIndex === -1) throw new Error("Your deposit not found in tree – try a different note");
+      const siblings = [];
+      const pathIndices = [];
+      let index = leafIndex;
+      for (let i = 0; i < treeDepth; i++) {
+        const isLeft = index % 2 === 0;
+        const siblingIndex = isLeft ? index + 1 : index - 1;
+        const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : 0n;
+        siblings.push(sibling.toString());
+        pathIndices.push(isLeft ? 0 : 1);
+        index = Math.floor(index / 2);
       }
-      return proof;
+      return { pathIndices, siblings };
     }
 
     async function withdraw() {
-      const note = document.getElementById("withdrawNote").value.trim();
-      if (!note) return alert("Paste your private note");
-      if (!userAccount) return alert("Connect wallet first");
+      const noteInput = document.getElementById("withdrawNote").value.trim();
+      if (!noteInput) return alert("Paste your private note first");
+      if (!userAccount) return alert("Connect your wallet first");
       if (!web3) return alert("Web3 not available");
-
-      const m = note.match(/^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/);
-      if (!m) return alert("Invalid note format");
-      const [_, denomStr, nullifierHex, secretHex] = m;
+      const match = noteInput.match(/^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/);
+      if (!match) return alert("Invalid note format");
+      const [_, denomStr, nullifierHex, secretHex] = match;
       const denomination = BigInt(denomStr);
       const nullifier = BigInt("0x" + nullifierHex);
       const secret = BigInt("0x" + secretHex);
-
       const commitment = poseidonT3(nullifier, secret);
       const nullifierHash = poseidon3(nullifier, denomination);
-
-      const shield = new web3.eth.Contract(SHIELD_ABI, SHIELD_CONTRACTS[denomStr]);
-      const root = await shield.methods.getLastRoot().call();
-
+      const shieldAddr = SHIELD_CONTRACTS[denomStr];
+      if (!shieldAddr) return alert("Unsupported denomination");
+      const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
+      let root;
+      try {
+        root = await shield.methods.getLastRoot().call();
+      } catch (e) {
+        return alert("Failed to fetch root");
+      }
       let pathIndices, siblings;
       try {
         const proof = await getMerkleProof(shield, commitment);
@@ -385,33 +436,32 @@
       } catch (e) {
         return alert(e.message);
       }
-
       const input = {
         nullifier: nullifier.toString(),
         secret: secret.toString(),
-        pathIndices,
-        siblings,
-        root,
+        pathIndices: pathIndices,
+        siblings: siblings,
+        root: root,
         nullifierHash: nullifierHash.toString(),
         denomination: denomination.toString()
       };
-
       const btn = document.getElementById("withdrawBtn");
       btn.disabled = true;
-      btn.textContent = "Generating Plonk Proof...";
-
+      btn.textContent = "Generating Plonk Proof... (10–60s)";
       try {
         const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
         const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
         const parts = calldata.split(",");
         const proofBytes = parts[0].trim();
-        const pubSignals = [parts[1].trim(), parts[2].trim(), parts[3].trim().replace("]", "")];
+        const pubSig0 = parts[1].trim();
+        const pubSig1 = parts[2].trim();
+        const pubSig2 = parts[3].trim().replace("]", "");
+        const pubSignalsArr = [pubSig0, pubSig1, pubSig2];
         const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
-
-        await shield.methods.withdraw(proofBytes, pubSignals, recipient).send({ from: userAccount });
-        alert("🎉 Withdrawal successful!");
+        await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
+        alert("🎉 Withdrawal successful!\nFunds sent to " + recipient);
       } catch (err) {
-        console.error(err);
+        console.error("Withdraw error:", err);
         alert("Withdrawal failed: " + (err.message || "Check console"));
       } finally {
         btn.disabled = false;
@@ -419,13 +469,13 @@
       }
     }
 
-    window.addEventListener("load", () => {
+    window.addEventListener('load', () => {
       document.getElementById("walletButton").onclick = toggleWallet;
-      document.getElementById("depositBtn").onclick = deposit;
-      document.getElementById("withdrawBtn").onclick = withdraw;
-      document.getElementById("depositTabBtn").addEventListener("click", () => switchTab("deposit"));
-      document.getElementById("withdrawTabBtn").addEventListener("click", () => switchTab("withdraw"));
-      switchTab("deposit");
+      document.getElementById('depositBtn').onclick = deposit;
+      document.getElementById('withdrawBtn').onclick = withdraw;
+      document.getElementById('depositTabBtn').addEventListener('click', () => switchTab('deposit'));
+      document.getElementById('withdrawTabBtn').addEventListener('click', () => switchTab('withdraw'));
+      switchTab('deposit');
       updateDepositButton();
       updateBurnedBalance();
       setInterval(updateBurnedBalance, 30000);
@@ -449,12 +499,13 @@
       drops.forEach((y,i) => {
         const text = chars[Math.floor(Math.random()*chars.length)];
         ctx.fillText(text, i*fontSize, y*fontSize);
-        if (y*fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        if(y*fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
         drops[i]++;
       });
     }
-    (function loop(){ draw(); requestAnimationFrame(loop); })();
-    window.addEventListener('resize', () => {
+    function loop(){ draw(); requestAnimationFrame(loop); }
+    loop();
+    addEventListener('resize', () => {
       canvas.width = innerWidth; canvas.height = innerHeight;
       fontSize = innerWidth < 600 ? 10 : 14;
       columns = Math.floor(canvas.width / fontSize);
