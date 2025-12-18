@@ -382,7 +382,7 @@
   }
 
   // FINAL FIXED Merkle proof – matches your Switcher component exactly
- async function getMerkleProof(shieldContract, targetCommitment) {
+async function getMerkleProof(shieldContract, targetCommitment) {
   const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
   if (events.length === 0) throw new Error("No deposits found");
   events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
@@ -397,7 +397,7 @@
     const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
     const sibling = (siblingIndex >= 0 && siblingIndex < leaves.length) ? leaves[siblingIndex] : 0n;
     siblings.push(sibling.toString());
-    pathIndices.push(isLeft ? 1 : 0); // 1 = sibling left, 0 = sibling right — standard Tornado / circomlib convention
+    pathIndices.push(isLeft ? 1 : 0); // FLIPPED to match your custom Switcher
     currentIndex = Math.floor(currentIndex / 2);
   }
   return { pathIndices, siblings };
