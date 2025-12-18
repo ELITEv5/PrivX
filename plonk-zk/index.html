@@ -383,25 +383,25 @@
 
   // FINAL FIXED Merkle proof – matches your Switcher component exactly
   async function getMerkleProof(shieldContract, targetCommitment) {
-    const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
-    if (events.length === 0) throw new Error("No deposits found");
-    events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
-    const leaves = events.map(e => BigInt(e.returnValues.commitment));
-    const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-    if (leafIndex === -1) throw new Error("Your commitment not found – deposit may not be confirmed");
-    const siblings = [];
-    const pathIndices = [];
-    let currentIndex = leafIndex;
-    for (let level = 0; level < 20; level++) {
-      const isRight = currentIndex % 2 === 1; // odd index = right child
-      const siblingIndex = isRight ? currentIndex - 1 : currentIndex + 1;
-      const sibling = (siblingIndex >= 0 && siblingIndex < leaves.length) ? leaves[siblingIndex] : 0n;
-      siblings.push(sibling.toString());
-      pathIndices.push(isRight ? 1 : 0); // 1 = sibling left (hash(sibling, current)), 0 = sibling right (hash(current, sibling))
-      currentIndex = Math.floor(currentIndex / 2);
-    }
-    return { pathIndices, siblings };
+  const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
+  if (events.length === 0) throw new Error("No deposits found");
+  events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
+  const leaves = events.map(e => BigInt(e.returnValues.commitment));
+  const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
+  if (leafIndex === -1) throw new Error("Your commitment not found – deposit may not be confirmed");
+  const siblings = [];
+  const pathIndices = [];
+  let currentIndex = leafIndex;
+  for (let level = 0; level < 20; level++) {
+    const isLeft = currentIndex % 2 === 0; // even index = left child
+    const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
+    const sibling = (siblingIndex >= 0 && siblingIndex < leaves.length) ? leaves[siblingIndex] : 0n;
+    siblings.push(sibling.toString());
+    pathIndices.push(isLeft ? 0 : 1); // 0 = sibling right, 1 = sibling left → matches your Switcher
+    currentIndex = Math.floor(currentIndex / 2);
   }
+  return { pathIndices, siblings };
+}
 
   async function withdraw() {
     const noteInput = document.getElementById("withdrawNote").value.trim();
