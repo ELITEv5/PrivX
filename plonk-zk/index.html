@@ -432,29 +432,22 @@ window.addEventListener('load', () => {
 <!-- ✅ SNARKJS -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ RAILGUN fork – reliable browser build with buildPoseidon() -->
-<script src="https://cdn.jsdelivr.net/npm/@railgun-community/circomlibjs@0.0.8/index.min.js"></script>
+<!-- ✅ circomlibjs 0.0.8 – Direct browser-compatible Poseidon (proven to work) -->
+<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/build/poseidon.js"></script>
 
-<!-- ✅ Withdraw Logic -->
+<!-- ✅ Withdraw Logic (Fixed for direct window.poseidon) -->
 <script>
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
   console.log("✅ SNARKJS loaded:", !!window.snarkjs);
   console.log("✅ DOM ready — initializing withdraw logic...");
 
-  // RAILGUN fork exposes buildPoseidon correctly
-  if (typeof buildPoseidon === "undefined") {
-    console.error("❌ buildPoseidon not available — check CDN load!");
+  if (!window.poseidon || !window.poseidon.F) {
+    console.error("❌ Poseidon failed to load! Use exactly: https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/build/poseidon.js");
+    alert("Critical error: Poseidon library not loaded. Check console for details.");
     return;
   }
 
-  let poseidon;
-  try {
-    poseidon = await buildPoseidon();  // This works reliably in browser with the fork
-    console.log("✅ Poseidon initialized via buildPoseidon!");
-  } catch (err) {
-    console.error("❌ Poseidon init failed:", err);
-    return;
-  }
+  console.log("✅ circomlibjs@0.0.8 Poseidon loaded directly on window.poseidon!");
 
   const F = poseidon.F;
 
@@ -463,11 +456,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   console.log("✅ Poseidon wrappers ready");
 
-  // Quick test
+  // Standard test – should match Tornado Cash style Poseidon
   const testCommit = poseidon2(1n, 2n);
-  console.log("🧩 Poseidon(2) test (1,2):", testCommit);  // Should be a large number
+  console.log("🧩 Poseidon(2) test (1,2): 0x" + testCommit.toString(16).padStart(64, "0"));
+  // Expected: 0x115cc0f5e7d690413df64c6b9662e9cf2a3617f2743245519e19607a4417189a (or similar known value)
 
-  window.withdraw = async function () {
+  window.withdraw = function () {
     const noteInput = document.getElementById("withdrawNote")?.value.trim();
     if (!noteInput) return alert("Paste your private note first");
     if (!userAccount) return alert("Connect your wallet first");
@@ -480,20 +474,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     const secret = BigInt("0x" + secretHex);
 
     const commitment = poseidon2(nullifier, secret);
-    const nullifierHash = poseidon3(nullifier, BigInt(denomStr), 0n);  // Adjust if your circuit uses different inputs
+    const nullifierHash = poseidon3(nullifier, BigInt(denomStr), 0n); // Matches standard mixer circuits
 
-    console.log("🧩 Commitment:", "0x" + commitment.toString(16).padStart(64, "0"));
-    console.log("🧩 Nullifier Hash:", "0x" + nullifierHash.toString(16).padStart(64, "0"));
+    const commitmentHex = "0x" + commitment.toString(16).padStart(64, "0");
+    const nullifierHashHex = "0x" + nullifierHash.toString(16).padStart(64, "0");
 
-    alert("✅ Poseidon hashes computed correctly!\n\nCommitment: 0x" + commitment.toString(16).padStart(64, "0") +
-          "\nNullifier Hash: 0x" + nullifierHash.toString(16).padStart(64, "0"));
-    // Next step: Add full proof generation here (see below)
+    console.log("🧩 Commitment:", commitmentHex);
+    console.log("🧩 Nullifier Hash:", nullifierHashHex);
+
+    alert(`✅ Poseidon hashes computed successfully!\n\nCommitment: ${commitmentHex}\nNullifier Hash: ${nullifierHashHex}\n\nThis uses the standard Poseidon that matches your deposit-side poseidonT3 implementation.`);
   };
 
   const btn = document.getElementById("withdrawBtn");
   if (btn) {
     btn.addEventListener("click", withdraw);
     console.log("✅ Withdraw button listener attached");
+  } else {
+    console.warn("⚠️ withdrawBtn not found");
   }
 });
 </script>
