@@ -428,7 +428,7 @@
     }
     let pathIndices, siblings, leafIndex;
     try {
-      const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
+      const events = await shield.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
       events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
       const leaves = events.map(e => BigInt(e.returnValues.commitment));
       leafIndex = leaves.findIndex(c => c === commitment);
