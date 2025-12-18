@@ -429,82 +429,75 @@ window.addEventListener('load', () => {
 });
 </script>
   
-<!-- ✅ SNARKJS -->
+<!-- ✅ SNARKJS (UMD) -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ Local CircomlibJS (absolute path) -->
-<script src="https://elitev5.github.io/PrivX/plonk-zk/circuits/circomlibjs.browser.js"></script>
-
-<!-- ✅ Withdraw Logic -->
-<script>
-document.addEventListener("DOMContentLoaded", async () => {
+<!-- ✅ CircomlibJS via ESM (Official CDN) -->
+<script type="module">
   console.log("✅ SNARKJS loaded via CDN:", !!window.snarkjs);
-  console.log("✅ DOM ready — initializing withdraw logic...");
 
-  if (!window.circomlibjs && !window.circomlib) {
-    console.error("❌ CircomlibJS not found — check path or CSP");
-    return;
-  }
+  import { buildPoseidon } from "https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm";
 
-  const lib = window.circomlibjs || window.circomlib;
-  console.log("✅ CircomlibJS global found:", !!lib);
+  document.addEventListener("DOMContentLoaded", async () => {
+    console.log("✅ DOM ready — initializing withdraw logic...");
 
-  let poseidon;
-  try {
-    poseidon = await lib.buildPoseidon();
-    console.log("✅ Poseidon initialized successfully!");
-  } catch (err) {
-    console.error("❌ Poseidon init failed:", err);
-    return;
-  }
+    // 🔹 Build Poseidon (directly from circomlibjs)
+    let poseidon;
+    try {
+      poseidon = await buildPoseidon();
+      console.log("✅ CircomlibJS Poseidon initialized!");
+    } catch (err) {
+      console.error("❌ Poseidon init failed:", err);
+      return;
+    }
 
-  const F = poseidon.F;
-  const poseidon2 = (a, b) => F.toObject(poseidon([a, b]));
-  const poseidon3 = (a, b, c = 0n) => F.toObject(poseidon([a, b, c]));
+    const F = poseidon.F;
 
-  console.log("✅ Poseidon(2) + Poseidon(3) wrappers ready");
+    /* -------------------- Poseidon(2) + Poseidon(3) Wrappers -------------------- */
+    const poseidon2 = (a, b) => F.toObject(poseidon([a, b]));
+    const poseidon3 = (a, b, c = 0n) => F.toObject(poseidon([a, b, c]));
 
-  const testCommit = poseidon2(1n, 2n);
-  const testNF = poseidon3(3n, 4n, 0n);
-  console.log("🧩 Poseidon(2) test:", "0x" + testCommit.toString(16));
-  console.log("🧩 Poseidon(3) test:", "0x" + testNF.toString(16));
-});
-</script>
+    console.log("✅ Poseidon(2) + Poseidon(3) wrappers ready");
 
-  /* -------------------- Withdraw Handler -------------------- */
-  window.withdraw = async function () {
-    const noteInput = document.getElementById("withdrawNote")?.value.trim();
-    if (!noteInput) return alert("Paste your private note first");
-    if (!window.web3 || !window.userAccount) return alert("Connect your wallet first");
+    /* -------------------- Quick Test -------------------- */
+    const testCommit = poseidon2(1n, 2n);
+    const testNF = poseidon3(3n, 4n, 0n);
+    console.log("🧩 Poseidon(2) test:", "0x" + testCommit.toString(16));
+    console.log("🧩 Poseidon(3) test:", "0x" + testNF.toString(16));
 
-    // ✅ Parse note
-    const match = noteInput.match(/^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/);
-    if (!match) return alert("Invalid note format");
+    /* -------------------- Withdraw Handler -------------------- */
+    window.withdraw = async function () {
+      const noteInput = document.getElementById("withdrawNote")?.value.trim();
+      if (!noteInput) return alert("Paste your private note first");
+      if (!window.web3 || !window.userAccount) return alert("Connect your wallet first");
 
-    const [_, denom, nullifierHex, secretHex] = match;
-    const nullifier = BigInt("0x" + nullifierHex);
-    const secret = BigInt("0x" + secretHex);
+      const match = noteInput.match(
+        /^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/
+      );
+      if (!match) return alert("Invalid note format");
 
-    // ✅ Compute commitment (Poseidon(2))
-    const commitment = poseidon2(nullifier, secret);
-    console.log("🧩 Poseidon(2) Commitment:", "0x" + commitment.toString(16).padStart(64, "0"));
+      const [_, denom, nullifierHex, secretHex] = match;
+      const nullifier = BigInt("0x" + nullifierHex);
+      const secret = BigInt("0x" + secretHex);
 
-    // ✅ Compute nullifier hash (Poseidon(3))
-    const nfHash = poseidon3(nullifier, BigInt(denom), 0n);
-    console.log("🧩 Poseidon(3) NullifierHash:", "0x" + nfHash.toString(16).padStart(64, "0"));
+      // ✅ Commitment & NullifierHash
+      const commitment = poseidon2(nullifier, secret);
+      const nfHash = poseidon3(nullifier, BigInt(denom), 0n);
+      console.log("🧩 Commitment:", "0x" + commitment.toString(16).padStart(64, "0"));
+      console.log("🧩 NullifierHash:", "0x" + nfHash.toString(16).padStart(64, "0"));
 
-    alert("✅ CircomlibJS Poseidon working — fully synced with your circom circuit!");
-  };
+      alert("✅ CircomlibJS Poseidon working — synced perfectly with Circom!");
+    };
 
-  /* -------------------- Attach Button Listener -------------------- */
-  const btn = document.getElementById("withdrawBtn");
-  if (btn) {
-    btn.addEventListener("click", withdraw);
-    console.log("✅ Withdraw button listener attached");
-  } else {
-    console.warn("⚠️ withdrawBtn not found in DOM");
-  }
-});
+    /* -------------------- Attach Withdraw Button -------------------- */
+    const btn = document.getElementById("withdrawBtn");
+    if (btn) {
+      btn.addEventListener("click", withdraw);
+      console.log("✅ Withdraw button listener attached");
+    } else {
+      console.warn("⚠️ withdrawBtn not found in DOM");
+    }
+  });
 </script>
 
   <!-- Matrix Rain -->
