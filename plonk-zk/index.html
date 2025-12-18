@@ -429,71 +429,155 @@ window.addEventListener('load', () => {
 });
 </script>
   
-<!-- ✅ SNARKJS -->
+<!-- ✅ SNARKJS (supports Plonk) -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ circomlibjs 0.0.8 – Direct browser-compatible Poseidon (proven to work) -->
+<!-- ✅ circomlibjs 0.0.8 – Browser-compatible Poseidon hasher -->
 <script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/build/poseidon.js"></script>
 
-<!-- ✅ Withdraw Logic (Fixed for direct window.poseidon) -->
+<!-- ✅ Withdraw Logic – Poseidon Hash + Full Plonk Proof Generation -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
   console.log("✅ SNARKJS loaded:", !!window.snarkjs);
   console.log("✅ DOM ready — initializing withdraw logic...");
 
   if (!window.poseidon || !window.poseidon.F) {
-    console.error("❌ Poseidon failed to load! Use exactly: https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/build/poseidon.js");
-    alert("Critical error: Poseidon library not loaded. Check console for details.");
+    console.error("❌ Poseidon failed to load! Use: https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/build/poseidon.js");
+    alert("Critical error: Poseidon library failed to load. Check console.");
     return;
   }
 
-  console.log("✅ circomlibjs@0.0.8 Poseidon loaded directly on window.poseidon!");
+  console.log("✅ circomlibjs@0.0.8 Poseidon loaded successfully!");
 
   const F = poseidon.F;
-
   const poseidon2 = (a, b) => F.toObject(poseidon([a, b]));
   const poseidon3 = (a, b, c = 0n) => F.toObject(poseidon([a, b, c]));
 
-  console.log("✅ Poseidon wrappers ready");
-
-  // Standard test – should match Tornado Cash style Poseidon
+  // 🔹 Basic self-test (sanity check for Poseidon constants)
   const testCommit = poseidon2(1n, 2n);
   console.log("🧩 Poseidon(2) test (1,2): 0x" + testCommit.toString(16).padStart(64, "0"));
-  // Expected: 0x115cc0f5e7d690413df64c6b9662e9cf2a3617f2743245519e19607a4417189a (or similar known value)
 
-  window.withdraw = function () {
+  // 🔹 Hardcoded ZKEY URL (Pinata-hosted)
+  const ZKEY_URL = "https://amaranth-rear-platypus-218.mypinata.cloud/ipfs/bafybeigxkcrzlsvedhj2oc6hkt3jke2d7eed34s5pqr7qf43uxuqa3yln4";
+  const WASM_URL = "./circuits/mixer_js/mixer.wasm";
+
+  // 🔹 Define network-specific contracts
+  window.SHIELD_CONTRACTS = {
+    "100": "0xCa770DdEaAB4eab30928BfF824b6a0367a948E71", // example placeholder
+    "1000": "0xc011bE6522df3F17C93d081B4E599E4283e362b6",
+    "10000": "0x9a74F08305F4D3974c6bFFBCBB2Ae66584EBC156",
+    "100000": "0xEf79f681ABEa3F659E5F35f7acc04E264d4122B8",
+  };
+
+  // 🔹 Example ABI placeholder (replace with your verified ABI)
+  window.SHIELD_ABI = [
+    {
+      "inputs": [
+        { "internalType": "bytes", "name": "_proof", "type": "bytes" },
+        { "internalType": "uint256[3]", "name": "_pubSignals", "type": "uint256[3]" },
+        { "internalType": "address", "name": "_recipient", "type": "address" }
+      ],
+      "name": "withdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getLastRoot",
+      "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ];
+
+  // 🔹 Withdraw handler
+  window.withdraw = async function () {
     const noteInput = document.getElementById("withdrawNote")?.value.trim();
     if (!noteInput) return alert("Paste your private note first");
-    if (!userAccount) return alert("Connect your wallet first");
+    if (!window.userAccount) return alert("Connect your wallet first");
+    if (!window.web3) return alert("Web3 not found (wallet not injected)");
 
     const match = noteInput.match(/^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/);
     if (!match) return alert("Invalid note format");
 
     const [_, denomStr, nullifierHex, secretHex] = match;
+    const denom = BigInt(denomStr);
     const nullifier = BigInt("0x" + nullifierHex);
     const secret = BigInt("0x" + secretHex);
 
     const commitment = poseidon2(nullifier, secret);
-    const nullifierHash = poseidon3(nullifier, BigInt(denomStr), 0n); // Matches standard mixer circuits
-
+    const nullifierHash = poseidon3(nullifier, denom, 0n);
     const commitmentHex = "0x" + commitment.toString(16).padStart(64, "0");
     const nullifierHashHex = "0x" + nullifierHash.toString(16).padStart(64, "0");
 
     console.log("🧩 Commitment:", commitmentHex);
     console.log("🧩 Nullifier Hash:", nullifierHashHex);
 
-    alert(`✅ Poseidon hashes computed successfully!\n\nCommitment: ${commitmentHex}\nNullifier Hash: ${nullifierHashHex}\n\nThis uses the standard Poseidon that matches your deposit-side poseidonT3 implementation.`);
+    const shieldAddr = SHIELD_CONTRACTS[denomStr];
+    if (!shieldAddr) return alert("No shield contract for denomination " + denomStr);
+
+    const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
+
+    // 🌳 Fetch current Merkle root
+    let root;
+    try {
+      root = await shield.methods.getLastRoot().call();
+      console.log("🌳 Current Merkle Root:", root);
+    } catch (e) {
+      console.error("❌ getLastRoot failed:", e);
+      return alert("Failed to fetch Merkle root.");
+    }
+
+    // ✅ Construct PLONK circuit input object
+    const input = {
+      nullifier: nullifier.toString(),
+      secret: secret.toString(),
+      pathIndices: Array(20).fill("0"),
+      siblings: Array(20).fill("0"),
+      root: root.toString(),
+      nullifierHash: nullifierHash.toString(),
+      denomination: denom.toString()
+    };
+
+    const btn = document.getElementById("withdrawBtn");
+    btn.disabled = true;
+    btn.textContent = "Generating Plonk Proof... ⏳";
+
+    try {
+      console.log("⚙️ Running snarkjs.plonk.fullProve...");
+      const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
+      console.log("✅ Proof generated successfully!");
+      console.log("📜 Public signals:", publicSignals);
+
+      const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+      console.log("🧩 Solidity calldata:", calldata);
+
+      const [proofBytes, ...pubSignals] = calldata.replace(/["[\]\s]/g, "").split(",");
+      const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
+
+      console.log("🚀 Sending withdraw transaction...");
+      await shield.methods.withdraw(proofBytes, pubSignals, recipient).send({ from: userAccount });
+      alert("✅ Withdrawal successful!");
+    } catch (err) {
+      console.error("❌ Proof generation or transaction failed:", err);
+      alert("Withdraw failed: " + (err.message || "Check console"));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Generate Proof + Withdraw";
+    }
   };
 
   const btn = document.getElementById("withdrawBtn");
   if (btn) {
     btn.addEventListener("click", withdraw);
-    console.log("✅ Withdraw button listener attached");
+    console.log("✅ Withdraw button handler attached");
   } else {
-    console.warn("⚠️ withdrawBtn not found");
+    console.warn("⚠️ withdrawBtn not found in DOM");
   }
 });
 </script>
+
 
   <!-- Matrix Rain -->
   <script>
