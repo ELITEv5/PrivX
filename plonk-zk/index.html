@@ -432,53 +432,37 @@ window.addEventListener('load', () => {
 <!-- ✅ SNARKJS -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ CircomlibJS (browser UMD build — works everywhere) -->
-<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/dist/browser.js"></script>
+<!-- ✅ CircomlibJS (older version with direct Poseidon export) -->
+<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/build/poseidon.js"></script>
 
 <!-- ✅ Withdraw Logic -->
 <script>
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("✅ SNARKJS loaded via CDN:", !!window.snarkjs);
+  console.log("✅ SNARKJS loaded:", !!window.snarkjs);
   console.log("✅ DOM ready — initializing withdraw logic...");
 
-  // CircomlibJS attaches itself globally as "circomlibjs"
-  if (!window.circomlibjs || !window.circomlibjs.buildPoseidon) {
-    console.error("❌ CircomlibJS not found — check CDN or CSP settings!");
+  if (!window.poseidon) {
+    console.error("❌ Poseidon not loaded from circomlibjs!");
     return;
   }
 
-  let poseidon;
-  try {
-    poseidon = await window.circomlibjs.buildPoseidon();
-    console.log("✅ CircomlibJS Poseidon initialized!");
-  } catch (err) {
-    console.error("❌ Poseidon init failed:", err);
-    return;
-  }
+  const F = window.poseidon.F;
 
-  const F = poseidon.F;
+  const poseidon2 = (a, b) => F.toObject(window.poseidon([a, b]));
+  const poseidon3 = (a, b, c = 0n) => F.toObject(window.poseidon([a, b, c]));
 
-  // Poseidon(2) and Poseidon(3) wrappers
-  const poseidon2 = (a, b) => F.toObject(poseidon([a, b]));
-  const poseidon3 = (a, b, c = 0n) => F.toObject(poseidon([a, b, c]));
+  console.log("✅ Older circomlibjs Poseidon loaded directly!");
 
-  console.log("✅ Poseidon(2) + Poseidon(3) wrappers ready");
-
-  // Quick tests
+  // Quick self-test
   const testCommit = poseidon2(1n, 2n);
-  const testNF = poseidon3(3n, 4n, 0n);
-  console.log("🧩 Poseidon(2) test:", "0x" + testCommit.toString(16));
-  console.log("🧩 Poseidon(3) test:", "0x" + testNF.toString(16));
+  console.log("🧩 Poseidon(2) test:", "0x" + testCommit.toString(16).padStart(64, "0"));
 
-  // Withdraw handler
   window.withdraw = async function () {
     const noteInput = document.getElementById("withdrawNote")?.value.trim();
     if (!noteInput) return alert("Paste your private note first");
     if (!window.web3 || !window.userAccount) return alert("Connect your wallet first");
 
-    const match = noteInput.match(
-      /^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/
-    );
+    const match = noteInput.match(/^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/);
     if (!match) return alert("Invalid note format");
 
     const [_, denom, nullifierHex, secretHex] = match;
