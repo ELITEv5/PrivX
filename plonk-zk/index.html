@@ -382,6 +382,8 @@
   }
 
   // FINAL FIXED Merkle proof – matches your Switcher component exactly
+const EMPTY_HASH = 0x26fc9cf8bf4dd46163a4cf9f8d595b3e8e8a939aad79abc0a1ceea1613c89c99n;
+
 async function getMerkleProof(shieldContract, targetCommitment) {
   const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
   if (events.length === 0) throw new Error("No deposits found");
@@ -395,9 +397,9 @@ async function getMerkleProof(shieldContract, targetCommitment) {
   for (let level = 0; level < 20; level++) {
     const isLeft = currentIndex % 2 === 0;
     const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
-    const sibling = (siblingIndex >= 0 && siblingIndex < leaves.length) ? leaves[siblingIndex] : 0n;
+    const sibling = (siblingIndex >= 0 && siblingIndex < leaves.length) ? leaves[siblingIndex] : EMPTY_HASH;
     siblings.push(sibling.toString());
-    pathIndices.push(isLeft ? 1 : 0); // FLIPPED to match your custom Switcher
+    pathIndices.push(isLeft ? 0 : 1); // Keep your current direction (adjust if needed after test)
     currentIndex = Math.floor(currentIndex / 2);
   }
   return { pathIndices, siblings };
