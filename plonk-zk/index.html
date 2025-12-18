@@ -383,25 +383,25 @@
 
     // Merkle proof with zero padding – your exact version
     async function getMerkleProof(shieldContract, targetCommitment) {
-      const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
-      if (events.length === 0) throw new Error("No deposits found");
-      events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
-      const leaves = events.map(e => BigInt(e.returnValues.commitment));
-      const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-      if (leafIndex === -1) throw new Error("Your commitment not found – deposit may not be confirmed");
-      const siblings = [];
-      const pathIndices = [];
-      let currentIndex = leafIndex;
-      for (let level = 0; level < 20; level++) {
-        const isLeft = currentIndex % 2 === 0;
-        const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
-        const sibling = siblingIndex < leaves.length ? leaves[siblingIndex] : 0n;
-        siblings.push(sibling.toString());
-        pathIndices.push(isLeft ? 0 : 1); // 0 = left (commitment is left), 1 = right
-        currentIndex = Math.floor(currentIndex / 2);
-      }
-      return { pathIndices, siblings };
-    }
+  const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
+  if (events.length === 0) throw new Error("No deposits found");
+  events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
+  const leaves = events.map(e => BigInt(e.returnValues.commitment));
+  const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
+  if (leafIndex === -1) throw new Error("Your commitment not found – deposit may not be confirmed");
+  const siblings = [];
+  const pathIndices = [];
+  let index = leafIndex;
+  for (let level = 0; level < 20; level++) {
+    const isRight = index % 2 === 1; // reverse logic: 1 if right
+    const siblingIndex = isRight ? index - 1 : index + 1;
+    const sibling = siblingIndex < leaves.length && siblingIndex >= 0 ? leaves[siblingIndex] : 0n;
+    siblings.unshift(sibling.toString()); // unshift to reverse order (root to leaf)
+    pathIndices.unshift(isRight ? 1 : 0);
+    index = Math.floor(index / 2);
+  }
+  return { pathIndices, siblings };
+}
 
     async function withdraw() {
       const noteInput = document.getElementById("withdrawNote").value.trim();
