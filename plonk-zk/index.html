@@ -119,11 +119,11 @@
   <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js"></script>
 
-  <!-- Complete App Logic -->
+   <!-- Complete App Logic -->
   <script>
     let web3, userAccount, selectedDenomination;
 
-    // Poseidon T3 – exact match
+    // Poseidon T3 – exact match to your deposit code and circuit
     const P = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
     const C = [
       12861791851186454756856465657750459816989389089376497637901611881939633773556n,
@@ -355,7 +355,7 @@
       alert("Note copied!");
     }
 
-    // Fixed burn tracker – only balanceOf calls (no decimals/totalSupply)
+    // Fixed burn tracker – only balanceOf calls
     async function updateBurnedBalance() {
       const el = document.getElementById("burnedBalance");
       if (!el) return;
@@ -373,7 +373,7 @@
           token.methods.balanceOf("0x0000000000000000000000000000000000000369").call()
         ]);
         const totalBurned = BigInt(dead) + BigInt(fire);
-        const burnedNum = Number(totalBurned / 10n ** 18n); // PRIVX uses 18 decimals (standard)
+        const burnedNum = Number(totalBurned / 10n ** 18n);
         el.innerHTML = `<strong>${burnedNum.toLocaleString()}</strong> PRIVX burned`;
       } catch (err) {
         console.error("Burn tracker error:", err);
@@ -381,27 +381,27 @@
       }
     }
 
-    // Merkle proof with zero padding
+    // Merkle proof with zero padding – your exact version
     async function getMerkleProof(shieldContract, targetCommitment) {
-  const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
-  if (events.length === 0) throw new Error("No deposits found");
-  events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
-  const leaves = events.map(e => BigInt(e.returnValues.commitment));
-  const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-  if (leafIndex === -1) throw new Error("Your commitment not found – deposit may not be confirmed");
-  const siblings = [];
-  const pathIndices = [];
-  let currentIndex = leafIndex;
-  for (let level = 0; level < 20; level++) {
-    const isLeft = currentIndex % 2 === 0;
-    const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
-    const sibling = siblingIndex < leaves.length ? leaves[siblingIndex] : 0n;
-    siblings.push(sibling.toString());
-    pathIndices.push(isLeft ? 0 : 1); // 0 = left (commitment is left), 1 = right
-    currentIndex = Math.floor(currentIndex / 2);
-  }
-  return { pathIndices, siblings };
-}
+      const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
+      if (events.length === 0) throw new Error("No deposits found");
+      events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
+      const leaves = events.map(e => BigInt(e.returnValues.commitment));
+      const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
+      if (leafIndex === -1) throw new Error("Your commitment not found – deposit may not be confirmed");
+      const siblings = [];
+      const pathIndices = [];
+      let currentIndex = leafIndex;
+      for (let level = 0; level < 20; level++) {
+        const isLeft = currentIndex % 2 === 0;
+        const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
+        const sibling = siblingIndex < leaves.length ? leaves[siblingIndex] : 0n;
+        siblings.push(sibling.toString());
+        pathIndices.push(isLeft ? 0 : 1); // 0 = left (commitment is left), 1 = right
+        currentIndex = Math.floor(currentIndex / 2);
+      }
+      return { pathIndices, siblings };
+    }
 
     async function withdraw() {
       const noteInput = document.getElementById("withdrawNote").value.trim();
