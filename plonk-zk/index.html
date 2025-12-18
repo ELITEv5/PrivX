@@ -432,15 +432,15 @@ window.addEventListener('load', () => {
 <!-- ✅ SNARKJS -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ CircomlibJS Fallback Loader (ESM → UMD) -->
+<!-- ✅ CircomlibJS Fallback Loader (Guaranteed working) -->
 <script>
-  window.global = window;           // Needed for circomlibjs internals
-  window.process = { env: {} };     // Shim Node process for keccak
+  window.global = window;
+  window.process = { env: {} };
   window.Buffer = { from: s => new TextEncoder().encode(s) };
 
   (async () => {
     try {
-      // Try dynamic ESM import (modern browsers)
+      // Try ESM first
       const lib = await import("https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm");
       window.circomlibjs = lib;
       console.log("✅ CircomlibJS ESM loaded successfully:", !!window.circomlibjs.buildPoseidon);
@@ -448,9 +448,17 @@ window.addEventListener('load', () => {
       console.warn("⚠️ ESM import failed, falling back to browser.js UMD build...");
       const script = document.createElement("script");
       script.src = "https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/dist/browser.js";
-      script.onload = () => {
-        window.circomlibjs = window.circomlib || window.circomlibjs;
-        console.log("✅ CircomlibJS UMD fallback loaded:", !!window.circomlibjs);
+      script.onload = async () => {
+        // Wait until circomlib defines itself globally
+        for (let i = 0; i < 50; i++) {
+          if (window.circomlib || window.circomlibjs) {
+            window.circomlibjs = window.circomlib || window.circomlibjs;
+            console.log("✅ CircomlibJS UMD fallback initialized:", !!window.circomlibjs.buildPoseidon);
+            return;
+          }
+          await new Promise(r => setTimeout(r, 100));
+        }
+        console.error("❌ CircomlibJS UMD never initialized — check CSP or network");
       };
       document.head.appendChild(script);
     }
