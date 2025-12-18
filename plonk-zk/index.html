@@ -433,7 +433,11 @@ window.addEventListener('load', () => {
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
 <!-- ✅ CircomlibJS (browser build, verified working) -->
-<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm"></script>
+<script type="module">
+  import { buildPoseidon } from "https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm";
+  window.buildPoseidon = buildPoseidon;
+  console.log("Circomlibjs ESM loaded");
+</script>
 
 
 <!-- ✅ Withdraw Logic -->
@@ -447,8 +451,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  const poseidon = await window.circomlibjs.buildPoseidon();
-  const F = poseidon.F;
+  const poseidon = await window.buildPoseidon();
+const F = poseidon.F;
   console.log("✅ Circomlib Poseidon initialized — synced with circom/poseidon.circom");
 
   /* -------------------- Global Constants -------------------- */
