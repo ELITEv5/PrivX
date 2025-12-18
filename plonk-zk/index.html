@@ -432,34 +432,53 @@ window.addEventListener('load', () => {
 <!-- ✅ SNARKJS -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ CircomlibJS Local/Hosted Loader (Final GitHub Pages Version) -->
+<!-- ✅ SNARKJS -->
+<script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
+
+<!-- ✅ CircomlibJS Smart Loader (Local + CDN Fallback) -->
 <script>
   window.global = window;
   window.process = { env: {} };
   window.Buffer = { from: s => new TextEncoder().encode(s) };
 
   (async () => {
+    const LOCAL_PATH = "./plonk-zk/circuits/circomlibjs.browser.js";
+    const CDN_PATH = "https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm";
+
     try {
-      // ✅ Load directly from your GitHub-hosted ESM file
-      const lib = await import("https://elitev5.github.io/PrivX/plonk-zk/circuits/circomlibjs.esm.js");
-      window.circomlibjs = lib;
-      console.log("✅ CircomlibJS (GitHub) ESM loaded successfully:", !!window.circomlibjs.buildPoseidon);
-    } catch (err) {
-      console.warn("⚠️ ESM import failed, falling back to local UMD browser.js build...");
-      const script = document.createElement("script");
-      script.src = "./plonk-zk/circuits/circomlibjs.browser.js"; // optional fallback if added
-      script.onload = async () => {
-        for (let i = 0; i < 50; i++) {
-          if (window.circomlib || window.circomlibjs) {
-            window.circomlibjs = window.circomlib || window.circomlibjs;
-            console.log("✅ CircomlibJS (local) UMD fallback initialized:", !!window.circomlibjs.buildPoseidon);
-            return;
+      console.log("⏳ Trying local CircomlibJS ESM build...");
+      const lib = await import(LOCAL_PATH);
+      if (lib && lib.buildPoseidon) {
+        window.circomlibjs = lib;
+        console.log("✅ CircomlibJS (local ESM) loaded successfully!");
+        return;
+      }
+      throw new Error("Local ESM not found");
+    } catch (err1) {
+      console.warn("⚠️ Local import failed:", err1.message);
+      try {
+        console.log("🌐 Fetching CircomlibJS from CDN...");
+        const lib = await import(CDN_PATH);
+        window.circomlibjs = lib;
+        console.log("✅ CircomlibJS (CDN ESM) loaded successfully!");
+      } catch (err2) {
+        console.error("❌ Both local and CDN CircomlibJS imports failed:", err2.message);
+        console.warn("⚙️ Attempting fallback to UMD browser.js build...");
+        const script = document.createElement("script");
+        script.src = LOCAL_PATH; // fallback to same local file if you only have browser.js
+        script.onload = async () => {
+          for (let i = 0; i < 50; i++) {
+            if (window.circomlib || window.circomlibjs) {
+              window.circomlibjs = window.circomlib || window.circomlibjs;
+              console.log("✅ CircomlibJS (UMD) fallback initialized!");
+              return;
+            }
+            await new Promise(r => setTimeout(r, 100));
           }
-          await new Promise(r => setTimeout(r, 100));
-        }
-        console.error("❌ CircomlibJS UMD never initialized — check local path");
-      };
-      document.head.appendChild(script);
+          console.error("❌ CircomlibJS UMD never initialized — check paths or permissions.");
+        };
+        document.head.appendChild(script);
+      }
     }
   })();
 </script>
