@@ -428,43 +428,41 @@ window.addEventListener('load', () => {
   setInterval(updateBurnedBalance, 30000);
 });
 </script>
-
+  
 <!-- ✅ SNARKJS -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ CircomlibJS Smart Loader (Local circomlibjs.esm.js + CDN fallback) -->
+<!-- ✅ CircomlibJS Browser Build (UMD — self-contained, no deps) -->
+<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/dist/browser.js"></script>
 <script>
   window.global = window;
   window.process = { env: {} };
-  window.Buffer = { from: s => new TextEncoder().encode(s) };
 
-  (async () => {
-    const LOCAL_ESM = "https://elitev5.github.io/PrivX/plonk-zk/circuits/circomlibjs.esm.js";
-    const CDN_ESM = "https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm";
+  document.addEventListener("DOMContentLoaded", async () => {
+    console.log("✅ DOM ready — initializing withdraw logic...");
 
-    try {
-      console.log("⏳ Trying local CircomlibJS ESM build...");
-      const lib = await import(LOCAL_ESM);
-      if (lib && lib.buildPoseidon) {
-        window.circomlibjs = lib;
-        console.log("✅ CircomlibJS (local ESM) loaded successfully!");
-        return;
-      }
-      throw new Error("Local circomlibjs.esm.js found but missing buildPoseidon()");
-    } catch (err1) {
-      console.warn("⚠️ Local import failed:", err1.message);
-      try {
-        console.log("🌐 Fetching CircomlibJS from CDN...");
-        const lib = await import(CDN_ESM);
-        window.circomlibjs = lib;
-        console.log("✅ CircomlibJS (CDN ESM) loaded successfully!");
-      } catch (err2) {
-        console.error("❌ Both local and CDN CircomlibJS imports failed:", err2.message);
-      }
+    if (!window.circomlibjs && !window.circomlib) {
+      console.error("❌ CircomlibJS not found — check CDN or CSP settings!");
+      return;
     }
-  })();
-</script>
 
+    const lib = window.circomlibjs || window.circomlib;
+    const poseidon = await lib.buildPoseidon();
+    const F = poseidon.F;
+    console.log("✅ Circomlib Poseidon initialized — synced with circom/poseidon.circom");
+
+    // ✅ Poseidon(2) + Poseidon(3) Wrappers
+    const poseidon2 = (a, b) => F.toObject(poseidon([a, b]));
+    const poseidon3 = (a, b, c = 0n) => F.toObject(poseidon([a, b, c]));
+    console.log("✅ Poseidon(2) + Poseidon(3) wrappers ready");
+
+    // 🧩 Quick Self-Test
+    const testCommit = poseidon2(1n, 2n);
+    const testNF = poseidon3(3n, 4n, 0n);
+    console.log("🧩 Poseidon(2) test:", "0x" + testCommit.toString(16));
+    console.log("🧩 Poseidon(3) test:", "0x" + testNF.toString(16));
+  });
+</script>
 
 <!-- ✅ Withdraw Logic -->
 <script>
