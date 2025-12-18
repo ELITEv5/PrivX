@@ -385,27 +385,26 @@
 
     // Fixed Merkle proof – uses your exact empty hash + correct direction
     async function getMerkleProof(shieldContract, targetCommitment) {
-      const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
-      if (events.length === 0) throw new Error("No deposits found");
-      events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
-      const leaves = events.map(e => BigInt(e.returnValues.commitment));
-      const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-      if (leafIndex === -1) throw new Error("Your commitment not found – deposit may not be confirmed");
-      console.log("Leaf index:", leafIndex);
-      const EMPTY_SUBTREE = 0x26fc9cf8bf4dd46163a4cf9f8d595b3e8e8a939aad79abc0a1ceea1613c89c99n;
-      const siblings = [];
-      const pathIndices = [];
-      let currentIndex = leafIndex;
-      for (let level = 0; level < 20; level++) {
-        const isLeft = currentIndex % 2 === 0;
-        const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
-        const sibling = (siblingIndex >= 0 && siblingIndex < leaves.length) ? leaves[siblingIndex] : EMPTY_SUBTREE;
-        siblings.push(sibling.toString());
-        pathIndices.push(isLeft ? 1 : 0); // This direction matches your logs
-        currentIndex = Math.floor(currentIndex / 2);
-      }
-      return { pathIndices, siblings };
-    }
+  const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
+  if (events.length === 0) throw new Error("No deposits found");
+  events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
+  const leaves = events.map(e => BigInt(e.returnValues.commitment));
+  const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
+  if (leafIndex === -1) throw new Error("Your commitment not found – deposit may not be confirmed");
+  const EMPTY_SUBTREE = 0x26fc9cf8bf4dd46163a4cf9f8d595b3e8e8a939aad79abc0a1ceea1613c89c99n;
+  const siblings = [];
+  const pathIndices = [];
+  let currentIndex = leafIndex;
+  for (let level = 0; level < 20; level++) {
+    const isLeft = currentIndex % 2 === 0;
+    const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
+    const sibling = (siblingIndex >= 0 && siblingIndex < leaves.length) ? leaves[siblingIndex] : EMPTY_SUBTREE;
+    siblings.push(sibling.toString());
+    pathIndices.push(isLeft ? 0 : 1); // FIXED: 0 = sibling right, 1 = sibling left
+    currentIndex = Math.floor(currentIndex / 2);
+  }
+  return { pathIndices, siblings };
+}
 
     async function withdraw() {
       const noteInput = document.getElementById("withdrawNote").value.trim();
