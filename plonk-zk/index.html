@@ -432,11 +432,16 @@ window.addEventListener('load', () => {
 <!-- ✅ SNARKJS -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ CircomlibJS (Browser UMD build - safe and global) -->
+<!-- ✅ CircomlibJS (Browser UMD build - exposes `window.circomlib`) -->
 <script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/dist/browser.js"></script>
 <script>
+  // Patch: Some versions expose `window.circomlib`, not `window.circomlibjs`
+  if (window.circomlib && !window.circomlibjs) {
+    window.circomlibjs = window.circomlib;
+  }
   console.log("✅ CircomlibJS browser build loaded:", !!window.circomlibjs);
 </script>
+
 
 <!-- ✅ Withdraw Logic -->
 <script>
