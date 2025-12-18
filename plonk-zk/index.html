@@ -432,11 +432,10 @@ window.addEventListener('load', () => {
 <!-- ✅ SNARKJS -->
 <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.3/dist/snarkjs.min.js"></script>
 
-<!-- ✅ CircomlibJS (ESM build, verified working) -->
-<script type="module">
-  import * as circomlibjs from "https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/+esm";
-  window.circomlibjs = circomlibjs; // ✅ make available globally
-  console.log("✅ CircomlibJS v0.1.7 ESM loaded and exported to window");
+<!-- ✅ CircomlibJS (Browser UMD build - safe and global) -->
+<script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/dist/browser.js"></script>
+<script>
+  console.log("✅ CircomlibJS browser build loaded:", !!window.circomlibjs);
 </script>
 
 <!-- ✅ Withdraw Logic -->
@@ -446,7 +445,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   /* -------------------- Load & Verify CircomlibJS -------------------- */
   if (!window.circomlibjs || !window.circomlibjs.buildPoseidon) {
-    console.error("❌ CircomlibJS not found — check CDN link or CSP settings!");
+    console.error("❌ CircomlibJS not found — check CDN or CSP settings!");
     return;
   }
 
@@ -489,15 +488,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     const nullifier = BigInt("0x" + nullifierHex);
     const secret = BigInt("0x" + secretHex);
 
-    // ✅ Compute commitment
+    // ✅ Compute commitment (Poseidon(2))
     const commitment = poseidon2(nullifier, secret);
     console.log("🧩 Poseidon(2) Commitment:", "0x" + commitment.toString(16).padStart(64, "0"));
 
-    // ✅ Compute nullifier hash
+    // ✅ Compute nullifier hash (Poseidon(3))
     const nfHash = poseidon3(nullifier, BigInt(denom), 0n);
     console.log("🧩 Poseidon(3) NullifierHash:", "0x" + nfHash.toString(16).padStart(64, "0"));
 
-    alert("✅ CircomlibJS Poseidon working — your setup is now fully synced with circom!");
+    alert("✅ CircomlibJS Poseidon working — fully synced with your circom circuit!");
   };
 
   /* -------------------- Attach Button Listener -------------------- */
