@@ -446,7 +446,7 @@
   siblings: siblings,
   root: root,
   denomination: denomination.toString(),
-  nullifierHash: "0" // Add this line — fills the 45th input slot
+  nullifierHash: nullifierHash.toString() // This is the missing public input
 };
   const btn = document.getElementById("withdrawBtn");
   btn.disabled = true;
