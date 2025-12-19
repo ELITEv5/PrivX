@@ -416,37 +416,43 @@
   const [_, denomStr, nullifierHex, secretHex] = match;
   const denomination = BigInt(denomStr);
   const nullifier = BigInt("0x" + nullifierHex);
-  const secret = BigInt("0x" + secretHex);
-  const commitment = poseidonT3(nullifier, secret); // keep this for Merkle proof
-  const shieldAddr = SHIELD_CONTRACTS[denomStr];
-  if (!shieldAddr) return alert("Unsupported denomination");
-  const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
-  let root;
-  try {
-    root = await shield.methods.getLastRoot().call();
-    console.log("On-chain root:", root);
-  } catch (e) {
-    return alert("Failed to fetch root");
-  }
-  let pathIndices, siblings;
-  try {
-    const proof = await getMerkleProof(shield, commitment);
-    pathIndices = proof.pathIndices;
-    siblings = proof.siblings;
-    console.log("Path indices:", pathIndices);
-    console.log("Siblings:", siblings.map(s => "0x" + BigInt(s).toString(16).padStart(64, "0")));
-  } catch (e) {
-    return alert(e.message);
-  }
-  // Let the circuit compute nullifierHash — do not pre-compute in frontend
-  const input = {
+const secret = BigInt("0x" + secretHex);
+const commitment = poseidonT3(nullifier, secret);
+
+// Compute nullifierHash in frontend (custom T3) — circuit expects it as public input
+const nullifierHash = poseidon3(nullifier, denomination, 0n); // this line was missing
+
+const shieldAddr = SHIELD_CONTRACTS[denomStr];
+if (!shieldAddr) return alert("Unsupported denomination");
+const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
+
+let root;
+try {
+  root = await shield.methods.getLastRoot().call();
+  console.log("On-chain root:", root);
+} catch (e) {
+  return alert("Failed to fetch root");
+}
+
+let pathIndices, siblings;
+try {
+  const proof = await getMerkleProof(shield, commitment);
+  pathIndices = proof.pathIndices;
+  siblings = proof.siblings;
+  console.log("Path indices:", pathIndices);
+  console.log("Siblings:", siblings.map(s => "0x" + BigInt(s).toString(16).padStart(64, "0")));
+} catch (e) {
+  return alert(e.message);
+}
+
+const input = {
   nullifier: nullifier.toString(),
   secret: secret.toString(),
   pathIndices: pathIndices,
   siblings: siblings,
   root: root,
   denomination: denomination.toString(),
-  nullifierHash: nullifierHash.toString() // This is the missing public input
+  nullifierHash: nullifierHash.toString()  // send it as public input
 };
   const btn = document.getElementById("withdrawBtn");
   btn.disabled = true;
