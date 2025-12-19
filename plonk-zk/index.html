@@ -440,14 +440,14 @@
   }
   // Let the circuit compute nullifierHash — do not pre-compute in frontend
   const input = {
-    nullifier: nullifier.toString(),
-    secret: secret.toString(),
-    pathIndices: pathIndices,
-    siblings: siblings,
-    root: root,
-    denomination: denomination.toString()
-    // nullifierHash removed — circuit computes it
-  };
+  nullifier: nullifier.toString(),
+  secret: secret.toString(),
+  pathIndices: pathIndices,
+  siblings: siblings,
+  root: root,
+  denomination: denomination.toString(),
+  nullifierHash: "0" // Add this line — fills the 45th input slot
+};
   const btn = document.getElementById("withdrawBtn");
   btn.disabled = true;
   btn.textContent = "Generating Plonk Proof... (10–60s)";
