@@ -176,6 +176,7 @@ function poseidon3(a, b, c = 0n) {
   let x = BigInt(a) % P;
   let y = BigInt(b) % P;
   let z = BigInt(c) % P;
+
   // 8 full rounds
   for (let i = 0; i < 8; i++) {
     x = (x + C[i] + y + z) % P;
@@ -185,12 +186,14 @@ function poseidon3(a, b, c = 0n) {
     y = pow5(y);
     z = pow5(z);
   }
+
   // 56 partial rounds (only x updated)
   for (let i = 0; i < 56; i++) {
     x = (x + C[4]) % P;
     x = pow5(x);
     x = (x + M * (y + z) % P) % P;
   }
+
   // 4 final full rounds
   for (let i = 5; i < 9; i++) {
     x = (x + C[i] + y + z) % P;
@@ -200,6 +203,7 @@ function poseidon3(a, b, c = 0n) {
     y = pow5(y);
     z = pow5(z);
   }
+
   return x;
 }
 
