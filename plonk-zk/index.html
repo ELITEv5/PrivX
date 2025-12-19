@@ -400,7 +400,7 @@
     const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
     const sibling = (siblingIndex >= 0 && siblingIndex < leaves.length) ? leaves[siblingIndex] : EMPTY_SUBTREE;
     siblings.push(sibling.toString());
-    pathIndices.push(isLeft ? 0 : 1); // FIXED: 0 = sibling right, 1 = sibling left
+    pathIndices.push(isLeft ? 1 : 0); // FLIPPED: 1 if left (sibling right), 0 if right (sibling left)
     currentIndex = Math.floor(currentIndex / 2);
   }
   return { pathIndices, siblings };
