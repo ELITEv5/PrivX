@@ -1,9 +1,11 @@
+// SPDX-License-Identifier: MIT
 pragma circom 2.1.6;
 
-include "poseidon.circom";
+include "custom_poseidon.circom";
 include "switcher.circom";
 
 template PrivXMixer(levels) {
+    // Private inputs
     signal input secret;
     signal input nullifier;
     signal input pathIndices[levels];
@@ -14,38 +16,42 @@ template PrivXMixer(levels) {
     signal input nullifierHash;
     signal input denomination;
 
-    // Commitment = Poseidon(nullifier, secret)
-    component commitmentHasher = Poseidon(2);
+    // Commitment = Poseidon2(nullifier, secret)
+    component commitmentHasher = CustomPoseidon2();
     commitmentHasher.inputs[0] <== nullifier;
     commitmentHasher.inputs[1] <== secret;
 
-    // Merkle proof with Switcher
+    // Merkle proof using Switcher
     signal currentHash[levels + 1];
     currentHash[0] <== commitmentHasher.out;
 
     component switchers[levels];
     component levelHashers[levels];
+
     for (var i = 0; i < levels; i++) {
         switchers[i] = Switcher();
         switchers[i].sel <== pathIndices[i];
         switchers[i].L <== currentHash[i];
         switchers[i].R <== siblings[i];
 
-        levelHashers[i] = Poseidon(2);
+        // Each level hash = Poseidon2(left, right)
+        levelHashers[i] = CustomPoseidon2();
         levelHashers[i].inputs[0] <== switchers[i].outL;
         levelHashers[i].inputs[1] <== switchers[i].outR;
 
         currentHash[i + 1] <== levelHashers[i].out;
     }
 
+    // Enforce Merkle root equality
     root === currentHash[levels];
 
-    // nullifierHash = Poseidon(nullifier, denomination, 0) — matches Hasher T3
-    component nfHasher = Poseidon(3);
+    // nullifierHash = Poseidon3(nullifier, denomination, 0)
+    component nfHasher = CustomPoseidon3();
     nfHasher.inputs[0] <== nullifier;
     nfHasher.inputs[1] <== denomination;
     nfHasher.inputs[2] <== 0;
 
+    // Enforce equality
     nullifierHash === nfHasher.out;
 }
 
