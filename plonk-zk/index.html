@@ -542,8 +542,6 @@ console.log("✅ Flattened proofBytes:", proofBytes);
 
 
     // ─────────────────────────────────────────────
-    // 6️⃣ Submit withdrawal
-    // ─────────────────────────────────────────────
     // 6️⃣ Submit withdrawal (array format for PLONK)
 const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
 
@@ -557,7 +555,9 @@ function chunkProof(hex) {
   return chunks;
 }
 
-const proofArray = chunkProof(proofBytes);
+// Convert 24 hex words → decimal strings for Solidity ABI
+const proofArray = chunkProof(proofBytes).map(x => web3.utils.toBN(x).toString());
+
 
 console.log("Submitting proofArray:", proofArray);
 console.log("Submitting pubSignalsArr:", pubSignalsArr);
