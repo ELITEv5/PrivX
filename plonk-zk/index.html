@@ -538,6 +538,8 @@ proofSection = proofSection.replace(/[\[\]\s"]/g, "").replace(/,/g, "");
 proofSection = proofSection.replace(/0x/g, "");
 const proofBytes = "0x" + proofSection;
 
+console.log("✅ Flattened proofBytes:", proofBytes);
+
 // ✅ Define recipient
 const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
 
@@ -551,35 +553,40 @@ function chunkProof(hex) {
   return chunks;
 }
 
-// ✅ Use BN objects for solidity uint256 encoding
-const proofArray = chunkProof(proofBytes).map(x => web3.utils.toBN(x));
-const pubSignalsUint256 = pubSignalsArr.map(x => web3.utils.toBN(x));
+// ✅ Convert to BN safely (ensure each element has "0x" prefix") and send as decimal strings
+const proofArray = chunkProof(proofBytes).map(x =>
+  web3.utils.toBN(x.startsWith("0x") ? x : "0x" + x).toString()
+);
 
-console.log("proofArray types:", proofArray.map(x => x.constructor.name));
-console.log("pubSignalsUint256 types:", pubSignalsUint256.map(x => x.constructor.name));
+const pubSignalsUint256 = pubSignalsArr.map(x =>
+  web3.utils.toBN(x.startsWith("0x") ? x : "0x" + x).toString()
+);
 
-// ✅ Send withdrawal transaction
-const tx = await shield.methods
-  .withdraw(proofArray, pubSignalsUint256, recipient)
-  .send({ from: userAccount });
+// 🧩 Debug print to verify types
+console.log("proofArray types:", proofArray.map(x => typeof x));
+console.log("pubSignalsUint256 types:", pubSignalsUint256.map(x => typeof x));
+console.log("Recipient:", recipient);
 
-console.log("✅ Withdrawal TX confirmed:");
-console.log("  Hash:", tx.transactionHash);
-console.log("  Gas used:", tx.gasUsed);
-console.log("  Status:", tx.status);
+// ✅ Submit the withdrawal transaction
+try {
+  const tx = await shield.methods
+    .withdraw(proofArray, pubSignalsUint256, recipient)
+    .send({ from: userAccount });
 
-alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
+  console.log("✅ Withdrawal TX confirmed:");
+  console.log("  Hash:", tx.transactionHash);
+  console.log("  Gas used:", tx.gasUsed);
+  console.log("  Status:", tx.status);
 
+  alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
 
-  } catch (err) {
-    console.error("Withdraw error:", err);
-    alert("Withdrawal failed: " + (err.message || "Check console for details"));
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Generate Proof + Withdraw";
-  }
+} catch (err) {
+  console.error("Withdraw error:", err);
+  alert("Withdrawal failed: " + (err.message || "Check console for details"));
+} finally {
+  btn.disabled = false;
+  btn.textContent = "Generate Proof + Withdraw";
 }
-
 
     window.addEventListener('load', () => {
       document.getElementById("walletButton").onclick = toggleWallet;
