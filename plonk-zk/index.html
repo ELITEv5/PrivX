@@ -508,68 +508,47 @@ const DENOM_AMOUNTS = {
   btn.disabled = true;
   btn.textContent = "Generating PLONK Proof... (30–90s)";
 
-  // ─────────────────────────────────────────────
-  // 4️⃣ Generate PLONK proof
-  // ─────────────────────────────────────────────
-  try {
-    const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
-    console.log("Proof generated ✅", proof);
-    console.log("Public signals:", publicSignals);
+ // 5️⃣ Format proof + pubSignals cleanly for PLONK
+// ─────────────────────────────────────────────
+try {
+  const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
 
-    // Explicit order: [root, nullifierHash, denomination]
-    const rootHex = "0x" + BigInt(publicSignals[0]).toString(16).padStart(64, "0");
-    const nullifierHashHex = "0x" + BigInt(publicSignals[1]).toString(16).padStart(64, "0");
-    const denomHex = "0x" + BigInt(publicSignals[2]).toString(16).padStart(64, "0");
-    const pubSignalsArr = [rootHex, nullifierHashHex, denomHex];
-    console.log("PubSignals (ordered):", pubSignalsArr);
+  console.log("Proof generated ✅", proof);
+  console.log("Public signals (raw):", publicSignals);
 
-    // ─────────────────────────────────────────────
-    // 5️⃣ Format proof bytes cleanly for PLONK
-    // ─────────────────────────────────────────────
-    const rawCall = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+  // 🔍 Get the Solidity call data directly from snarkjs
+  const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+  console.log("Raw exportSolidityCallData output:", calldata); // CRITICAL for debugging
 
-    // Extract only the first bracketed section (proof)
-    let proofSection = rawCall.split("],[")[0];
-    proofSection = proofSection.replace(/[\[\]\s"]/g, "").replace(/,/g, "");
+  // Standard parsing for PLONK (proof as bytes, pubs as uint256[])
+  const parts = calldata.split(',[');
+  const proofBytes = parts[0].trim(); // This is your "0x..." proof
+  const pubPart = '[' + parts[1]; // Rebuild the array part
+  const pubSignalsUint256 = JSON.parse(pubPart); // Array of decimal strings
 
-    // 🔥 Merge multiple "0x..." segments into one clean continuous hex string
-    proofSection = proofSection.replace(/0x/g, "");
-    const proofBytes = "0x" + proofSection;
+  console.log("✅ Clean proofBytes:", proofBytes);
+  console.log("PubSignals (decimal strings):", pubSignalsUint256);
 
-    console.log("✅ Flattened proofBytes:", proofBytes);
+  // ✅ Define recipient
+  const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
 
-    // ✅ Define recipient
-    const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
+  console.log("Recipient:", recipient);
 
-    // ✅ Convert pubSignals to BN decimal strings
-    const pubSignalsUint256 = pubSignalsArr.map(x =>
-      web3.utils.toBN(x.startsWith("0x") ? x : "0x" + x).toString()
-    );
+  // ✅ Send withdraw TX
+  const tx = await shield.methods
+    .withdraw(proofBytes, pubSignalsUint256, recipient)
+    .send({ from: userAccount });
 
-    // 🧩 Debug print
-    console.log("pubSignalsUint256 types:", pubSignalsUint256.map(x => typeof x));
-    console.log("Recipient:", recipient);
-    console.log("ProofBytes length:", proofBytes.length);
+  console.log("✅ Withdrawal TX confirmed:", tx.transactionHash);
+  alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
 
-    // ✅ Submit the withdrawal transaction
-    const tx = await shield.methods
-      .withdraw(proofBytes, pubSignalsUint256, recipient)
-      .send({ from: userAccount });
-
-    console.log("✅ Withdrawal TX confirmed:");
-    console.log("  Hash:", tx.transactionHash);
-    console.log("  Gas used:", tx.gasUsed);
-    console.log("  Status:", tx.status);
-
-    alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
-
-  } catch (err) {
-    console.error("Withdraw error:", err);
-    alert("Withdrawal failed: " + (err.message || "Check console for details"));
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Generate Proof + Withdraw";
-  }
+} catch (err) {
+  console.error("Withdraw error:", err);
+  alert("Withdrawal failed: " + (err.message || "Check console for details"));
+} finally {
+  btn.disabled = false;
+  btn.textContent = "Generate Proof + Withdraw";
+}
 }
 
 // ─────────────────────────────────────────────
