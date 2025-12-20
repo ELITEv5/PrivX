@@ -484,9 +484,9 @@ function poseidon3(a, b, c = 0n) {
   siblings: siblings,
   root: root,
   denomination: denomination.toString(),
-  nullifierHash: nullifierHash.toString(),
-  dummy: "0" // add this dummy to fill the extra input slot
+  nullifierHash: nullifierHash.toString()
 };
+
   const btn = document.getElementById("withdrawBtn");
   btn.disabled = true;
   btn.textContent = "Generating Plonk Proof... (10–60s)";
