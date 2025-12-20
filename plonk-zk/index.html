@@ -478,14 +478,15 @@ function poseidon3(a, b, c = 0n) {
     return alert(e.message);
   }
   const input = {
-    nullifier: nullifier.toString(),
-    secret: secret.toString(),
-    pathIndices: pathIndices,
-    siblings: siblings,
-    root: root,
-    denomination: denomination.toString(),
-    nullifierHash: nullifierHash.toString()  // This is the public input the circuit checks
-  };
+  nullifier: nullifier.toString(),
+  secret: secret.toString(),
+  pathIndices: pathIndices,
+  siblings: siblings,
+  root: root,
+  denomination: denomination.toString(),
+  nullifierHash: nullifierHash.toString(),
+  dummy: "0" // add this dummy to fill the extra input slot
+};
   const btn = document.getElementById("withdrawBtn");
   btn.disabled = true;
   btn.textContent = "Generating Plonk Proof... (10–60s)";
