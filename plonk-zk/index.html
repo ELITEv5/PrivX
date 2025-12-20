@@ -520,28 +520,35 @@ try {
 const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
 console.log("Raw exportSolidityCallData output:", calldata);
 
-// It can come as one string like: ["0x..","0x.."] ["0x..","0x..","0x.."]
-// OR with a comma: ["0x..","0x.."],["0x..","0x..","0x.."]
-
-// Normalize spacing
+// Normalize: remove all whitespace
 const cleanCall = calldata.replace(/\s+/g, "");
 
-// Split between the two arrays
+// Find the boundary between proof array and public signals array
 const splitIndex = cleanCall.indexOf("][");
-if (splitIndex === -1) throw new Error("Unexpected calldata format from snarkjs");
+if (splitIndex === -1) {
+  throw new Error("Unexpected calldata format – could not find '][' separator");
+}
 
-// Extract the two parts cleanly
-const proofPart = cleanCall.slice(0, splitIndex + 1);
-const pubPart = cleanCall.slice(splitIndex + 1);
+// Extract proof array part: includes the closing ] of first array
+const proofPart = cleanCall.slice(0, splitIndex + 1);  // e.g. ["0xabc","0xdef"...]
 
-// Parse both parts safely
-const proofArray = JSON.parse(proofPart);
-const pubSignalsUint256 = JSON.parse(pubPart);
+// Extract public signals part: starts right after ], so add [ back
+const pubPart = "[" + cleanCall.slice(splitIndex + 1);  // e.g. ["0xroot","0xnullifier","0x64"]
 
-// Join proof bytes together into one continuous 0x string
-const proofBytes = "0x" + proofArray.map(x => x.replace(/^0x/, "")).join("");
+// Parse both safely
+const proofArrayHex = JSON.parse(proofPart);        // → ["0x0173df...", "0x0d333f...", ...]
+const publicSignalsHex = JSON.parse(pubPart);       // → ["0x2e444b...", "0x00e0f4...", "0x000...64"]
 
-console.log("✅ Clean proofBytes:", proofBytes);
+// Concatenate proof chunks into single bytes string
+const proofBytes = "0x" + proofArrayHex.map(h => h.slice(2)).join("");
+
+// Convert public signals from hex → decimal strings (required for uint256[3])
+const pubSignalsUint256 = publicSignalsHex.map(hex => 
+  web3.utils.toBN(hex).toString(10)
+);
+
+console.log("✅ Clean proofBytes length:", proofBytes.length);
+console.log("✅ proofBytes starts with:", proofBytes.slice(0, 100));
 console.log("PubSignals (decimal strings):", pubSignalsUint256);
 
 
