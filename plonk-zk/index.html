@@ -207,19 +207,25 @@ function poseidon3(a, b, c = 0n) {
   return x;
 }
 
-    const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
-    const SHIELD_CONTRACTS = {
-      "100": "0xCa770DdEaAB4eab30928BfF824b6a0367a948E71",
-      "1000": "0xc011bE6522df3F17C93d081B4E599E4283e362b6",
-      "10000": "0x9a74F08305F4D3974c6bFFBCBB2Ae66584EBC156",
-      "100000": "0xEf79f681ABEa3F659E5F35f7acc04E264d4122B8"
-    };
-    const DENOM_AMOUNTS = {
-      "100": "100000000000000000000",
-      "1000": "1000000000000000000000",
-      "10000": "10000000000000000000000",
-      "100000": "100000000000000000000000"
-    };
+    // ✅ PRIVX token (deposit + fee)
+const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
+
+// ✅ New PLONK-based Shield contracts
+const SHIELD_CONTRACTS = {
+  "100": "0x5a4E10C124E5cC2551401B2d0Be1695eEA0accb5",     // POP100
+  "1000": "0x0524dd65960C1CBb1a7aB73F599bDCe86c836514",  // POP1000
+  "10000": "0xd54836c03e20a0916019c5Dd72125FC7A1fe2bB7", // POP10000
+  "100000": "0xD25453e79FB5324BF77ef73c10FA106af31E9a14" // POP100000
+};
+
+// ✅ Denomination map (same as before)
+const DENOM_AMOUNTS = {
+  "100": "100000000000000000000",
+  "1000": "1000000000000000000000",
+  "10000": "10000000000000000000000",
+  "100000": "100000000000000000000000"
+};
+
     const WASM_URL = "./circuits/mixer_js/mixer.wasm";
     const ZKEY_URL = "https://amaranth-rear-platypus-218.mypinata.cloud/ipfs/bafybeigogvskbpsyok6q344qk6nukb3wsklvs5wlcxpeio57pckjm2rf5u";
 
