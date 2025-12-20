@@ -446,28 +446,30 @@ function poseidon3(a, b, c = 0n) {
   if (!noteInput) return alert("Paste your private note first");
   if (!userAccount) return alert("Connect your wallet first");
   if (!web3) return alert("Web3 not available");
+
+  // Parse note format
   const match = noteInput.match(/^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/);
   if (!match) return alert("Invalid note format");
+
   const [_, denomStr, nullifierHex, secretHex] = match;
-const denomination = BigInt(DENOM_AMOUNTS[denomStr]);  // ✅ use full 18 decimals
-const nullifier = BigInt("0x" + nullifierHex);
-const secret = BigInt("0x" + secretHex);
-const commitment = poseidonT3(nullifier, secret);
-
-// Compute nullifierHash with full denomination
-const nullifierHash = poseidon3(nullifier, denomination, 0n);
-
+  const denomination = BigInt(denomStr);
+  const nullifier = BigInt("0x" + nullifierHex);
+  const secret = BigInt("0x" + secretHex);
+  const commitment = poseidonT3(nullifier, secret);
+  const nullifierHash = poseidon3(nullifier, denomination, 0n);
 
   const shieldAddr = SHIELD_CONTRACTS[denomStr];
   if (!shieldAddr) return alert("Unsupported denomination");
   const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
+
   let root;
   try {
     root = await shield.methods.getLastRoot().call();
     console.log("On-chain root:", root);
-  } catch (e) {
+  } catch {
     return alert("Failed to fetch root");
   }
+
   let pathIndices, siblings;
   try {
     const proof = await getMerkleProof(shield, commitment);
@@ -478,46 +480,58 @@ const nullifierHash = poseidon3(nullifier, denomination, 0n);
   } catch (e) {
     return alert(e.message);
   }
+
   const input = {
-  nullifier: nullifier.toString(),
-  secret: secret.toString(),
-  pathIndices: pathIndices,
-  siblings: siblings,
-  root: root,
-  denomination: denomination.toString(),
-  nullifierHash: nullifierHash.toString()
-};
+    nullifier: nullifier.toString(),
+    secret: secret.toString(),
+    pathIndices: pathIndices,
+    siblings: siblings,
+    root: root,
+    denomination: denomination.toString(),
+    nullifierHash: nullifierHash.toString()
+  };
 
   const btn = document.getElementById("withdrawBtn");
   btn.disabled = true;
-  btn.textContent = "Generating Plonk Proof... (10–60s)";
+  btn.textContent = "Generating PLONK Proof... (30–90s)";
+
   try {
+    // Generate proof
     const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
-    const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+    console.log("Proof generated ✅", proof);
+    console.log("Public signals:", publicSignals);
 
-// PLONK returns something like: ["0x<proof>"]["0x<root>","0x<nullifierHash>","0x<denomination>"]
-const matches = calldata.match(/\[.*?\]/g);
-if (!matches || matches.length < 2) throw new Error("Unexpected calldata format");
+    // Explicitly order public signals as [root, nullifierHash, denomination]
+    const rootHex = "0x" + BigInt(publicSignals[0]).toString(16).padStart(64, "0");
+    const nullifierHashHex = "0x" + BigInt(publicSignals[1]).toString(16).padStart(64, "0");
+    const denomHex = "0x" + BigInt(publicSignals[2]).toString(16).padStart(64, "0");
+    const pubSignalsArr = [rootHex, nullifierHashHex, denomHex];
 
-const proofArray = JSON.parse(matches[0]);
-const pubSignalsArray = JSON.parse(matches[1]);
+    console.log("PubSignals (ordered):", pubSignalsArr);
 
-const proofBytes = proofArray[0];
-const pubSignalsArr = pubSignalsArray;
+    // Parse proof bytes correctly for PLONK verifier
+    const rawCall = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+    const proofSection = rawCall.split("],")[0].replace(/[[\]\s"]/g, "");
+    const proofBytes = "0x" + proofSection.replace(/,/g, "").replace(/^0x0x/, "0x");
 
-const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
-await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
+    console.log("Proof bytes:", proofBytes);
 
+    // Recipient fallback
+    const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
 
-    alert("🎉 Withdrawal successful!\nFunds sent to " + recipient);
+    // Execute withdrawal
+    await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
+
+    alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
   } catch (err) {
     console.error("Withdraw error:", err);
-    alert("Withdrawal failed: " + (err.message || "Check console"));
+    alert("Withdrawal failed: " + (err.message || "Check console for details"));
   } finally {
     btn.disabled = false;
     btn.textContent = "Generate Proof + Withdraw";
   }
 }
+
     window.addEventListener('load', () => {
       document.getElementById("walletButton").onclick = toggleWallet;
       document.getElementById('depositBtn').onclick = deposit;
