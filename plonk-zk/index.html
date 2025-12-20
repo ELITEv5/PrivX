@@ -538,6 +538,10 @@ proofSection = proofSection.replace(/[\[\]\s"]/g, "").replace(/,/g, "");
 proofSection = proofSection.replace(/0x/g, "");
 const proofBytes = "0x" + proofSection;
 
+// ✅ Define recipient
+const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
+
+// Break proofBytes into 24 uint256 elements for contract
 function chunkProof(hex) {
   const clean = hex.replace(/^0x/, "");
   const chunks = [];
@@ -547,14 +551,23 @@ function chunkProof(hex) {
   return chunks;
 }
 
-// Use BN objects for solidity uint256 encoding
+// ✅ Use BN objects for solidity uint256 encoding
 const proofArray = chunkProof(proofBytes).map(x => web3.utils.toBN(x));
 const pubSignalsUint256 = pubSignalsArr.map(x => web3.utils.toBN(x));
 
 console.log("proofArray types:", proofArray.map(x => x.constructor.name));
 console.log("pubSignalsUint256 types:", pubSignalsUint256.map(x => x.constructor.name));
 
-await shield.methods.withdraw(proofArray, pubSignalsUint256, recipient).send({ from: userAccount });
+// ✅ Send withdrawal transaction
+const tx = await shield.methods
+  .withdraw(proofArray, pubSignalsUint256, recipient)
+  .send({ from: userAccount });
+
+console.log("✅ Withdrawal TX confirmed:");
+console.log("  Hash:", tx.transactionHash);
+console.log("  Gas used:", tx.gasUsed);
+console.log("  Status:", tx.status);
+
 alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
 
 
