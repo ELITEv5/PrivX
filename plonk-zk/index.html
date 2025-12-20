@@ -516,6 +516,11 @@ const DENOM_AMOUNTS = {
     console.log("Proof generated ✅", proof);
     console.log("Public signals:", publicSignals);
 
+    // 🔍 Debug raw Solidity calldata output
+const rawCall = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+console.log("Raw Solidity calldata output:", rawCall);
+
+
     // Explicit order: [root, nullifierHash, denomination]
     const rootHex = "0x" + BigInt(publicSignals[0]).toString(16).padStart(64, "0");
     const nullifierHashHex = "0x" + BigInt(publicSignals[1]).toString(16).padStart(64, "0");
