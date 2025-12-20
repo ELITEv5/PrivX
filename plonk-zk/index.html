@@ -520,35 +520,35 @@ try {
 const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
 console.log("Raw exportSolidityCallData output:", calldata);
 
-// Normalize: remove all whitespace
+// Normalize: remove all whitespace and newlines
 const cleanCall = calldata.replace(/\s+/g, "");
 
-// Find the boundary between proof array and public signals array
+// Find the boundary ] [
 const splitIndex = cleanCall.indexOf("][");
 if (splitIndex === -1) {
-  throw new Error("Unexpected calldata format – could not find '][' separator");
+  throw new Error("Unexpected calldata format – no '][' found");
 }
 
-// Extract proof array part: includes the closing ] of first array
-const proofPart = cleanCall.slice(0, splitIndex + 1);  // e.g. ["0xabc","0xdef"...]
+// Proof part: everything up to and including the first closing ]
+const proofPart = cleanCall.substring(0, splitIndex + 1);
 
-// Extract public signals part: starts right after ], so add [ back
-const pubPart = "[" + cleanCall.slice(splitIndex + 1);  // e.g. ["0xroot","0xnullifier","0x64"]
+// Pub part: everything after the first closing ], prepend [ to make valid array
+const pubPart = "[" + cleanCall.substring(splitIndex + 2);  // +2 to skip ][
 
-// Parse both safely
-const proofArrayHex = JSON.parse(proofPart);        // → ["0x0173df...", "0x0d333f...", ...]
-const publicSignalsHex = JSON.parse(pubPart);       // → ["0x2e444b...", "0x00e0f4...", "0x000...64"]
+// Parse
+const proofArrayHex = JSON.parse(proofPart);
+const publicSignalsHex = JSON.parse(pubPart);
 
-// Concatenate proof chunks into single bytes string
+// Concatenate proof into single bytes
 const proofBytes = "0x" + proofArrayHex.map(h => h.slice(2)).join("");
 
-// Convert public signals from hex → decimal strings (required for uint256[3])
+// Convert hex pub signals to decimal strings
 const pubSignalsUint256 = publicSignalsHex.map(hex => 
   web3.utils.toBN(hex).toString(10)
 );
 
 console.log("✅ Clean proofBytes length:", proofBytes.length);
-console.log("✅ proofBytes starts with:", proofBytes.slice(0, 100));
+console.log("✅ proofBytes starts with:", proofBytes.substring(0, 100));
 console.log("PubSignals (decimal strings):", pubSignalsUint256);
 
 
