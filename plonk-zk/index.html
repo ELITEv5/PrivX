@@ -517,17 +517,33 @@ try {
   console.log("Public signals (raw):", publicSignals);
 
   // 🔍 Get the Solidity call data directly from snarkjs
-  const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-  console.log("Raw exportSolidityCallData output:", calldata); // CRITICAL for debugging
+const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+console.log("Raw exportSolidityCallData output:", calldata);
 
-  // Standard parsing for PLONK (proof as bytes, pubs as uint256[])
-  const parts = calldata.split(',[');
-  const proofBytes = parts[0].trim(); // This is your "0x..." proof
-  const pubPart = '[' + parts[1]; // Rebuild the array part
-  const pubSignalsUint256 = JSON.parse(pubPart); // Array of decimal strings
+// It can come as one string like: ["0x..","0x.."] ["0x..","0x..","0x.."]
+// OR with a comma: ["0x..","0x.."],["0x..","0x..","0x.."]
 
-  console.log("✅ Clean proofBytes:", proofBytes);
-  console.log("PubSignals (decimal strings):", pubSignalsUint256);
+// Normalize spacing
+const cleanCall = calldata.replace(/\s+/g, "");
+
+// Split between the two arrays
+const splitIndex = cleanCall.indexOf("][");
+if (splitIndex === -1) throw new Error("Unexpected calldata format from snarkjs");
+
+// Extract the two parts cleanly
+const proofPart = cleanCall.slice(0, splitIndex + 1);
+const pubPart = cleanCall.slice(splitIndex + 1);
+
+// Parse both parts safely
+const proofArray = JSON.parse(proofPart);
+const pubSignalsUint256 = JSON.parse(pubPart);
+
+// Join proof bytes together into one continuous 0x string
+const proofBytes = "0x" + proofArray.map(x => x.replace(/^0x/, "")).join("");
+
+console.log("✅ Clean proofBytes:", proofBytes);
+console.log("PubSignals (decimal strings):", pubSignalsUint256);
+
 
   // ✅ Define recipient
   const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
