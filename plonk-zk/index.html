@@ -540,9 +540,7 @@ const proofBytes = "0x" + proofSection;         // add single "0x" at start
 
 console.log("✅ Flattened proofBytes:", proofBytes);
 
-
-    // ─────────────────────────────────────────────
-    // 6️⃣ Submit withdrawal (array format for PLONK)
+// 6️⃣ Submit withdrawal (array format for PLONK)
 const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
 
 // Break proofBytes into 24 uint256 elements for contract
@@ -555,17 +553,18 @@ function chunkProof(hex) {
   return chunks;
 }
 
-// Convert 24 hex words → decimal strings for Solidity ABI
+// Convert to uint256 decimal strings (required by Solidity)
 const proofArray = chunkProof(proofBytes).map(x => web3.utils.toBN(x).toString());
-
+const pubSignalsUint256 = pubSignalsArr.map(x => web3.utils.toBN(x).toString());
 
 console.log("Submitting proofArray:", proofArray);
-console.log("Submitting pubSignalsArr:", pubSignalsArr);
+console.log("Submitting pubSignalsUint256:", pubSignalsUint256);
 
 // ✅ Correct PLONK withdraw call
-await shield.methods.withdraw(proofArray, pubSignalsArr, recipient).send({ from: userAccount });
+await shield.methods.withdraw(proofArray, pubSignalsUint256, recipient).send({ from: userAccount });
 
 alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
+
 
   } catch (err) {
     console.error("Withdraw error:", err);
