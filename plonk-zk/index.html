@@ -516,11 +516,6 @@ const DENOM_AMOUNTS = {
     console.log("Proof generated ✅", proof);
     console.log("Public signals:", publicSignals);
 
-    // 🔍 Debug raw Solidity calldata output
-const rawCall = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-console.log("Raw Solidity calldata output:", rawCall);
-
-
     // Explicit order: [root, nullifierHash, denomination]
     const rootHex = "0x" + BigInt(publicSignals[0]).toString(16).padStart(64, "0");
     const nullifierHashHex = "0x" + BigInt(publicSignals[1]).toString(16).padStart(64, "0");
@@ -530,55 +525,52 @@ console.log("Raw Solidity calldata output:", rawCall);
 
     // ─────────────────────────────────────────────
     // 5️⃣ Format proof bytes cleanly for PLONK
-// ─────────────────────────────────────────────
-try {
-  const rawCall = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-  console.log("Raw Solidity calldata output:", rawCall);
+    // ─────────────────────────────────────────────
+    const rawCall = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
 
-  // rawCall is a single string like:
-  // '["0x1234...","0xabcd...","0xef..."],["0xpub1","0xpub2","0xpub3"]'
-  // So we extract only the first "proof" hex part
-  const [proofStr, pubStr] = rawCall.split("],[");
+    // Extract only the first bracketed section (proof)
+    let proofSection = rawCall.split("],[")[0];
+    proofSection = proofSection.replace(/[\[\]\s"]/g, "").replace(/,/g, "");
 
-  // Clean proof section only (no brackets or extra commas)
-  let proofSection = proofStr.replace(/[\[\]\s"]/g, "").replace(/,/g, "").replace(/0x/g, "");
-  const proofBytes = "0x" + proofSection;
+    // 🔥 Merge multiple "0x..." segments into one clean continuous hex string
+    proofSection = proofSection.replace(/0x/g, "");
+    const proofBytes = "0x" + proofSection;
 
-  console.log("✅ Flattened proofBytes:", proofBytes);
+    console.log("✅ Flattened proofBytes:", proofBytes);
 
-  // ✅ Define recipient
-  const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
+    // ✅ Define recipient
+    const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
 
-  // ✅ Convert pubSignals to BN decimal strings
-  const pubSignalsUint256 = pubSignalsArr.map(x =>
-    web3.utils.toBN(x.startsWith("0x") ? x : "0x" + x).toString()
-  );
+    // ✅ Convert pubSignals to BN decimal strings
+    const pubSignalsUint256 = pubSignalsArr.map(x =>
+      web3.utils.toBN(x.startsWith("0x") ? x : "0x" + x).toString()
+    );
 
-  // 🧩 Debug print
-  console.log("pubSignalsUint256 types:", pubSignalsUint256.map(x => typeof x));
-  console.log("Recipient:", recipient);
-  console.log("ProofBytes length:", proofBytes.length);
+    // 🧩 Debug print
+    console.log("pubSignalsUint256 types:", pubSignalsUint256.map(x => typeof x));
+    console.log("Recipient:", recipient);
+    console.log("ProofBytes length:", proofBytes.length);
 
-  // ✅ Submit the withdrawal transaction
-  const tx = await shield.methods
-    .withdraw(proofBytes, pubSignalsUint256, recipient)
-    .send({ from: userAccount });
+    // ✅ Submit the withdrawal transaction
+    const tx = await shield.methods
+      .withdraw(proofBytes, pubSignalsUint256, recipient)
+      .send({ from: userAccount });
 
-  console.log("✅ Withdrawal TX confirmed:");
-  console.log("  Hash:", tx.transactionHash);
-  console.log("  Gas used:", tx.gasUsed);
-  console.log("  Status:", tx.status);
+    console.log("✅ Withdrawal TX confirmed:");
+    console.log("  Hash:", tx.transactionHash);
+    console.log("  Gas used:", tx.gasUsed);
+    console.log("  Status:", tx.status);
 
-  alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
+    alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
 
-} catch (err) {
-  console.error("Withdraw error:", err);
-  alert("Withdrawal failed: " + (err.message || "Check console for details"));
-} finally {
-  btn.disabled = false;
-  btn.textContent = "Generate Proof + Withdraw";
+  } catch (err) {
+    console.error("Withdraw error:", err);
+    alert("Withdrawal failed: " + (err.message || "Check console for details"));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Generate Proof + Withdraw";
+  }
 }
-} // <── this closes your async withdraw() function cleanly!
 
 // ─────────────────────────────────────────────
 // 7️⃣ Set up UI listeners after withdraw() is defined
