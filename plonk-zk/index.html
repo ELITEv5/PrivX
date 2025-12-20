@@ -544,11 +544,29 @@ console.log("✅ Flattened proofBytes:", proofBytes);
     // ─────────────────────────────────────────────
     // 6️⃣ Submit withdrawal
     // ─────────────────────────────────────────────
-    const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
+    // 6️⃣ Submit withdrawal (array format for PLONK)
+const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
 
-    await shield.methods.withdraw(proofBytes, pubSignalsArr, recipient).send({ from: userAccount });
+// Break proofBytes into 24 uint256 elements for contract
+function chunkProof(hex) {
+  const clean = hex.replace(/^0x/, "");
+  const chunks = [];
+  for (let i = 0; i < 24; i++) {
+    chunks.push("0x" + clean.slice(i * 64, (i + 1) * 64));
+  }
+  return chunks;
+}
 
-    alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
+const proofArray = chunkProof(proofBytes);
+
+console.log("Submitting proofArray:", proofArray);
+console.log("Submitting pubSignalsArr:", pubSignalsArr);
+
+// ✅ Correct PLONK withdraw call
+await shield.methods.withdraw(proofArray, pubSignalsArr, recipient).send({ from: userAccount });
+
+alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
+
   } catch (err) {
     console.error("Withdraw error:", err);
     alert("Withdrawal failed: " + (err.message || "Check console for details"));
