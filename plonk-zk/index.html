@@ -451,7 +451,7 @@ const DENOM_AMOUNTS = {
   if (!userAccount) return alert("Connect your wallet first");
   if (!web3) return alert("Web3 not available");
 
-  // Parse note format: privx-hurricane-[denom]-[nullifier]-[secret]
+  // Parse note: privx-hurricane-[denom]-[nullifier]-[secret]
   const match = noteInput.match(/^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/);
   if (!match) return alert("Invalid note format");
 
@@ -474,7 +474,7 @@ const DENOM_AMOUNTS = {
     root = await shield.methods.getLastRoot().call();
     console.log("On-chain root:", root);
   } catch {
-    return alert("Failed to fetch root");
+    return alert("Failed to fetch Merkle root");
   }
 
   // ─────────────────────────────────────────────
@@ -508,7 +508,7 @@ const DENOM_AMOUNTS = {
   btn.disabled = true;
   btn.textContent = "Generating PLONK Proof... (30–90s)";
 
-    // ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────
   // 4️⃣ Generate PLONK proof
   // ─────────────────────────────────────────────
   try {
@@ -535,37 +535,25 @@ const DENOM_AMOUNTS = {
     // 🔥 Merge multiple "0x..." segments into one clean continuous hex string
     proofSection = proofSection.replace(/0x/g, "");
     const proofBytes = "0x" + proofSection;
+
     console.log("✅ Flattened proofBytes:", proofBytes);
 
     // ✅ Define recipient
     const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
 
-    // Break proofBytes into 24 uint256 elements for contract
-    function chunkProof(hex) {
-      const clean = hex.replace(/^0x/, "");
-      const chunks = [];
-      for (let i = 0; i < 24; i++) {
-        chunks.push("0x" + clean.slice(i * 64, (i + 1) * 64));
-      }
-      return chunks;
-    }
-
-    // ✅ Convert to BN safely (ensure each element has "0x" prefix") and send as decimal strings
-    const proofArray = chunkProof(proofBytes).map(x =>
-      web3.utils.toBN(x.startsWith("0x") ? x : "0x" + x).toString()
-    );
+    // ✅ Convert pubSignals to BN decimal strings
     const pubSignalsUint256 = pubSignalsArr.map(x =>
       web3.utils.toBN(x.startsWith("0x") ? x : "0x" + x).toString()
     );
 
-    // 🧩 Debug print to verify types
-    console.log("proofArray types:", proofArray.map(x => typeof x));
+    // 🧩 Debug print
     console.log("pubSignalsUint256 types:", pubSignalsUint256.map(x => typeof x));
     console.log("Recipient:", recipient);
+    console.log("ProofBytes length:", proofBytes.length);
 
     // ✅ Submit the withdrawal transaction
     const tx = await shield.methods
-      .withdraw(proofArray, pubSignalsUint256, recipient)
+      .withdraw(proofBytes, pubSignalsUint256, recipient)
       .send({ from: userAccount });
 
     console.log("✅ Withdrawal TX confirmed:");
@@ -582,7 +570,7 @@ const DENOM_AMOUNTS = {
     btn.disabled = false;
     btn.textContent = "Generate Proof + Withdraw";
   }
-} // ← ✅ closes async function withdraw() properly
+}
 
 // ─────────────────────────────────────────────
 // 7️⃣ Set up UI listeners after withdraw() is defined
