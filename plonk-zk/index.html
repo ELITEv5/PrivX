@@ -520,13 +520,22 @@ function poseidon3(a, b, c = 0n) {
     console.log("PubSignals (ordered):", pubSignalsArr);
 
     // ─────────────────────────────────────────────
-    // 5️⃣ Format proof bytes cleanly for PLONK
-    // ─────────────────────────────────────────────
-    const rawCall = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-    let proofSection = rawCall.split("],[")[0]; // isolate proof portion
-    proofSection = proofSection.replace(/[\[\]\s"]/g, "").replace(/,/g, "");
-    const proofBytes = proofSection.startsWith("0x") ? proofSection : "0x" + proofSection;
-    console.log("✅ Clean proofBytes:", proofBytes);
+// 5️⃣ Format proof bytes cleanly for PLONK
+// ─────────────────────────────────────────────
+const rawCall = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
+
+// Extract only the first bracketed section (proof)
+let proofSection = rawCall.split("],[")[0];
+
+// Remove brackets, commas, spaces, and quotes
+proofSection = proofSection.replace(/[\[\]\s"]/g, "").replace(/,/g, "");
+
+// 🔥 Merge multiple "0x..." segments into one clean continuous hex string
+proofSection = proofSection.replace(/0x/g, ""); // remove all "0x"
+const proofBytes = "0x" + proofSection;         // add single "0x" at start
+
+console.log("✅ Flattened proofBytes:", proofBytes);
+
 
     // ─────────────────────────────────────────────
     // 6️⃣ Submit withdrawal
