@@ -535,15 +535,9 @@ let proofSection = rawCall.split("],[")[0];
 proofSection = proofSection.replace(/[\[\]\s"]/g, "").replace(/,/g, "");
 
 // 🔥 Merge multiple "0x..." segments into one clean continuous hex string
-proofSection = proofSection.replace(/0x/g, ""); // remove all "0x"
-const proofBytes = "0x" + proofSection;         // add single "0x" at start
+proofSection = proofSection.replace(/0x/g, "");
+const proofBytes = "0x" + proofSection;
 
-console.log("✅ Flattened proofBytes:", proofBytes);
-
-// 6️⃣ Submit withdrawal (array format for PLONK)
-const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
-
-// Break proofBytes into 24 uint256 elements for contract
 function chunkProof(hex) {
   const clean = hex.replace(/^0x/, "");
   const chunks = [];
@@ -553,16 +547,14 @@ function chunkProof(hex) {
   return chunks;
 }
 
-// Convert to uint256 decimal strings (required by Solidity)
-const proofArray = chunkProof(proofBytes).map(x => web3.utils.toBN(x).toString());
-const pubSignalsUint256 = pubSignalsArr.map(x => web3.utils.toBN(x).toString());
+// Use BN objects for solidity uint256 encoding
+const proofArray = chunkProof(proofBytes).map(x => web3.utils.toBN(x));
+const pubSignalsUint256 = pubSignalsArr.map(x => web3.utils.toBN(x));
 
-console.log("Submitting proofArray:", proofArray);
-console.log("Submitting pubSignalsUint256:", pubSignalsUint256);
+console.log("proofArray types:", proofArray.map(x => x.constructor.name));
+console.log("pubSignalsUint256 types:", pubSignalsUint256.map(x => x.constructor.name));
 
-// ✅ Correct PLONK withdraw call
 await shield.methods.withdraw(proofArray, pubSignalsUint256, recipient).send({ from: userAccount });
-
 alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
 
 
