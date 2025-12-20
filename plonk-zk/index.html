@@ -449,13 +449,14 @@ function poseidon3(a, b, c = 0n) {
   const match = noteInput.match(/^privx-hurricane-(\d+)-([a-fA-F0-9]{64})-([a-fA-F0-9]{64})$/);
   if (!match) return alert("Invalid note format");
   const [_, denomStr, nullifierHex, secretHex] = match;
-  const denomination = BigInt(denomStr);
-  const nullifier = BigInt("0x" + nullifierHex);
-  const secret = BigInt("0x" + secretHex);
-  const commitment = poseidonT3(nullifier, secret);
+const denomination = BigInt(DENOM_AMOUNTS[denomStr]);  // ✅ use full 18 decimals
+const nullifier = BigInt("0x" + nullifierHex);
+const secret = BigInt("0x" + secretHex);
+const commitment = poseidonT3(nullifier, secret);
 
-  // Compute nullifierHash in frontend with custom T3 — circuit expects it as public input
-  const nullifierHash = poseidon3(nullifier, denomination, 0n);
+// Compute nullifierHash with full denomination
+const nullifierHash = poseidon3(nullifier, denomination, 0n);
+
 
   const shieldAddr = SHIELD_CONTRACTS[denomStr];
   if (!shieldAddr) return alert("Unsupported denomination");
