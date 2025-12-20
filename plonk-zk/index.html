@@ -433,20 +433,18 @@ const DENOM_AMOUNTS = {
   events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
   const leaves = events.map(e => BigInt(e.returnValues.commitment));
   const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-  if (leafIndex === -1) throw new Error("Commitment not found");
+  if (leafIndex === -1) throw new Error("Commitment not found; deposit may not yet be finalized");
 
-  const EMPTY_SUBTREE = 0x0n; // Solidity starts zeros[0] = 0
-  const siblings = [];
-  const pathIndices = [];
-
-  let currentIndex = leafIndex;
-  let currentHash = leaves[leafIndex];
-  let zeros = [EMPTY_SUBTREE];
-
-  // Precompute zero hashes like Solidity
+  // ✅ Correctly initialize zeros from contract logic
+  const zeros = [0n];
   for (let i = 1; i < 20; i++) {
     zeros[i] = poseidonT3(zeros[i - 1], zeros[i - 1]);
   }
+
+  const siblings = [];
+  const pathIndices = [];
+  let currentIndex = leafIndex;
+  let currentHash = leaves[leafIndex];
 
   for (let level = 0; level < 20; level++) {
     const isLeft = currentIndex % 2 === 0;
@@ -456,23 +454,25 @@ const DENOM_AMOUNTS = {
       siblingIndex < leaves.length ? leaves[siblingIndex] : zeros[level];
 
     siblings.push(sibling.toString());
-    pathIndices.push(isLeft ? 1 : 0); // circuit sel logic (1=swap)
+    pathIndices.push(isLeft ? 1 : 0); // correct selector: sel=1 if left (swap in circuit)
 
-    // Solidity does hash(sibling, current)
+    // 🧩 Solidity hashes (sibling, current)
     const parent = poseidonT3(sibling, currentHash);
     currentHash = parent;
 
-    // Move up
-    currentIndex = Math.floor(currentIndex / 2);
+    // simulate tree growth
+    if (leaves.length <= Math.floor(currentIndex / 2))
+      leaves.push(parent);
+    else
+      leaves[Math.floor(currentIndex / 2)] = parent;
 
-    // Store new parent for next layer (to simulate filledSubtrees growth)
-    if (leaves.length <= currentIndex) leaves.push(parent);
-    else leaves[currentIndex] = parent;
+    currentIndex = Math.floor(currentIndex / 2);
   }
 
   console.log("🧩 Recomputed root from proof:", "0x" + currentHash.toString(16).padStart(64, "0"));
   return { pathIndices, siblings };
 }
+
 
     async function withdraw() {
   const noteInput = document.getElementById("withdrawNote").value.trim();
