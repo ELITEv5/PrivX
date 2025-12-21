@@ -423,7 +423,8 @@ const DENOM_AMOUNTS = {
     }
 
     // Fixed Merkle proof – uses your exact empty hash + correct direction
-    async function getMerkleProof(shieldContract, targetCommitment) {
+    // ✅ Fixed Merkle proof – uses your exact empty hash + correct direction
+async function getMerkleProof(shieldContract, targetCommitment) {
   console.log("🔍 Building Merkle proof for commitment:", "0x" + targetCommitment.toString(16).padStart(64, "0"));
 
   const events = await shieldContract.getPastEvents("Deposit", {
@@ -439,7 +440,7 @@ const DENOM_AMOUNTS = {
   const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
   if (leafIndex === -1) throw new Error("Commitment not found");
 
-  // Build zero values exactly like the contract
+  // ✅ FIX: prebuild zeros like Solidity constructor
   const zeros = [0n];
   for (let i = 1; i < 20; i++) {
     zeros[i] = poseidonT3(zeros[i - 1], zeros[i - 1]);
@@ -448,31 +449,31 @@ const DENOM_AMOUNTS = {
   const siblings = [];
   const pathIndices = [];
 
-  // clone leaves to simulate on-chain subtree filling
-  let working = [...leaves];
+  // ✅ FIX: must initialize currentHash before the loop
+  let currentHash = leaves[leafIndex];
   let index = leafIndex;
 
   for (let level = 0; level < 20; level++) {
-  const isLeft = index % 2 === 0;
-  const siblingIndex = isLeft ? index + 1 : index - 1;
-  const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
+    const isLeft = index % 2 === 0;
+    const siblingIndex = isLeft ? index + 1 : index - 1;
+    const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
 
-  siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
-  pathIndices.push(isLeft ? 0 : 1);
+    siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
+    pathIndices.push(isLeft ? 0 : 1);
 
-  // ⚡ Correct hashing order to match Solidity exactly
-  if (isLeft) {
-    // Left child: hash(zeros[i], current)
-    currentHash = poseidonT3(zeros[level], currentHash);
-  } else {
-    // Right child: hash(filledSubtree/sibling, current)
-    currentHash = poseidonT3(sibling, currentHash);
+    // ✅ FIX: correct hashing order per Solidity
+    if (isLeft) {
+      // Left child → hash(zeros[i], current)
+      currentHash = poseidonT3(zeros[level], currentHash);
+    } else {
+      // Right child → hash(sibling, current)
+      currentHash = poseidonT3(sibling, currentHash);
+    }
+
+    index = Math.floor(index / 2);
   }
 
-  index = Math.floor(index / 2);
-}
-
-  const reconstructedRoot = "0x" + working[0].toString(16).padStart(64, "0");
+  const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
   const onChainRoot = await shieldContract.methods.getLastRoot().call();
 
   console.log("🧩 Recomputed root:", reconstructedRoot);
@@ -481,7 +482,6 @@ const DENOM_AMOUNTS = {
 
   return { pathIndices, siblings };
 }
-
 
     async function withdraw() {
   const noteInput = document.getElementById("withdrawNote").value.trim();
