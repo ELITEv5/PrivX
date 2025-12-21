@@ -457,21 +457,19 @@ for (let level = 0; level < 20; level++) {
   const siblingIndex = isLeft ? index + 1 : index - 1;
   const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
 
-  // Store for proof
+  // store for proof
   siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
   pathIndices.push(isLeft ? 0 : 1);
 
-  // ⚡ Recreate Solidity Merkle layer
+  // ⚡ Correct the left/right Poseidon ordering
   if (isLeft) {
-    currentHash = poseidonT3(zeros[level], currentHash);
+    // left leaf → hash(left = currentHash, right = sibling)
+    currentHash = poseidonT3(currentHash, sibling);
   } else {
+    // right leaf → hash(left = sibling, right = currentHash)
     currentHash = poseidonT3(sibling, currentHash);
   }
 
-  // ✅ Update filledSubtree equivalent — this is key!
-  leaves[index] = currentHash;
-
-  // Move up one level
   index = Math.floor(index / 2);
 }
 
