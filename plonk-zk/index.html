@@ -429,11 +429,11 @@ const testRight = poseidonT3(1n, 0n);
 console.log("Poseidon(0,1) =", "0x" + testLeft.toString(16).padStart(64, "0"));
 console.log("Poseidon(1,0) =", "0x" + testRight.toString(16).padStart(64, "0"));
 
-    // ✅ Final corrected Merkle proof builder — matches on-chain Poseidon hashing and depth
+    // ✅ Corrected Merkle proof builder — exact match to Solidity's InsertLeaf logic
 async function getMerkleProof(shieldContract, targetCommitment) {
   console.log("🔍 Building Merkle proof for commitment:", "0x" + targetCommitment.toString(16).padStart(64, "0"));
 
-  // 1️⃣ Fetch all deposit events
+  // 1️⃣ Fetch deposit events
   const events = await shieldContract.getPastEvents("Deposit", {
     fromBlock: 0,
     toBlock: "latest"
@@ -441,37 +441,37 @@ async function getMerkleProof(shieldContract, targetCommitment) {
 
   if (events.length === 0) throw new Error("No deposits found");
 
-  // Sort by leaf index (ascending)
+  // Sort and map commitments
   events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
   const leaves = events.map(e => BigInt(e.returnValues.commitment));
 
-  // Find the target commitment
+  // Find our leaf index
   const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-  if (leafIndex === -1) throw new Error("Commitment not found in tree");
+  if (leafIndex === -1) throw new Error("Commitment not found in Merkle tree");
 
-  // 2️⃣ Build zeros[] and initial "current" exactly like Solidity
+  // 2️⃣ Build zeros array like Solidity constructor
   const zeros = [];
   let current = 0n;
   for (let i = 0; i < 20; i++) {
     zeros[i] = current;
     current = poseidonT3(current, current);
   }
-  const zeroRoot = current; // This is the contract's initial root
 
-  // 3️⃣ Build Merkle path for target leaf
+  // 3️⃣ Simulate the same iterative tree insertion logic
+  let currentHash = leaves[leafIndex];
   const siblings = [];
   const pathIndices = [];
-  let currentHash = leaves[leafIndex];
   let index = leafIndex;
 
   for (let level = 0; level < 20; level++) {
     const isLeft = index % 2 === 0;
     const siblingIndex = isLeft ? index + 1 : index - 1;
-    const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
+    const sibling = siblingIndex < leaves.length ? leaves[siblingIndex] : zeros[level];
 
     siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
     pathIndices.push(isLeft ? 0 : 1);
 
+    // Contract calls hasher.hash(left, right)
     const left = isLeft ? currentHash : sibling;
     const right = isLeft ? sibling : currentHash;
     currentHash = poseidonT3(left, right);
@@ -479,15 +479,10 @@ async function getMerkleProof(shieldContract, targetCommitment) {
     index = Math.floor(index / 2);
   }
 
-  // 4️⃣ Apply same depth padding as Solidity initialization
-  // Solidity ends with roots[0] = H⁽²⁰⁾(0,0)
-  // We align our result to that by hashing currentHash up to the same depth
-  let finalRoot = currentHash;
-  for (let i = 0; i < 20; i++) {
-    finalRoot = poseidonT3(finalRoot, finalRoot);
-  }
+  // ⚠️ DO NOT pad again with 20 levels — Solidity only does that once at constructor time.
+  // The root at this point *is already* the same as contract’s current root if leaf insertion logic is matched.
 
-  const reconstructedRoot = "0x" + finalRoot.toString(16).padStart(64, "0");
+  const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
   const onChainRoot = await shieldContract.methods.getLastRoot().call();
 
   console.log("Poseidon(0,1) =", "0x" + poseidonT3(0n, 1n).toString(16).padStart(64, "0"));
@@ -498,6 +493,7 @@ async function getMerkleProof(shieldContract, targetCommitment) {
 
   return { pathIndices, siblings };
 }
+
 
 
     async function withdraw() {
