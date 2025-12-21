@@ -424,7 +424,6 @@ const DENOM_AMOUNTS = {
 
     // Fixed Merkle proof – uses your exact empty hash + correct direction
     async function getMerkleProof(shieldContract, targetCommitment) {
-  // Load events
   const events = await shieldContract.getPastEvents("Deposit", {
     fromBlock: 0,
     toBlock: "latest"
@@ -435,9 +434,9 @@ const DENOM_AMOUNTS = {
   const leaves = events.map(e => BigInt(e.returnValues.commitment));
 
   const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-  if (leafIndex === -1) throw new Error("Commitment not found");
+  if (leafIndex === -1) throw new Error("Commitment not found — deposit may not be finalized");
 
-  // Precompute zeros
+  // Build zeros same as Solidity
   const zeros = [0n];
   for (let i = 1; i < 20; i++) {
     zeros[i] = poseidonT3(zeros[i - 1], zeros[i - 1]);
@@ -453,28 +452,21 @@ const DENOM_AMOUNTS = {
     const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
     const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
 
+    // ✅ sel = 0 if left, 1 if right
+    pathIndices.push(isLeft ? 0 : 1);
     siblings.push(sibling.toString());
-    pathIndices.push(isLeft ? 0 : 1);  // 0 for left child (hash current first)
 
-    // Match Solidity exactly
-    if (isLeft) {
-      currentHash = poseidonT3(currentHash, sibling);  // hash(current, sibling_right)
-    } else {
-      currentHash = poseidonT3(sibling, currentHash);  // hash(sibling_left, current)
-    }
+    // Solidity always hashes (sibling, current)
+    currentHash = poseidonT3(sibling, currentHash);
 
     const parentIndex = Math.floor(currentIndex / 2);
     if (leaves.length <= parentIndex) leaves.push(currentHash);
     else leaves[parentIndex] = currentHash;
-
     currentIndex = parentIndex;
   }
 
   const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
-  console.log("🧩 Recomputed root (matching on-chain):", reconstructedRoot);
-  console.log("On-chain root:", root);
-  console.log("Match?", reconstructedRoot === root);
-
+  console.log("🧩 Recomputed root from proof:", reconstructedRoot);
   return { pathIndices, siblings };
 }
 
