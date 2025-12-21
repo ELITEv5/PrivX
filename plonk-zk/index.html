@@ -426,62 +426,64 @@ const DENOM_AMOUNTS = {
     async function getMerkleProof(shieldContract, targetCommitment) {
   console.log("🔍 Building Merkle proof for commitment:", "0x" + targetCommitment.toString(16).padStart(64, "0"));
 
-  // 1️⃣ Load all Deposit events
+  // 1️⃣ Fetch Deposit events
   const events = await shieldContract.getPastEvents("Deposit", {
     fromBlock: 0,
     toBlock: "latest"
   });
   if (events.length === 0) throw new Error("No deposits found");
 
-  // 2️⃣ Sort by leaf index (Merkle order)
+  // 2️⃣ Sort events by leafIndex
   events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
   const leaves = events.map(e => BigInt(e.returnValues.commitment));
 
-  // 3️⃣ Find our target leaf
+  // 3️⃣ Locate the target commitment
   const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-  if (leafIndex === -1) throw new Error("Commitment not found — deposit may not be confirmed yet.");
+  if (leafIndex === -1) throw new Error("Commitment not found — deposit not yet confirmed.");
 
-  // 4️⃣ Precompute zeros like Solidity constructor
+  // 4️⃣ Precompute zero hashes (same as Solidity constructor)
   const zeros = [0n];
   for (let i = 1; i < 20; i++) {
     zeros[i] = poseidonT3(zeros[i - 1], zeros[i - 1]);
   }
 
-  // 5️⃣ Initialize path containers
+  // 5️⃣ Proof path containers
   const siblings = [];
   const pathIndices = [];
   let currentIndex = leafIndex;
   let currentHash = leaves[leafIndex];
 
-  // 6️⃣ Build proof path + simulate root recomputation
+  // 6️⃣ Traverse 20 levels — replicate Solidity Merkle tree updates
   for (let level = 0; level < 20; level++) {
-    const isLeft = currentIndex % 2 === 0;
+    const isLeft = currentIndex % 2 === 0; // even index → left child
     const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
     const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
 
     siblings.push(sibling.toString());
-    pathIndices.push(isLeft ? 0 : 1); // ✅ matches your circuit’s sel=1 for right, 0 for left
+    pathIndices.push(isLeft ? 0 : 1); // 0 = left, 1 = right → matches circuit
 
-    // ✅ Corrected hash order (matches Solidity Poseidon internal reversal)
-    currentHash = poseidonT3(currentHash, sibling);
+    // ✅ Hash order matches Solidity Shield (always hash(sibling, current))
+    currentHash = poseidonT3(sibling, currentHash);
 
+    // Step up the tree
     const parentIndex = Math.floor(currentIndex / 2);
     if (leaves.length <= parentIndex) leaves.push(currentHash);
     else leaves[parentIndex] = currentHash;
     currentIndex = parentIndex;
   }
 
-  // 7️⃣ Compare recomputed root to on-chain
+  // 7️⃣ Compare recomputed vs on-chain root
   const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
   const onChainRoot = await shieldContract.methods.getLastRoot().call();
+
   console.log("🧩 Recomputed root:", reconstructedRoot);
   console.log("🌐 On-chain root:", onChainRoot);
   console.log("✅ Match?", reconstructedRoot.toLowerCase() === onChainRoot.toLowerCase());
 
-  // 🔔 Optional safety: auto-stop if mismatch
+  // 8️⃣ Optional: safety check
   if (reconstructedRoot.toLowerCase() !== onChainRoot.toLowerCase()) {
-    alert("⚠️ Merkle root mismatch — deposit tree out of sync. Try again after next block.");
-    throw new Error("Root mismatch: recomputed vs on-chain");
+    alert("⚠️ Root mismatch! Tree not synced yet. Try again in ~15 seconds.");
+    throw new Error("Root mismatch");
   }
 
   return { pathIndices, siblings };
