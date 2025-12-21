@@ -502,18 +502,19 @@ async function getMerkleProof(shieldContract, targetCommitment) {
   let index = leafIndex;
 
   for (let level = 0; level < 20; level++) {
-    const isLeft = index % 2 === 0;
-    const siblingIndex = isLeft ? index + 1 : index - 1;
-    const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
+  const isLeft = index % 2 === 0;
+  const siblingIndex = isLeft ? index + 1 : index - 1;
+  const sibling = siblingIndex < leaves.length ? leaves[siblingIndex] : zeros[level];
 
-    siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
-    pathIndices.push(isLeft ? 0 : 1);
+  // Store proof data
+  siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
+  pathIndices.push(isLeft ? 0 : 1);
 
-    // ⚡ Solidity always hashes (sibling, current)
-    currentHash = poseidonT3(sibling, currentHash);
+  // ⚡ Correct hashing order — matches Solidity’s hasher.hash(sibling, current)
+  currentHash = poseidonT3(sibling, currentHash);
 
-    index = Math.floor(index / 2);
-  }
+  index = Math.floor(index / 2);
+}
 
   // 4️⃣ Compare reconstructed vs on-chain root
   const reconstructedRoot = "0x" + simulatedRoot.toString(16).padStart(64, "0");
