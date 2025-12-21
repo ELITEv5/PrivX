@@ -459,22 +459,22 @@ const DENOM_AMOUNTS = {
 
   // 4️⃣ Traverse up the Merkle tree
   for (let level = 0; level < 20; level++) {
-    const isLeft = currentIndex % 2 === 0;
-    const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
+  const isLeft = currentIndex % 2 === 0;
+  const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
+  const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
 
-    // Use real sibling if it exists, otherwise use zero for that level
-    const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
+  siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
+  pathIndices.push(isLeft ? 0 : 1);
 
-    siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
-    pathIndices.push(isLeft ? 0 : 1);  // circuit expects 0=left, 1=right
-
-    // 🧩 Match Solidity shield deposit() hashing order
-    // Both left and right use hash(sibling, current)
+  // 🔥 Correct hashing order to match Solidity
+  if (isLeft) {
+    currentHash = poseidonT3(currentHash, sibling);
+  } else {
     currentHash = poseidonT3(sibling, currentHash);
-
-    // Advance up one layer
-    currentIndex = Math.floor(currentIndex / 2);
   }
+
+  currentIndex = Math.floor(currentIndex / 2);
+}
 
   const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
   const onChainRoot = await shieldContract.methods.getLastRoot().call();
