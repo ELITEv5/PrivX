@@ -426,47 +426,53 @@ const DENOM_AMOUNTS = {
     async function getMerkleProof(shieldContract, targetCommitment) {
   console.log("🔍 Building Merkle proof for commitment:", "0x" + targetCommitment.toString(16).padStart(64, "0"));
 
-  // Fetch all deposit events
-  const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
-  if (events.length === 0) throw new Error("No deposits found");
+  // 1️⃣ Load all Deposit events from this shield
+  const events = await shieldContract.getPastEvents("Deposit", {
+    fromBlock: 0,
+    toBlock: "latest"
+  });
+
+  if (events.length === 0) throw new Error("No deposits found in this shield");
 
   // Sort by leaf index
   events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
+
+  // Extract leaves
   const leaves = events.map(e => BigInt(e.returnValues.commitment));
+
+  // Locate our commitment
   const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-  if (leafIndex === -1) throw new Error("Commitment not found (deposit not indexed)");
+  if (leafIndex === -1) throw new Error("Your commitment not found (deposit not yet confirmed)");
 
-  // Precompute zeros
+  // 2️⃣ Build the zero hash chain exactly like Solidity constructor
   const zeros = [0n];
-  for (let i = 1; i < 20; i++) zeros[i] = poseidonT3(zeros[i - 1], zeros[i - 1]);
+  for (let i = 1; i < 20; i++) {
+    zeros[i] = poseidonT3(zeros[i - 1], zeros[i - 1]);
+  }
 
-  // filledSubtrees mirror
-  const filledSubtrees = [...zeros];
-
+  // 3️⃣ Prepare arrays
   const siblings = [];
   const pathIndices = [];
+
   let currentIndex = leafIndex;
   let currentHash = leaves[leafIndex];
 
+  // 4️⃣ Traverse up the Merkle tree
   for (let level = 0; level < 20; level++) {
     const isLeft = currentIndex % 2 === 0;
     const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
 
-    // emulate Solidity filledSubtrees behavior
-    let sibling;
-    if (siblingIndex < leaves.length) {
-      sibling = leaves[siblingIndex];
-    } else {
-      sibling = filledSubtrees[level];
-    }
+    // Use real sibling if it exists, otherwise use zero for that level
+    const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
 
     siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
-    pathIndices.push(isLeft ? 0 : 1);
+    pathIndices.push(isLeft ? 0 : 1);  // circuit expects 0=left, 1=right
 
-    // ✅ Matches Solidity: hasher.hash(sibling, current)
+    // 🧩 Match Solidity shield deposit() hashing order
+    // Both left and right use hash(sibling, current)
     currentHash = poseidonT3(sibling, currentHash);
 
-    filledSubtrees[level] = currentHash;
+    // Advance up one layer
     currentIndex = Math.floor(currentIndex / 2);
   }
 
@@ -476,10 +482,6 @@ const DENOM_AMOUNTS = {
   console.log("🧩 Recomputed root:", reconstructedRoot);
   console.log("🌐 On-chain root:", onChainRoot);
   console.log("✅ Match?", reconstructedRoot.toLowerCase() === onChainRoot.toLowerCase());
-
-  if (reconstructedRoot.toLowerCase() !== onChainRoot.toLowerCase()) {
-    alert("⚠️ Root mismatch! Wait a few blocks or check event order.");
-  }
 
   return { pathIndices, siblings };
 }
