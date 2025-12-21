@@ -452,7 +452,7 @@ const DENOM_AMOUNTS = {
     const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
 
     siblings.push(sibling.toString());
-    pathIndices.push(isLeft ? 1 : 0);  // matches your Switcher’s sel
+    pathIndices.push(isLeft ? 0 : 1);  // Flip to make circuit hash current first when left
 
     // ✅ Always hash (sibling, current) — matches Solidity
     currentHash = poseidonT3(sibling, currentHash);
