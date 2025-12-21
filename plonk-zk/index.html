@@ -453,23 +453,24 @@ const DENOM_AMOUNTS = {
   let index = leafIndex;
 
   for (let level = 0; level < 20; level++) {
-    const isLeft = index % 2 === 0;
-    const siblingIndex = isLeft ? index + 1 : index - 1;
-    const sibling = (siblingIndex < working.length) ? working[siblingIndex] : zeros[level];
+  const isLeft = index % 2 === 0;
+  const siblingIndex = isLeft ? index + 1 : index - 1;
+  const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
 
-    siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
-    pathIndices.push(isLeft ? 0 : 1);
+  siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
+  pathIndices.push(isLeft ? 0 : 1);
 
-    // compute parent exactly as Solidity does: hash(left, right) = hash(filledSubtree/zero, current)
-    const left = isLeft ? zeros[level] : sibling;
-    const right = isLeft ? working[index] : working[index];
-    const parent = poseidonT3(left, right);
-
-    // place parent into next level
-    const parentIndex = Math.floor(index / 2);
-    working[parentIndex] = parent;
-    index = parentIndex;
+  // ⚡ Correct hashing order to match Solidity exactly
+  if (isLeft) {
+    // Left child: hash(zeros[i], current)
+    currentHash = poseidonT3(zeros[level], currentHash);
+  } else {
+    // Right child: hash(filledSubtree/sibling, current)
+    currentHash = poseidonT3(sibling, currentHash);
   }
+
+  index = Math.floor(index / 2);
+}
 
   const reconstructedRoot = "0x" + working[0].toString(16).padStart(64, "0");
   const onChainRoot = await shieldContract.methods.getLastRoot().call();
