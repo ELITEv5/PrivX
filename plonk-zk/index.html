@@ -421,6 +421,13 @@ const DENOM_AMOUNTS = {
         el.textContent = "Error";
       }
     }
+console.log("Testing hash direction alignment...");
+
+const testLeft  = poseidonT3(0n, 1n);
+const testRight = poseidonT3(1n, 0n);
+
+console.log("Poseidon(0,1) =", "0x" + testLeft.toString(16).padStart(64, "0"));
+console.log("Poseidon(1,0) =", "0x" + testRight.toString(16).padStart(64, "0"));
 
     // ✅ Fixed Merkle proof – uses your exact empty hash + correct direction
 async function getMerkleProof(shieldContract, targetCommitment) {
