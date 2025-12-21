@@ -441,7 +441,6 @@ function buildTree(leaves) {
   const zeros = [];
   let currentZero = 0n;
 
-  // Initialize zeros and subtrees like Solidity
   for (let i = 0; i < LEVELS; i++) {
     zeros[i] = currentZero;
     filledSubtrees[i] = currentZero;
@@ -456,14 +455,12 @@ function buildTree(leaves) {
 
     for (let i = 0; i < LEVELS; i++) {
       if (index % 2 === 0) {
-        // Left child → hash(zero, node)
+        // left child
         node = poseidonT3(zeros[i], node);
       } else {
-        // Right child → hash(filledSubtree[i], node)
+        // right child
         node = poseidonT3(filledSubtrees[i], node);
       }
-
-      // Always update filledSubtrees like Solidity
       filledSubtrees[i] = node;
       index = Math.floor(index / 2);
     }
