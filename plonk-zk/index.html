@@ -422,7 +422,6 @@ const DENOM_AMOUNTS = {
       }
     }
 
-    // Fixed Merkle proof – uses your exact empty hash + correct direction
     // ✅ Fixed Merkle proof – uses your exact empty hash + correct direction
 async function getMerkleProof(shieldContract, targetCommitment) {
   console.log("🔍 Building Merkle proof for commitment:", "0x" + targetCommitment.toString(16).padStart(64, "0"));
@@ -450,28 +449,31 @@ async function getMerkleProof(shieldContract, targetCommitment) {
   const pathIndices = [];
 
   // ✅ FIX: must initialize currentHash before the loop
-  let currentHash = leaves[leafIndex];
-  let index = leafIndex;
+let currentHash = leaves[leafIndex];
+let index = leafIndex;
 
-  for (let level = 0; level < 20; level++) {
-    const isLeft = index % 2 === 0;
-    const siblingIndex = isLeft ? index + 1 : index - 1;
-    const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
+for (let level = 0; level < 20; level++) {
+  const isLeft = index % 2 === 0;
+  const siblingIndex = isLeft ? index + 1 : index - 1;
+  const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
 
-    siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
-    pathIndices.push(isLeft ? 0 : 1);
+  // Store for proof
+  siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
+  pathIndices.push(isLeft ? 0 : 1);
 
-    // ✅ FIX: correct hashing order per Solidity
-    if (isLeft) {
-      // Left child → hash(zeros[i], current)
-      currentHash = poseidonT3(zeros[level], currentHash);
-    } else {
-      // Right child → hash(sibling, current)
-      currentHash = poseidonT3(sibling, currentHash);
-    }
-
-    index = Math.floor(index / 2);
+  // ⚡ Recreate Solidity Merkle layer
+  if (isLeft) {
+    currentHash = poseidonT3(zeros[level], currentHash);
+  } else {
+    currentHash = poseidonT3(sibling, currentHash);
   }
+
+  // ✅ Update filledSubtree equivalent — this is key!
+  leaves[index] = currentHash;
+
+  // Move up one level
+  index = Math.floor(index / 2);
+}
 
   const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
   const onChainRoot = await shieldContract.methods.getLastRoot().call();
