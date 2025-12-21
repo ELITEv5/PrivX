@@ -429,11 +429,54 @@ const testRight = poseidonT3(1n, 0n);
 console.log("Poseidon(0,1) =", "0x" + testLeft.toString(16).padStart(64, "0"));
 console.log("Poseidon(1,0) =", "0x" + testRight.toString(16).padStart(64, "0"));
 
-    // ✅ Corrected Merkle proof builder — exact match to Solidity's InsertLeaf logic
+    // ─────────────────────────────────────────────
+// 🔒 PrivX Hurricane Merkle Tree Reconstruction
+// ─────────────────────────────────────────────
+
+// Rebuilds the entire Merkle tree from on-chain deposit events,
+// using Solidity’s exact hashing order and subtree fill logic.
+function buildTree(leaves) {
+  const LEVELS = 20;
+  const filledSubtrees = new Array(LEVELS);
+  const zeros = [];
+  let current = 0n;
+
+  // Build zeros and initialize filledSubtrees like Solidity constructor
+  for (let i = 0; i < LEVELS; i++) {
+    zeros[i] = current;
+    filledSubtrees[i] = current;
+    current = poseidonT3(current, current);
+  }
+
+  let node;
+  for (let leafIndex = 0; leafIndex < leaves.length; leafIndex++) {
+    node = leaves[leafIndex];
+    let index = leafIndex;
+
+    // Simulate Solidity deposit() loop
+    for (let i = 0; i < LEVELS; i++) {
+      if (index % 2 === 0) {
+        // Left child → sibling from filledSubtree[i]
+        node = poseidonT3(filledSubtrees[i], node);
+        filledSubtrees[i] = node;
+      } else {
+        // Right child → sibling from filledSubtree[i]
+        node = poseidonT3(filledSubtrees[i], node);
+      }
+      index = Math.floor(index / 2);
+    }
+  }
+
+  return { root: node, filledSubtrees, zeros };
+}
+
+// ─────────────────────────────────────────────
+// 📜 Generate Merkle Proof for target commitment
+// ─────────────────────────────────────────────
 async function getMerkleProof(shieldContract, targetCommitment) {
   console.log("🔍 Building Merkle proof for commitment:", "0x" + targetCommitment.toString(16).padStart(64, "0"));
 
-  // 1️⃣ Fetch deposit events
+  // 1️⃣ Fetch on-chain Deposit events
   const events = await shieldContract.getPastEvents("Deposit", {
     fromBlock: 0,
     toBlock: "latest"
@@ -441,23 +484,17 @@ async function getMerkleProof(shieldContract, targetCommitment) {
 
   if (events.length === 0) throw new Error("No deposits found");
 
-  // Sort events by leaf index
+  // Sort leaves by index and extract commitments
   events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
   const leaves = events.map(e => BigInt(e.returnValues.commitment));
 
-  // Find target leaf
   const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-  if (leafIndex === -1) throw new Error("Commitment not found");
+  if (leafIndex === -1) throw new Error("Commitment not found in deposits");
 
-  // 2️⃣ Build zero hashes like Solidity constructor
-  const zeros = [];
-  let current = 0n;
-  for (let i = 0; i < 20; i++) {
-    zeros[i] = current;
-    current = poseidonT3(current, current);
-  }
+  // 2️⃣ Reconstruct tree state
+  const { root: simulatedRoot, filledSubtrees, zeros } = buildTree(leaves);
 
-  // 3️⃣ Rebuild Merkle path
+  // 3️⃣ Build Merkle proof for target
   const siblings = [];
   const pathIndices = [];
   let currentHash = leaves[leafIndex];
@@ -477,8 +514,8 @@ async function getMerkleProof(shieldContract, targetCommitment) {
     index = Math.floor(index / 2);
   }
 
-  // 4️⃣ Compare to on-chain root
-  const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
+  // 4️⃣ Compare reconstructed vs on-chain root
+  const reconstructedRoot = "0x" + simulatedRoot.toString(16).padStart(64, "0");
   const onChainRoot = await shieldContract.methods.getLastRoot().call();
 
   console.log("Poseidon(0,1) =", "0x" + poseidonT3(0n, 1n).toString(16).padStart(64, "0"));
@@ -489,9 +526,6 @@ async function getMerkleProof(shieldContract, targetCommitment) {
 
   return { pathIndices, siblings };
 }
-
-
-
 
     async function withdraw() {
   const noteInput = document.getElementById("withdrawNote").value.trim();
