@@ -441,7 +441,7 @@ function buildTree(leaves) {
   const zeros = [];
   let currentZero = 0n;
 
-  // Initialize zeros and filledSubtrees like Solidity constructor
+  // Initialize zeros and subtrees like Solidity
   for (let i = 0; i < LEVELS; i++) {
     zeros[i] = currentZero;
     filledSubtrees[i] = currentZero;
@@ -450,26 +450,25 @@ function buildTree(leaves) {
 
   let currentRoot = zeros[LEVELS - 1];
 
-  // Rebuild incrementally (deposit by deposit)
   for (let leafIndex = 0; leafIndex < leaves.length; leafIndex++) {
     let node = leaves[leafIndex];
     let index = leafIndex;
 
     for (let i = 0; i < LEVELS; i++) {
       if (index % 2 === 0) {
-        // Left child — right sibling = zero
+        // Left child → hash(zero, node)
         node = poseidonT3(zeros[i], node);
       } else {
-        // Right child — left sibling = filledSubtree[i]
+        // Right child → hash(filledSubtree[i], node)
         node = poseidonT3(filledSubtrees[i], node);
       }
 
-      // Always update filledSubtrees[i]
+      // Always update filledSubtrees like Solidity
       filledSubtrees[i] = node;
       index = Math.floor(index / 2);
     }
 
-    currentRoot = node; // last node after full depth = root for this deposit
+    currentRoot = node;
   }
 
   return { root: currentRoot, filledSubtrees, zeros };
