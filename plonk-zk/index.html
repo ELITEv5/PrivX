@@ -426,57 +426,52 @@ const DENOM_AMOUNTS = {
     async function getMerkleProof(shieldContract, targetCommitment) {
   console.log("🔍 Building Merkle proof for commitment:", "0x" + targetCommitment.toString(16).padStart(64, "0"));
 
-  // 1️⃣ Load all Deposit events from this shield
   const events = await shieldContract.getPastEvents("Deposit", {
     fromBlock: 0,
     toBlock: "latest"
   });
 
-  if (events.length === 0) throw new Error("No deposits found in this shield");
+  if (events.length === 0) throw new Error("No deposits found");
 
-  // Sort by leaf index
   events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
-
-  // Extract leaves
   const leaves = events.map(e => BigInt(e.returnValues.commitment));
 
-  // Locate our commitment
   const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-  if (leafIndex === -1) throw new Error("Your commitment not found (deposit not yet confirmed)");
+  if (leafIndex === -1) throw new Error("Commitment not found");
 
-  // 2️⃣ Build the zero hash chain exactly like Solidity constructor
+  // Build zero values exactly like the contract
   const zeros = [0n];
   for (let i = 1; i < 20; i++) {
     zeros[i] = poseidonT3(zeros[i - 1], zeros[i - 1]);
   }
 
-  // 3️⃣ Prepare arrays
   const siblings = [];
   const pathIndices = [];
 
-  let currentIndex = leafIndex;
-  let currentHash = leaves[leafIndex];
+  // clone leaves to simulate on-chain subtree filling
+  let working = [...leaves];
+  let index = leafIndex;
 
-  // 4️⃣ Traverse up the Merkle tree
   for (let level = 0; level < 20; level++) {
-  const isLeft = currentIndex % 2 === 0;
-  const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1;
-  const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
+    const isLeft = index % 2 === 0;
+    const siblingIndex = isLeft ? index + 1 : index - 1;
+    const sibling = (siblingIndex < working.length) ? working[siblingIndex] : zeros[level];
 
-  siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
-  pathIndices.push(isLeft ? 0 : 1);
+    siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
+    pathIndices.push(isLeft ? 0 : 1);
 
-  // 🔥 Correct hashing order to match Solidity
-  if (isLeft) {
-    currentHash = poseidonT3(currentHash, sibling);
-  } else {
-    currentHash = poseidonT3(sibling, currentHash);
+    // compute parent exactly as Solidity does: hash(left, right) = hash(filledSubtree/zero, current)
+    const left = isLeft ? zeros[level] : sibling;
+    const right = isLeft ? working[index] : working[index];
+    const parent = poseidonT3(left, right);
+
+    // place parent into next level
+    const parentIndex = Math.floor(index / 2);
+    working[parentIndex] = parent;
+    index = parentIndex;
   }
 
-  currentIndex = Math.floor(currentIndex / 2);
-}
-
-  const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
+  const reconstructedRoot = "0x" + working[0].toString(16).padStart(64, "0");
   const onChainRoot = await shieldContract.methods.getLastRoot().call();
 
   console.log("🧩 Recomputed root:", reconstructedRoot);
