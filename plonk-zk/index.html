@@ -510,7 +510,7 @@ async function getMerkleProof(shieldContract, targetCommitment) {
   pathIndices.push(isLeft ? 0 : 1);
 
   // ✅ If your Solidity hasher reverses internally, this matches:
-  currentHash = poseidonT3(currentHash, sibling);
+  currentHash = poseidonT3(sibling, currentHash);
 
   index = Math.floor(index / 2);
 }
