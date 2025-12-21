@@ -424,22 +424,18 @@ const DENOM_AMOUNTS = {
 
     // Fixed Merkle proof – uses your exact empty hash + correct direction
     async function getMerkleProof(shieldContract, targetCommitment) {
-  // Load all deposit events
   const events = await shieldContract.getPastEvents("Deposit", {
     fromBlock: 0,
     toBlock: "latest"
   });
   if (events.length === 0) throw new Error("No deposits found");
 
-  // Sort by leafIndex
   events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
   const leaves = events.map(e => BigInt(e.returnValues.commitment));
-
-  // Find our deposit
   const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-  if (leafIndex === -1) throw new Error("Commitment not found (maybe pending confirmation)");
+  if (leafIndex === -1) throw new Error("Commitment not found — deposit may not be finalized");
 
-  // Precompute zeros exactly like Solidity constructor
+  // Build zeros same as Solidity
   const zeros = [0n];
   for (let i = 1; i < 20; i++) {
     zeros[i] = poseidonT3(zeros[i - 1], zeros[i - 1]);
@@ -456,18 +452,11 @@ const DENOM_AMOUNTS = {
     const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
 
     siblings.push(sibling.toString());
-    pathIndices.push(isLeft ? 1 : 0);  // Keep your current circuit-compatible sel
+    pathIndices.push(isLeft ? 1 : 0);  // matches your Switcher’s sel
 
-    // Match your current Solidity deposit loop exactly
-    if (isLeft) {
-      // Left child → hash(current, sibling_right/zero)
-      currentHash = poseidonT3(currentHash, sibling);
-    } else {
-      // Right child → hash(sibling_left, current)
-      currentHash = poseidonT3(sibling, currentHash);
-    }
+    // ✅ Always hash (sibling, current) — matches Solidity
+    currentHash = poseidonT3(sibling, currentHash);
 
-    // Simulate tree growth for next level
     const parentIndex = Math.floor(currentIndex / 2);
     if (leaves.length <= parentIndex) {
       leaves.push(currentHash);
@@ -479,9 +468,7 @@ const DENOM_AMOUNTS = {
   }
 
   const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
-  console.log("🧩 Reconstructed root (matching on-chain):", reconstructedRoot);
-  console.log("On-chain root from contract:", root);
-  console.log("Match?", reconstructedRoot === root);
+  console.log("🧩 Recomputed root from proof:", reconstructedRoot);
 
   return { pathIndices, siblings };
 }
