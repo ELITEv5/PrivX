@@ -506,11 +506,11 @@ async function getMerkleProof(shieldContract, targetCommitment) {
   const siblingIndex = isLeft ? index + 1 : index - 1;
   const sibling = siblingIndex < leaves.length ? leaves[siblingIndex] : zeros[level];
 
-  // Store proof data
   siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
   pathIndices.push(isLeft ? 0 : 1);
 
-  // ⚡ Correct hashing order — matches Solidity’s hasher.hash(sibling, current)
+  // ⚡ FIXED: Solidity calls hasher.hash(sibling, current)
+  // so we must pass (sibling, current) not (current, sibling)
   currentHash = poseidonT3(sibling, currentHash);
 
   index = Math.floor(index / 2);
