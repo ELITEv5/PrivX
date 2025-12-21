@@ -441,7 +441,7 @@ function buildTree(leaves) {
   const zeros = [];
   let current = 0n;
 
-  // Build zeros and initialize filledSubtrees like Solidity constructor
+  // Initialize zeros and subtrees
   for (let i = 0; i < LEVELS; i++) {
     zeros[i] = current;
     filledSubtrees[i] = current;
@@ -453,16 +453,17 @@ function buildTree(leaves) {
     node = leaves[leafIndex];
     let index = leafIndex;
 
-    // Simulate Solidity deposit() loop
     for (let i = 0; i < LEVELS; i++) {
       if (index % 2 === 0) {
-        // Left child → sibling from filledSubtree[i]
-        node = poseidonT3(filledSubtrees[i], node);
-        filledSubtrees[i] = node;
+        // Left child → sibling is zero
+        node = poseidonT3(zeros[i], node);
       } else {
-        // Right child → sibling from filledSubtree[i]
+        // Right child → sibling from filledSubtree
         node = poseidonT3(filledSubtrees[i], node);
       }
+
+      // ⚡ Solidity overwrites filledSubtrees every time
+      filledSubtrees[i] = node;
       index = Math.floor(index / 2);
     }
   }
