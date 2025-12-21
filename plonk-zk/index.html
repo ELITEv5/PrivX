@@ -441,15 +441,15 @@ async function getMerkleProof(shieldContract, targetCommitment) {
 
   if (events.length === 0) throw new Error("No deposits found");
 
-  // Sort and map commitments
+  // Sort events by leaf index
   events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
   const leaves = events.map(e => BigInt(e.returnValues.commitment));
 
-  // Find our leaf index
+  // Find target leaf
   const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
-  if (leafIndex === -1) throw new Error("Commitment not found in Merkle tree");
+  if (leafIndex === -1) throw new Error("Commitment not found");
 
-  // 2️⃣ Build zeros array like Solidity constructor
+  // 2️⃣ Build zero hashes like Solidity constructor
   const zeros = [];
   let current = 0n;
   for (let i = 0; i < 20; i++) {
@@ -457,31 +457,27 @@ async function getMerkleProof(shieldContract, targetCommitment) {
     current = poseidonT3(current, current);
   }
 
-  // 3️⃣ Simulate the same iterative tree insertion logic
-  let currentHash = leaves[leafIndex];
+  // 3️⃣ Rebuild Merkle path
   const siblings = [];
   const pathIndices = [];
+  let currentHash = leaves[leafIndex];
   let index = leafIndex;
 
   for (let level = 0; level < 20; level++) {
     const isLeft = index % 2 === 0;
     const siblingIndex = isLeft ? index + 1 : index - 1;
-    const sibling = siblingIndex < leaves.length ? leaves[siblingIndex] : zeros[level];
+    const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
 
     siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
     pathIndices.push(isLeft ? 0 : 1);
 
-    // Contract calls hasher.hash(left, right)
-    const left = isLeft ? currentHash : sibling;
-    const right = isLeft ? sibling : currentHash;
-    currentHash = poseidonT3(left, right);
+    // ⚡ Solidity always hashes (sibling, current)
+    currentHash = poseidonT3(sibling, currentHash);
 
     index = Math.floor(index / 2);
   }
 
-  // ⚠️ DO NOT pad again with 20 levels — Solidity only does that once at constructor time.
-  // The root at this point *is already* the same as contract’s current root if leaf insertion logic is matched.
-
+  // 4️⃣ Compare to on-chain root
   const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
   const onChainRoot = await shieldContract.methods.getLastRoot().call();
 
@@ -493,6 +489,7 @@ async function getMerkleProof(shieldContract, targetCommitment) {
 
   return { pathIndices, siblings };
 }
+
 
 
 
