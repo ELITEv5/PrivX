@@ -429,10 +429,11 @@ const testRight = poseidonT3(1n, 0n);
 console.log("Poseidon(0,1) =", "0x" + testLeft.toString(16).padStart(64, "0"));
 console.log("Poseidon(1,0) =", "0x" + testRight.toString(16).padStart(64, "0"));
 
-    // ✅ Fixed Merkle proof – uses your exact empty hash + correct direction
+    // ✅ FINAL Merkle proof builder — fully aligned with Solidity shield logic
 async function getMerkleProof(shieldContract, targetCommitment) {
   console.log("🔍 Building Merkle proof for commitment:", "0x" + targetCommitment.toString(16).padStart(64, "0"));
 
+  // 1️⃣ Fetch all deposit events
   const events = await shieldContract.getPastEvents("Deposit", {
     fromBlock: 0,
     toBlock: "latest"
@@ -440,46 +441,47 @@ async function getMerkleProof(shieldContract, targetCommitment) {
 
   if (events.length === 0) throw new Error("No deposits found");
 
+  // Sort by leaf index
   events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
   const leaves = events.map(e => BigInt(e.returnValues.commitment));
 
   const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
   if (leafIndex === -1) throw new Error("Commitment not found");
 
-  // ✅ FIX: prebuild zeros like Solidity constructor
+  // 2️⃣ Build zero values exactly like Solidity
   const zeros = [0n];
   for (let i = 1; i < 20; i++) {
     zeros[i] = poseidonT3(zeros[i - 1], zeros[i - 1]);
   }
 
+  // 3️⃣ Build Merkle path
   const siblings = [];
   const pathIndices = [];
+  let currentHash = leaves[leafIndex];
+  let index = leafIndex;
 
-  // ✅ FIX: must initialize currentHash before the loop
-let currentHash = leaves[leafIndex];
-let index = leafIndex;
+  for (let level = 0; level < 20; level++) {
+    const isLeft = index % 2 === 0;
+    const siblingIndex = isLeft ? index + 1 : index - 1;
+    const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
 
-for (let level = 0; level < 20; level++) {
-  const isLeft = index % 2 === 0;
-  const siblingIndex = isLeft ? index + 1 : index - 1;
-  const sibling = (siblingIndex < leaves.length) ? leaves[siblingIndex] : zeros[level];
+    // Store proof data
+    siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
+    pathIndices.push(isLeft ? 0 : 1);
 
-  // store for proof
-  siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
-  pathIndices.push(isLeft ? 0 : 1);
+    // ⚡ Corrected hashing order — matches on-chain hasher.hash(sibling, node)
+    if (isLeft) {
+      // Left node → hash(sibling = zeros[i], current = currentHash)
+      currentHash = poseidonT3(zeros[level], currentHash);
+    } else {
+      // Right node → hash(sibling = filledSubtree/current sibling, current = currentHash)
+      currentHash = poseidonT3(sibling, currentHash);
+    }
 
-  // ⚡ Correct the left/right Poseidon ordering
-  if (isLeft) {
-    // left leaf → hash(left = currentHash, right = sibling)
-    currentHash = poseidonT3(currentHash, sibling);
-  } else {
-    // right leaf → hash(left = sibling, right = currentHash)
-    currentHash = poseidonT3(sibling, currentHash);
+    index = Math.floor(index / 2);
   }
 
-  index = Math.floor(index / 2);
-}
-
+  // 4️⃣ Compare with on-chain root
   const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
   const onChainRoot = await shieldContract.methods.getLastRoot().call();
 
