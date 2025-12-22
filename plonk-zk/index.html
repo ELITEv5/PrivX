@@ -118,17 +118,35 @@
   <!-- Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js"></script>
-  <!-- Standard circomlibjs Poseidon (OFFICIAL - matches circuit & on-chain hasher) -->
-  <script src="https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/build/poseidon.js"></script>
 
   <script>
     let web3, userAccount, selectedDenomination;
     let poseidonHasher = null;
 
-    // Initialize official Poseidon hasher
-    (async () => {
-      poseidonHasher = await buildPoseidon();
-    })();
+    // === Correct Poseidon loading from CDN ===
+    function loadPoseidon() {
+      return new Promise((resolve, reject) => {
+        if (poseidonHasher) {
+          resolve(poseidonHasher);
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/build/poseidon.js';
+        script.onload = async () => {
+          try {
+            poseidonHasher = await buildPoseidon();
+            console.log("✅ Poseidon hasher loaded and ready");
+            resolve(poseidonHasher);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        script.onerror = () => reject(new Error("Failed to load Poseidon"));
+        document.head.appendChild(script);
+      });
+    }
+
+    loadPoseidon().catch(err => console.error("Poseidon load error:", err));
 
     const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
     const SHIELD_CONTRACTS = {
@@ -146,8 +164,53 @@
     const WASM_URL = "./circuits/mixer_js/mixer.wasm";
     const ZKEY_URL = "https://amaranth-rear-platypus-218.mypinata.cloud/ipfs/bafybeiedimujorboc74sqeae3uzvi4ybixcz3bd2hds4smlnjwrxgwbzt4";
 
-    const ERC20_ABI = [ /* ... your ERC20 ABI unchanged ... */ ];
-    const SHIELD_ABI = [ /* ... your SHIELD_ABI unchanged ... */ ];
+    const ERC20_ABI = [
+      {
+        "inputs": [
+          { "internalType": "address", "name": "spender", "type": "address" },
+          { "internalType": "uint256", "name": "amount", "type": "uint256" }
+        ],
+        "name": "approve",
+        "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          { "internalType": "address", "name": "owner", "type": "address" },
+          { "internalType": "address", "name": "spender", "type": "address" }
+        ],
+        "name": "allowance",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
+
+    const SHIELD_ABI = [
+      { "inputs": [{ "internalType": "bytes32", "name": "_commitment", "type": "bytes32" }],
+        "name": "deposit", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+      {
+        "inputs": [
+          { "internalType": "bytes", "name": "_proof", "type": "bytes" },
+          { "internalType": "uint256[3]", "name": "_pubSignals", "type": "uint256[3]" },
+          { "internalType": "address payable", "name": "recipient", "type": "address" }
+        ],
+        "name": "withdraw",
+        "outputs": [], "stateMutability": "nonpayable", "type": "function"
+      },
+      { "inputs": [], "name": "getLastRoot", "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }], "stateMutability": "view", "type": "function" },
+      {
+        "anonymous": false,
+        "inputs": [
+          { "indexed": true, "internalType": "bytes32", "name": "commitment", "type": "bytes32" },
+          { "indexed": false, "internalType": "uint32", "name": "leafIndex", "type": "uint32" },
+          { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+        ],
+        "name": "Deposit",
+        "type": "event"
+      }
+    ];
 
     function switchTab(tab) {
       document.getElementById('depositTab').classList.toggle('hidden', tab !== 'deposit');
@@ -157,10 +220,16 @@
     }
 
     async function deposit() {
+      if (!poseidonHasher) {
+        alert("Privacy system loading... please wait 5 seconds and try again.");
+        return;
+      }
       if (!userAccount || !selectedDenomination) return alert("Connect wallet & select amount");
+
       const btn = document.getElementById("depositBtn");
       btn.disabled = true;
       btn.textContent = "Generating Note...";
+
       try {
         function generateRandomBytes(length = 32) {
           const bytes = crypto.getRandomValues(new Uint8Array(length));
@@ -177,7 +246,6 @@
         const nullifierBI = BigInt("0x" + nullifierHex);
         const secretBI = BigInt("0x" + secretHex);
 
-        // Standard Poseidon commitment
         const commitmentBI = (await poseidonHasher([nullifierBI, secretBI]))[0];
         const commitment = "0x" + commitmentBI.toString(16).padStart(64, "0");
 
@@ -209,8 +277,6 @@
       }
     }
 
-    // toggleWallet, selectDenomination, updateDepositButton, copyNote, updateBurnedBalance unchanged...
-
     async function toggleWallet() {
       if (!window.ethereum) return alert("Install MetaMask");
       try {
@@ -221,7 +287,13 @@
           if (e.code === 4902) {
             await window.ethereum.request({
               method: "wallet_addEthereumChain",
-              params: [{ chainId: "0x171", chainName: "PulseChain", rpcUrls: ["https://rpc.pulsechain.com"], nativeCurrency: { name: "PLS", symbol: "PLS", decimals: 18 }, blockExplorerUrls: ["https://scan.pulsechain.com"] }]
+              params: [{
+                chainId: "0x171",
+                chainName: "PulseChain",
+                rpcUrls: ["https://rpc.pulsechain.com"],
+                nativeCurrency: { name: "PLS", symbol: "PLS", decimals: 18 },
+                blockExplorerUrls: ["https://scan.pulsechain.com"]
+              }]
             });
           }
         }
@@ -268,10 +340,10 @@
 
     async function updateBurnedBalance() {
       const el = document.getElementById("burnedBalance");
-      if (!el || !web3) return el.textContent = "Connect wallet";
+      if (!el || !web3) return;
       el.textContent = "Loading...";
       try {
-        const token = new web3.eth.Contract([{ "name": "balanceOf", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }], PRIVX_TOKEN);
+        const token = new web3.eth.Contract([ { "name": "balanceOf", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" } ], PRIVX_TOKEN);
         const [dead, fire] = await Promise.all([
           token.methods.balanceOf("0x000000000000000000000000000000000000dEaD").call(),
           token.methods.balanceOf("0x0000000000000000000000000000000000000369").call()
@@ -285,7 +357,6 @@
       }
     }
 
-    // Async Merkle tree reconstruction using standard Poseidon
     async function buildTree(leaves) {
       const LEVELS = 20;
       const filledSubtrees = new Array(LEVELS);
@@ -323,7 +394,7 @@
       const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
       if (leafIndex === -1) throw new Error("Commitment not found");
 
-      const { filledSubtrees, zeros } = await buildTree(leaves);
+      const { zeros } = await buildTree(leaves);
 
       const siblings = [];
       const pathIndices = [];
@@ -338,7 +409,6 @@
         siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
         pathIndices.push(isLeft ? 0 : 1);
 
-        // Standard Switcher logic: left child = current first, right child = sibling first
         const left = isLeft ? currentHash : sibling;
         const right = isLeft ? sibling : currentHash;
         currentHash = (await poseidonHasher([left, right]))[0];
@@ -361,6 +431,10 @@
     }
 
     async function withdraw() {
+      if (!poseidonHasher) {
+        alert("Privacy system loading... please wait 5 seconds and try again.");
+        return;
+      }
       const noteInput = document.getElementById("withdrawNote").value.trim();
       if (!noteInput) return alert("Paste your private note first");
       if (!userAccount || !web3) return alert("Connect wallet first");
@@ -374,7 +448,7 @@
       const secret = BigInt("0x" + secretHex);
 
       const commitmentBI = (await poseidonHasher([nullifier, secret]))[0];
-      const commitment = BigInt(commitmentBI);
+      const commitment = commitmentBI; // BigInt for comparison
 
       const nullifierHashBI = (await poseidonHasher([nullifier, denomination, 0n]))[0];
 
