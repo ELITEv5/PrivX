@@ -123,7 +123,7 @@
     let web3, userAccount, selectedDenomination;
     let poseidonHasher = null;
 
-// Fixed Poseidon loading – correct working CDN path for circomlibjs 0.0.8 (compatible and reliable for browser)
+// Fixed Poseidon loading – working version 0.0.8 with correct path
 function loadPoseidon() {
   return new Promise((resolve, reject) => {
     if (poseidonHasher) {
@@ -131,10 +131,10 @@ function loadPoseidon() {
       return;
     }
     const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/build/poseidon.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/build/poseidon.js';  // Proven working path for browser
     script.onload = async () => {
       try {
-        poseidonHasher = await buildPoseidon();  // buildPoseidon is defined in this version
+        poseidonHasher = await buildPoseidon();  // buildPoseidon is global in this version
         console.log("✅ Poseidon hasher loaded and ready");
         resolve(poseidonHasher);
       } catch (err) {
@@ -149,7 +149,7 @@ function loadPoseidon() {
 // Start loading immediately
 loadPoseidon().catch(err => {
   console.error("Poseidon load error:", err);
-  alert("Failed to load privacy library. Please refresh the page.");
+  alert("Failed to load privacy library. Please refresh the page and try again.");
 });
 
     const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
