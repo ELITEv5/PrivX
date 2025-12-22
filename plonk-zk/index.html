@@ -123,30 +123,34 @@
     let web3, userAccount, selectedDenomination;
     let poseidonHasher = null;
 
-    // === Correct Poseidon loading from CDN ===
-    function loadPoseidon() {
-      return new Promise((resolve, reject) => {
-        if (poseidonHasher) {
-          resolve(poseidonHasher);
-          return;
-        }
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/circomlibjs@0.1.7/build/poseidon.js';
-        script.onload = async () => {
-          try {
-            poseidonHasher = await buildPoseidon();
-            console.log("✅ Poseidon hasher loaded and ready");
-            resolve(poseidonHasher);
-          } catch (err) {
-            reject(err);
-          }
-        };
-        script.onerror = () => reject(new Error("Failed to load Poseidon"));
-        document.head.appendChild(script);
-      });
+// Fixed Poseidon loading – correct working CDN path for circomlibjs 0.0.8 (compatible and reliable for browser)
+function loadPoseidon() {
+  return new Promise((resolve, reject) => {
+    if (poseidonHasher) {
+      resolve(poseidonHasher);
+      return;
     }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/circomlibjs@0.0.8/build/poseidon.js';
+    script.onload = async () => {
+      try {
+        poseidonHasher = await buildPoseidon();  // buildPoseidon is defined in this version
+        console.log("✅ Poseidon hasher loaded and ready");
+        resolve(poseidonHasher);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    script.onerror = () => reject(new Error("Failed to load Poseidon library"));
+    document.head.appendChild(script);
+  });
+}
 
-    loadPoseidon().catch(err => console.error("Poseidon load error:", err));
+// Start loading immediately
+loadPoseidon().catch(err => {
+  console.error("Poseidon load error:", err);
+  alert("Failed to load privacy library. Please refresh the page.");
+});
 
     const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
     const SHIELD_CONTRACTS = {
