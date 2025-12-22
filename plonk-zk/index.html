@@ -497,20 +497,26 @@ async function getMerkleProof(shieldContract, targetCommitment) {
 
   // 3️⃣ Build Merkle proof for target
   const siblings = [];
-  const pathIndices = [];
-  let currentHash = leaves[leafIndex];
-  let index = leafIndex;
+const pathIndices = [];
+let currentHash = leaves[leafIndex];
+let index = leafIndex;
 
-  for (let level = 0; level < 20; level++) {
+for (let level = 0; level < 20; level++) {
   const isLeft = index % 2 === 0;
   const siblingIndex = isLeft ? index + 1 : index - 1;
   const sibling = siblingIndex < leaves.length ? leaves[siblingIndex] : zeros[level];
 
   siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
-  pathIndices.push(isLeft ? 0 : 1);
+  pathIndices.push(isLeft ? 0 : 1);  // 0 = left child, 1 = right child
 
-  // ✅ If your Solidity hasher reverses internally, this matches:
-  currentHash = poseidonT3(sibling, currentHash);
+  // NOW MATCH CIRCUIT: conditional order
+  if (isLeft) {
+    // Left child → hash(current, sibling)
+    currentHash = poseidonT3(currentHash, sibling);
+  } else {
+    // Right child → hash(sibling, current)
+    currentHash = poseidonT3(sibling, currentHash);
+  }
 
   index = Math.floor(index / 2);
 }
@@ -596,61 +602,33 @@ async function getMerkleProof(shieldContract, targetCommitment) {
 try {
   const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
 
-  console.log("Proof generated ✅", proof);
-  console.log("Public signals (raw):", publicSignals);
+  // Use snarkjs to export correctly formatted calldata
+  const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
 
-  // 🔍 Get the Solidity call data directly from snarkjs
-const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
-console.log("Raw exportSolidityCallData output:", calldata);
+  // Parse the standard PLONK format: comma-separated decimal strings
+  const argv = calldata
+    .replace(/["[\]\s]/g, "")
+    .split(",")
+    .map(x => x.trim())
+    .filter(x => x !== "");
 
-// Normalize: remove all whitespace and newlines
-const cleanCall = calldata.replace(/\s+/g, "");
+  // First 24 = proof values, next 3 = public signals
+  const proofArray = argv.slice(0, 24);
+  const pubSignalsUint256 = argv.slice(24, 27);
 
-// Find the boundary ] [
-const splitIndex = cleanCall.indexOf("][");
-if (splitIndex === -1) {
-  throw new Error("Unexpected calldata format – no '][' found");
-}
+  console.log("Proof array (24 uint256):", proofArray);
+  console.log("Public signals [root, nullifierHash, denomination]:", pubSignalsUint256);
 
-// Proof part: everything up to and including the first closing ]
-const proofPart = cleanCall.substring(0, splitIndex + 1);
-
-// Pub part: everything after the first closing ], prepend [ to make valid array
-const pubPart = "[" + cleanCall.substring(splitIndex + 2);  // +2 to skip ][
-
-// Parse
-const proofArrayHex = JSON.parse(proofPart);
-const publicSignalsHex = JSON.parse(pubPart);
-
-// Concatenate proof into single bytes
-const proofBytes = "0x" + proofArrayHex.map(h => h.slice(2)).join("");
-
-// Convert hex pub signals to decimal strings
-const pubSignalsUint256 = publicSignalsHex.map(hex => 
-  web3.utils.toBN(hex).toString(10)
-);
-
-console.log("✅ Clean proofBytes length:", proofBytes.length);
-console.log("✅ proofBytes starts with:", proofBytes.substring(0, 100));
-console.log("PubSignals (decimal strings):", pubSignalsUint256);
-
-
-  // ✅ Define recipient
   const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
 
-  console.log("Recipient:", recipient);
-
-  // ✅ Send withdraw TX
   const tx = await shield.methods
-    .withdraw(proofBytes, pubSignalsUint256, recipient)
+    .withdraw(proofArray, pubSignalsUint256, recipient)
     .send({ from: userAccount });
 
-  console.log("✅ Withdrawal TX confirmed:", tx.transactionHash);
-  alert(`🎉 Withdrawal successful!\nFunds sent to ${recipient}`);
-
+  alert(`Withdrawal successful!\nTX: ${tx.transactionHash}\nFunds sent to ${recipient}`);
 } catch (err) {
-  console.error("Withdraw error:", err);
-  alert("Withdrawal failed: " + (err.message || "Check console for details"));
+  console.error("Proof generation or TX failed:", err);
+  alert("Withdrawal failed: " + (err.message || "Check console"));
 } finally {
   btn.disabled = false;
   btn.textContent = "Generate Proof + Withdraw";
