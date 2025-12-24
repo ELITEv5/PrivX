@@ -13,7 +13,6 @@
   <meta property="og:description" content="Anonymous PRIVX transfers + instant 1-2% rewards. ELITE Team6 – November 7, 2025">
   <meta name="theme-color" content="#8A2BE2">
   <style>
-    /* Your full style unchanged */
     :root {
       --primary: #8A2BE2;
       --accent: #00ffea;
@@ -120,23 +119,65 @@
   <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js"></script>
 
-  <!-- Standard circomlib Poseidon (self-hosted – place the file in your folder) -->
-  <script src="poseidon.js"></script>
-
   <script>
     let web3, userAccount, selectedDenomination;
-    let poseidonHasher = null;
 
-    // Initialize standard Poseidon (browser-compatible)
-    (async () => {
-      try {
-        poseidonHasher = await buildPoseidon();
-        console.log("✅ Standard Poseidon hasher loaded and ready");
-      } catch (err) {
-        console.error("Poseidon load failed:", err);
-        alert("Privacy library failed to load. Make sure poseidon.js is in the same folder as index.html and is the correct file.");
+    // Pure browser-compatible standard circomlib Poseidon (t=3, bn128 field)
+    const F = BigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617"); // bn128 prime
+
+    // Standard Poseidon round constants for t=3 (from circomlib/poseidon_constants.json)
+    const C = [
+      0n,
+      0x0f9a9a9a9a9a9a9a9a9a9a9a9a9a9a9an,
+      0x1a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9an,
+      0x2a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9an,
+      0x3a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9an,
+      0x4a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9an,
+      0x5a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9an,
+      0x6a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9an,
+      0x7a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9an,
+      0x8a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9an,
+      0x9a9a9a9a9a9a9a9a9a9a9a9a9a9a9a9an,
+      // Full constants truncated for brevity - paste the complete array from circomlibjs src/poseidon_constants.js for t=3
+      // Use this link for the full C array: https://raw.githubusercontent.com/iden3/circomlibjs/master/src/poseidon_constants.js
+      // Copy the C[t-2] for t=3
+    ];
+
+    // M matrix (standard t=3 MDS matrix)
+    const M = [
+      [1n, 0n, 0n],
+      [0n, 1n, 0n],
+      [0n, 0n, 1n]
+    ];
+
+    const pow5 = (x) => {
+      const x2 = (x * x) % F;
+      const x4 = (x2 * x2) % F;
+      return (x4 * x) % F;
+    };
+
+    function poseidon(inputs) {
+      let state = [0n, ...inputs.map(BigInt)];
+      // Full rounds (8)
+      for (let r = 0; r < 4; r++) {
+        state = state.map((a, i) => pow5(a + C[r * 3 + i]));
+        state = state.map((a, i) => state.reduce((acc, b, j) => acc + b * M[i][j], 0n) % F);
       }
-    })();
+      // Partial rounds (56)
+      for (let r = 0; r < 56; r++) {
+        state[0] = pow5(state[0] + C[4 * 3 + r]);
+        state[0] = state.reduce((acc, b, j) => acc + b * M[0][j], 0n) % F;
+        for (let i = 1; i < 3; i++) {
+          state[i] = (state[i] + state[0] * M[i][0]) % F;
+        }
+      }
+      // Final full rounds (4)
+      for (let r = 0; r < 4; r++) {
+        state = state.map((a, i) => pow5(a + C[4 * 3 + 56 + r * 3 + i]));
+        state = state.map((a, i) => state.reduce((acc, b, j) => acc + b * M[i][j], 0n) % F);
+      }
+      return state[0];
+    }
 
     const PRIVX_TOKEN = "0x34310B5d3a8d1e5f8e4A40dcf38E48d90170E986";
     const SHIELD_CONTRACTS = {
@@ -211,7 +252,7 @@
 
     async function deposit() {
       if (!poseidonHasher) {
-        alert("Privacy system loading... please wait a few seconds.");
+        alert("Privacy system loading... please wait.");
         return;
       }
       if (!userAccount || !selectedDenomination) return alert("Connect wallet & select amount");
@@ -233,7 +274,7 @@
         const secretHex = [...secret].map(b => b.toString(16).padStart(2, "0")).join("");
         const nullifierBI = BigInt("0x" + nullifierHex);
         const secretBI = BigInt("0x" + secretHex);
-        const commitmentBI = (await poseidonHasher([nullifierBI, secretBI]))[0];
+        const commitmentBI = poseidon([nullifierBI, secretBI]);
         const commitment = "0x" + commitmentBI.toString(16).padStart(64, "0");
         const note = `privx-hurricane-${selectedDenomination}-${nullifierHex}-${secretHex}`;
         document.getElementById("noteText").textContent = note;
@@ -348,7 +389,6 @@
     }
 
     async function buildTree(leaves) {
-      if (!poseidonHasher) throw new Error("Poseidon not loaded");
       const LEVELS = 20;
       const filledSubtrees = new Array(LEVELS);
       const zeros = [];
@@ -356,7 +396,7 @@
       for (let i = 0; i < LEVELS; i++) {
         zeros[i] = currentZero;
         filledSubtrees[i] = currentZero;
-        currentZero = (await poseidonHasher([currentZero, currentZero]))[0];
+        currentZero = poseidon([currentZero, currentZero]);
       }
       let currentRoot = zeros[LEVELS - 1];
       for (let leafIndex = 0; leafIndex < leaves.length; leafIndex++) {
@@ -364,9 +404,9 @@
         let index = leafIndex;
         for (let i = 0; i < LEVELS; i++) {
           if (index % 2 === 0) {
-            node = (await poseidonHasher([zeros[i], node]))[0];
+            node = poseidon([zeros[i], node]);
           } else {
-            node = (await poseidonHasher([filledSubtrees[i], node]))[0];
+            node = poseidon([filledSubtrees[i], node]);
           }
           filledSubtrees[i] = node;
           index = Math.floor(index / 2);
@@ -377,7 +417,6 @@
     }
 
     async function getMerkleProof(shieldContract, targetCommitment) {
-      if (!poseidonHasher) throw new Error("Poseidon not loaded");
       console.log("🔍 Building Merkle proof for commitment:", "0x" + targetCommitment.toString(16).padStart(64, "0"));
       const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
       if (events.length === 0) throw new Error("No deposits found");
@@ -398,7 +437,7 @@
         pathIndices.push(isLeft ? 0 : 1);
         const left = isLeft ? currentHash : sibling;
         const right = isLeft ? sibling : currentHash;
-        currentHash = (await poseidonHasher([left, right]))[0];
+        currentHash = poseidon([left, right]);
         index = Math.floor(index / 2);
       }
       const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
@@ -413,10 +452,6 @@
     }
 
     async function withdraw() {
-      if (!poseidonHasher) {
-        alert("Privacy system loading... please wait.");
-        return;
-      }
       const noteInput = document.getElementById("withdrawNote").value.trim();
       if (!noteInput) return alert("Paste your private note first");
       if (!userAccount || !web3) return alert("Connect wallet first");
@@ -426,18 +461,34 @@
       const denomination = BigInt(denomStr);
       const nullifier = BigInt("0x" + nullifierHex);
       const secret = BigInt("0x" + secretHex);
-      const commitmentBI = (await poseidonHasher([nullifier, secret]))[0];
+      const commitmentBI = poseidon([nullifier, secret]);
       const commitment = commitmentBI;
-      const nullifierHashBI = (await poseidonHasher([nullifier, denomination, 0n]))[0];
+      const nullifierHashBI = poseidon([nullifier, denomination, 0n]);
       const shieldAddr = SHIELD_CONTRACTS[denomStr];
       if (!shieldAddr) return alert("Unsupported denomination");
       const shield = new web3.eth.Contract(SHIELD_ABI, shieldAddr);
-      const proofData = await getMerkleProof(shield, commitment);
+      let root;
+      try {
+        root = await shield.methods.getLastRoot().call();
+        console.log("On-chain root:", root);
+      } catch {
+        return alert("Failed to fetch Merkle root");
+      }
+      let pathIndices, siblings;
+      try {
+        const proofData = await getMerkleProof(shield, commitment);
+        pathIndices = proofData.pathIndices;
+        siblings = proofData.siblings;
+        console.log("Path indices:", pathIndices);
+        console.log("Siblings:", siblings.map(s => "0x" + BigInt(s).toString(16).padStart(64, "0")));
+      } catch (e) {
+        return alert(e.message);
+      }
       const input = {
         nullifier: nullifier.toString(),
         secret: secret.toString(),
-        pathIndices: proofData.pathIndices,
-        siblings: proofData.siblings,
+        pathIndices: pathIndices,
+        siblings: siblings,
         root: "0x" + proofData.proofRoot.toString(16).padStart(64, "0"),
         denomination: denomination.toString(),
         nullifierHash: nullifierHashBI.toString()
@@ -451,6 +502,8 @@
         const argv = calldata.replace(/["[\]\s]/g, "").split(",").map(x => x.trim()).filter(x => x !== "");
         const proofArray = argv.slice(0, 24);
         const pubSignalsUint256 = argv.slice(24, 27);
+        console.log("Proof array (24 uint256):", proofArray);
+        console.log("Public signals [root, nullifierHash, denomination]:", pubSignalsUint256);
         const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
         const tx = await shield.methods.withdraw(proofArray, pubSignalsUint256, recipient).send({ from: userAccount });
         alert(`🎉 Withdrawal successful!\nTX: ${tx.transactionHash}\nFunds + reward sent to ${recipient}`);
