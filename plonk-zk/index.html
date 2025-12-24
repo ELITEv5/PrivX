@@ -13,6 +13,7 @@
   <meta property="og:description" content="Anonymous PRIVX transfers + instant 1-2% rewards. ELITE Team6 – November 7, 2025">
   <meta name="theme-color" content="#8A2BE2">
   <style>
+    /* Your full style unchanged */
     :root {
       --primary: #8A2BE2;
       --accent: #00ffea;
@@ -119,21 +120,21 @@
   <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/snarkjs@0.7.4/build/snarkjs.min.js"></script>
 
-  <!-- Standard circomlib Poseidon (self-hosted) -->
+  <!-- Standard circomlib Poseidon (self-hosted – place the file in your folder) -->
   <script src="poseidon.js"></script>
 
   <script>
     let web3, userAccount, selectedDenomination;
     let poseidonHasher = null;
 
-    // Initialize standard Poseidon
+    // Initialize standard Poseidon (browser-compatible)
     (async () => {
       try {
         poseidonHasher = await buildPoseidon();
         console.log("✅ Standard Poseidon hasher loaded and ready");
       } catch (err) {
         console.error("Poseidon load failed:", err);
-        alert("Privacy library failed to load. Make sure poseidon.js is in the same folder as index.html.");
+        alert("Privacy library failed to load. Make sure poseidon.js is in the same folder as index.html and is the correct file.");
       }
     })();
 
@@ -260,7 +261,91 @@
       }
     }
 
-    // ... your toggleWallet, selectDenomination, updateDepositButton, copyNote, updateBurnedBalance unchanged ...
+    async function toggleWallet() {
+      if (!window.ethereum) return alert("Install MetaMask");
+      try {
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        try {
+          await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x171" }] });
+        } catch (e) {
+          if (e.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: "0x171",
+                chainName: "PulseChain",
+                rpcUrls: ["https://rpc.pulsechain.com"],
+                nativeCurrency: { name: "PLS", symbol: "PLS", decimals: 18 },
+                blockExplorerUrls: ["https://scan.pulsechain.com"]
+              }]
+            });
+          }
+        }
+        web3 = new Web3(window.ethereum);
+        const accounts = await web3.eth.getAccounts();
+        userAccount = accounts[0];
+        document.getElementById("walletButtonText").textContent = `${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
+        document.getElementById("walletButton").classList.add("connected");
+        updateDepositButton();
+      } catch (err) {
+        alert("Connection failed");
+      }
+    };
+
+    if (window.ethereum) {
+      window.ethereum.request({ method: "eth_accounts" }).then(a => a.length > 0 && toggleWallet());
+    }
+
+    function selectDenomination(denom) {
+      selectedDenomination = denom;
+      document.querySelectorAll('.denomination-card').forEach(c => c.classList.remove('selected'));
+      event.target.closest('.denomination-card').classList.add('selected');
+      updateDepositButton();
+    }
+
+    function updateDepositButton() {
+      const btn = document.getElementById('depositBtn');
+      if (!userAccount) {
+        btn.textContent = "Connect Wallet First";
+        btn.disabled = true;
+      } else if (!selectedDenomination) {
+        btn.textContent = "Select Denomination";
+        btn.disabled = true;
+      } else {
+        btn.textContent = `Shield ${selectedDenomination} PRIVX`;
+        btn.disabled = false;
+      }
+    }
+
+    function copyNote() {
+      navigator.clipboard.writeText(document.getElementById('noteText').textContent);
+      alert("Note copied!");
+    }
+
+    async function updateBurnedBalance() {
+      const el = document.getElementById("burnedBalance");
+      if (!el) return;
+      if (!web3) {
+        el.textContent = "Connect wallet";
+        return;
+      }
+      el.textContent = "Loading...";
+      try {
+        const token = new web3.eth.Contract([
+          { "name": "balanceOf", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
+        ], PRIVX_TOKEN);
+        const [dead, fire] = await Promise.all([
+          token.methods.balanceOf("0x000000000000000000000000000000000000dEaD").call(),
+          token.methods.balanceOf("0x0000000000000000000000000000000000000369").call()
+        ]);
+        const totalBurned = BigInt(dead) + BigInt(fire);
+        const burnedNum = Number(totalBurned / 10n ** 18n);
+        el.innerHTML = `<strong>${burnedNum.toLocaleString()}</strong> PRIVX burned`;
+      } catch (err) {
+        console.error("Burn tracker error:", err);
+        el.textContent = "Error";
+      }
+    }
 
     async function buildTree(leaves) {
       if (!poseidonHasher) throw new Error("Poseidon not loaded");
@@ -293,6 +378,7 @@
 
     async function getMerkleProof(shieldContract, targetCommitment) {
       if (!poseidonHasher) throw new Error("Poseidon not loaded");
+      console.log("🔍 Building Merkle proof for commitment:", "0x" + targetCommitment.toString(16).padStart(64, "0"));
       const events = await shieldContract.getPastEvents("Deposit", { fromBlock: 0, toBlock: "latest" });
       if (events.length === 0) throw new Error("No deposits found");
       events.sort((a, b) => Number(a.returnValues.leafIndex) - Number(b.returnValues.leafIndex));
@@ -300,38 +386,29 @@
       const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
       if (leafIndex === -1) throw new Error("Commitment not found");
       const { filledSubtrees, zeros } = await buildTree(leaves);
-
       const siblings = [];
       const pathIndices = [];
       let currentHash = leaves[leafIndex];
       let index = leafIndex;
-
       for (let level = 0; level < 20; level++) {
         const isLeft = index % 2 === 0;
         const siblingIndex = isLeft ? index + 1 : index - 1;
         const sibling = siblingIndex < leaves.length ? leaves[siblingIndex] : zeros[level];
-
         siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
         pathIndices.push(isLeft ? 0 : 1);
-
         const left = isLeft ? currentHash : sibling;
         const right = isLeft ? sibling : currentHash;
         currentHash = (await poseidonHasher([left, right]))[0];
-
         index = Math.floor(index / 2);
       }
-
       const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
       const onChainRoot = await shieldContract.methods.getLastRoot().call();
-
       console.log("🧩 Recomputed proof root:", reconstructedRoot);
       console.log("🌐 On-chain root:", onChainRoot);
       console.log("✅ Match?", reconstructedRoot.toLowerCase() === onChainRoot.toLowerCase());
-
       if (reconstructedRoot.toLowerCase() !== onChainRoot.toLowerCase()) {
         throw new Error("Merkle root mismatch – proof will fail.");
       }
-
       return { pathIndices, siblings, proofRoot: currentHash };
     }
 
