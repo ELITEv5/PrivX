@@ -448,45 +448,44 @@ console.log("Poseidon(1,0) =", "0x" + testRight.toString(16).padStart(64, "0"));
 
 // Rebuilds the entire Merkle tree from on-chain deposit events,
 // using Solidity’s exact hashing order and subtree fill logic.
-function buildTree(leaves) {
-  const LEVELS = 14;
-  const filledSubtrees = new Array(LEVELS);
+function buildFullTree(leaves, levels = 14) {
+  const tree = [];
+  let currentLevel = leaves;
+
   const zeros = [];
   let currentZero = 0n;
-
-  for (let i = 0; i < LEVELS; i++) {
+  for (let i = 0; i < levels; i++) {
     zeros[i] = currentZero;
-    filledSubtrees[i] = currentZero;
     currentZero = poseidonT3(currentZero, currentZero);
   }
 
-  let currentRoot = zeros[LEVELS - 1];
-
-  for (let leafIndex = 0; leafIndex < leaves.length; leafIndex++) {
-    let node = leaves[leafIndex];
-    let index = leafIndex;
-
-    for (let i = 0; i < LEVELS; i++) {
-      if (index % 2 === 0) {
-        // ⚠️ Right-oriented tree → new node goes RIGHT
-        node = poseidonT3(zeros[i], node);
-        filledSubtrees[i] = node;
-      } else {
-        // left = previous subtree, right = node
-        node = poseidonT3(filledSubtrees[i], node);
-      }
-      index = Math.floor(index / 2);
-    }
-
-    currentRoot = node;
+  // Fill leaf level to full binary tree width
+  const maxLeaves = 2 ** levels;
+  const paddedLeaves = [...leaves];
+  while (paddedLeaves.length < maxLeaves) {
+    paddedLeaves.push(0n);
   }
 
-  return { root: currentRoot, filledSubtrees, zeros };
+  tree.push(paddedLeaves);
+
+  for (let level = 0; level < levels; level++) {
+    const nextLevel = [];
+    const current = tree[level];
+
+    for (let i = 0; i < current.length; i += 2) {
+      nextLevel.push(poseidonT3(current[i], current[i + 1]));
+    }
+
+    tree.push(nextLevel);
+  }
+
+  return {
+    tree,
+    root: tree[levels][0],
+    zeros,
+  };
 }
 
-// ─────────────────────────────────────────────
-// 📜 Generate Merkle Proof for target commitment (FINAL FIXED VERSION)
-// ─────────────────────────────────────────────
 async function getMerkleProof(shieldContract, targetCommitment) {
   console.log("🔍 Building Merkle proof for commitment:", "0x" + targetCommitment.toString(16).padStart(64, "0"));
 
@@ -502,39 +501,33 @@ async function getMerkleProof(shieldContract, targetCommitment) {
   const leafIndex = events.findIndex(e => BigInt(e.returnValues.commitment) === targetCommitment);
   if (leafIndex === -1) throw new Error("Commitment not found in deposits");
 
-  const { root: simulatedRoot, zeros } = buildTree(leaves);
-
+  const { tree, root } = buildFullTree(leaves);
   const siblings = [];
   const pathIndices = [];
-  let currentHash = leaves[leafIndex];
-  let index = leafIndex;
 
+  let index = leafIndex;
   for (let level = 0; level < 14; level++) {
-    const isRightNode = index % 2 === 0; // ← your contract places new leaf on RIGHT
-    const siblingIndex = isRightNode ? index - 1 : index + 1;
-    const sibling = siblingIndex >= 0 && siblingIndex < leaves.length ? leaves[siblingIndex] : zeros[level];
+    const siblingIndex = index ^ 1; // flip last bit to get sibling
+    const sibling = tree[level][siblingIndex];
 
     siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
-    pathIndices.push(isRightNode ? 1 : 0); // ← Right = 1, Left = 0
-
-    // Contract always: poseidon(left, right) ← commitment is always right
-    currentHash = poseidonT3(sibling, currentHash);
+    pathIndices.push(index % 2); // 0 = left, 1 = right
 
     index = Math.floor(index / 2);
   }
 
-  const reconstructedRoot = "0x" + currentHash.toString(16).padStart(64, "0");
   const onChainRoot = await shieldContract.methods.getLastRoot().call();
+  const localRoot = "0x" + root.toString(16).padStart(64, "0");
 
-  console.log("🧩 Recomputed proof root:", reconstructedRoot);
+  console.log("🧩 Recomputed proof root:", localRoot);
   console.log("🌐 On-chain root:       ", onChainRoot);
-  console.log("✅ Match?", reconstructedRoot.toLowerCase() === onChainRoot.toLowerCase());
+  console.log("✅ Match?", localRoot.toLowerCase() === onChainRoot.toLowerCase());
 
-  if (reconstructedRoot.toLowerCase() !== onChainRoot.toLowerCase()) {
+  if (localRoot.toLowerCase() !== onChainRoot.toLowerCase()) {
     throw new Error("Merkle root mismatch – proof will fail.");
   }
 
-  return { pathIndices, siblings, proofRoot: currentHash };
+  return { pathIndices, siblings, proofRoot: root };
 }
 
     async function withdraw() {
