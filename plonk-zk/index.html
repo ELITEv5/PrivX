@@ -468,13 +468,13 @@ function buildTree(leaves) {
 
     for (let i = 0; i < LEVELS; i++) {
       if (index % 2 === 0) {
-        // ✅ Match Solidity: left = zero, right = node
+        // ⚠️ Right-oriented tree → new node goes RIGHT
         node = poseidonT3(zeros[i], node);
+        filledSubtrees[i] = node;
       } else {
-        // ✅ Match Solidity: left = filledSubtree, right = node
+        // left = previous subtree, right = node
         node = poseidonT3(filledSubtrees[i], node);
       }
-      filledSubtrees[i] = node;
       index = Math.floor(index / 2);
     }
 
@@ -510,17 +510,15 @@ async function getMerkleProof(shieldContract, targetCommitment) {
   let index = leafIndex;
 
   for (let level = 0; level < 14; level++) {
-    const isLeft = index % 2 === 0;
-    const siblingIndex = isLeft ? index + 1 : index - 1;
-    const sibling = siblingIndex < leaves.length ? leaves[siblingIndex] : zeros[level];
+    const isRightNode = index % 2 === 0; // ← your contract places new leaf on RIGHT
+    const siblingIndex = isRightNode ? index - 1 : index + 1;
+    const sibling = siblingIndex >= 0 && siblingIndex < leaves.length ? leaves[siblingIndex] : zeros[level];
 
     siblings.push("0x" + sibling.toString(16).padStart(64, "0"));
-    pathIndices.push(isLeft ? 0 : 1);
+    pathIndices.push(isRightNode ? 1 : 0); // ← Right = 1, Left = 0
 
-    // Important: left input = left child, right input = right child
-    currentHash = isLeft
-      ? poseidonT3(currentHash, sibling) // node on left
-      : poseidonT3(sibling, currentHash); // node on right
+    // Contract always: poseidon(left, right) ← commitment is always right
+    currentHash = poseidonT3(sibling, currentHash);
 
     index = Math.floor(index / 2);
   }
@@ -538,7 +536,6 @@ async function getMerkleProof(shieldContract, targetCommitment) {
 
   return { pathIndices, siblings, proofRoot: currentHash };
 }
-
 
     async function withdraw() {
   const noteInput = document.getElementById("withdrawNote").value.trim();
