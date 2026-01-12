@@ -450,35 +450,38 @@ console.log("Poseidon(1,0) =", "0x" + testRight.toString(16).padStart(64, "0"));
 // using Solidity’s exact hashing order and subtree fill logic.
 function buildTree(leaves) {
   const LEVELS = 14;
-  const filled = new Map(); // Use a map to simulate tree at each level
+  const filledSubtrees = new Array(LEVELS);
   const zeros = [];
+  let currentZero = 0n;
 
-  let zero = poseidonT3(0n, 0n);
   for (let i = 0; i < LEVELS; i++) {
-    zeros.push(zero);
-    zero = poseidonT3(zero, zero);
+    zeros[i] = currentZero;
+    filledSubtrees[i] = currentZero;
+    currentZero = poseidonT3(currentZero, currentZero);
   }
 
-  for (let i = 0; i < leaves.length; i++) {
-    let index = i;
-    let node = leaves[i];
+  let currentRoot = zeros[LEVELS - 1];
 
-    for (let level = 0; level < LEVELS; level++) {
+  for (let leafIndex = 0; leafIndex < leaves.length; leafIndex++) {
+    let node = leaves[leafIndex];
+    let index = leafIndex;
+
+    for (let i = 0; i < LEVELS; i++) {
       if (index % 2 === 0) {
-        filled.set(`${level}_${index}`, node);
-        return; // wait for sibling
+        // left position → right padded
+        node = poseidonT3(node, zeros[i]);
       } else {
-        const left = filled.get(`${level}_${index - 1}`) || zeros[level];
-        node = poseidonT3(left, node);
-        filled.set(`${level}_${Math.floor(index / 2)}`, node);
+        // right position → left padded with last node at this level
+        node = poseidonT3(filledSubtrees[i], node);
       }
+      filledSubtrees[i] = node;
       index = Math.floor(index / 2);
     }
+
+    currentRoot = node;
   }
 
-  const lastIndex = Math.floor(leaves.length - 1);
-  const root = filled.get(`${LEVELS - 1}_${Math.floor(lastIndex / (2 ** (LEVELS - 1)))}`) || zeros[LEVELS - 1];
-  return { root, zeros };
+  return { root: currentRoot, filledSubtrees, zeros };
 }
 
 // ─────────────────────────────────────────────
