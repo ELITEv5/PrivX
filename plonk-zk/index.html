@@ -251,29 +251,42 @@ const DENOM_AMOUNTS = {
     ];
 
     const SHIELD_ABI = [
-      { "inputs": [{ "internalType": "bytes32", "name": "_commitment", "type": "bytes32" }],
-        "name": "deposit", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
-      {
-        "inputs": [
-          { "internalType": "bytes", "name": "_proof", "type": "bytes" },
-          { "internalType": "uint256[3]", "name": "_pubSignals", "type": "uint256[3]" },
-          { "internalType": "address payable", "name": "recipient", "type": "address" }
-        ],
-        "name": "withdraw",
-        "outputs": [], "stateMutability": "nonpayable", "type": "function"
-      },
-      { "inputs": [], "name": "getLastRoot", "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }], "stateMutability": "view", "type": "function" },
-      {
-        "anonymous": false,
-        "inputs": [
-          { "indexed": true, "internalType": "bytes32", "name": "commitment", "type": "bytes32" },
-          { "indexed": false, "internalType": "uint32", "name": "leafIndex", "type": "uint32" },
-          { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
-        ],
-        "name": "Deposit",
-        "type": "event"
-      }
-    ];
+  {
+    "inputs": [{ "internalType": "bytes32", "name": "_commitment", "type": "bytes32" }],
+    "name": "deposit",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256[24]", "name": "proof", "type": "uint256[24]" },
+      { "internalType": "uint256[3]", "name": "pubSignals", "type": "uint256[3]" },
+      { "internalType": "address payable", "name": "recipient", "type": "address" }
+    ],
+    "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getLastRoot",
+    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "bytes32", "name": "commitment", "type": "bytes32" },
+      { "indexed": false, "internalType": "uint32", "name": "leafIndex", "type": "uint32" },
+      { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" }
+    ],
+    "name": "Deposit",
+    "type": "event"
+  }
+];
 
     function switchTab(tab) {
       document.getElementById('depositTab').classList.toggle('hidden', tab !== 'deposit');
@@ -436,7 +449,7 @@ console.log("Poseidon(1,0) =", "0x" + testRight.toString(16).padStart(64, "0"));
 // Rebuilds the entire Merkle tree from on-chain deposit events,
 // using Solidity’s exact hashing order and subtree fill logic.
 function buildTree(leaves) {
-  const LEVELS = 20;
+  const LEVELS = 14;  // ← Change from 20
   const filledSubtrees = new Array(LEVELS);
   const zeros = [];
   let currentZero = 0n;
@@ -499,7 +512,7 @@ async function getMerkleProof(shieldContract, targetCommitment) {
   let currentHash = leaves[leafIndex];
   let index = leafIndex;
   
-  for (let level = 0; level < 20; level++) {
+  for (let level = 0; level < 14; level++) {  // ← Change from 20
     const isLeft = index % 2 === 0;
     const siblingIndex = isLeft ? index + 1 : index - 1;
     const sibling = siblingIndex < leaves.length ? leaves[siblingIndex] : zeros[level];
@@ -616,10 +629,16 @@ try {
   };
 
   const btn = document.getElementById("withdrawBtn");
-  btn.disabled = true;
-  btn.textContent = "Generating PLONK Proof... (30–90s, please wait)";
+  btn.textContent = "Generating Proof... (5–20s, fast mode)";
+btn.disabled = true;
 
-  const { proof, publicSignals } = await snarkjs.plonk.fullProve(input, WASM_URL, ZKEY_URL);
+try {
+  const { proof, publicSignals } = await snarkjs.plonk.fullProve(
+    input,
+    WASM_URL,
+    ZKEY_URL,
+    { singleThread: true }  // ← Add this for stability
+  );
 
   const calldata = await snarkjs.plonk.exportSolidityCallData(proof, publicSignals);
   const argv = calldata
@@ -627,12 +646,11 @@ try {
     .split(",")
     .map(x => x.trim())
     .filter(x => x !== "");
-
-  const proofArray = argv.slice(0, 24);
-  const pubSignalsUint256 = argv.slice(24, 27);
+  const proofArray = argv.slice(0, 24).map(BigInt);  // Convert to BigInt for safety
+  const pubSignalsUint256 = argv.slice(24, 27).map(BigInt);
 
   console.log("Proof array (24 uint256):", proofArray);
-  console.log("Public signals [root, nullifierHash, denomination]:", pubSignalsUint256);
+  console.log("Public signals:", pubSignalsUint256);
 
   const recipient = document.getElementById("recipientAddress").value.trim() || userAccount;
 
@@ -641,7 +659,6 @@ try {
     .send({ from: userAccount });
 
   alert(`🎉 Withdrawal successful!\nTX: ${tx.transactionHash}\nFunds + reward sent to ${recipient}`);
-
 } catch (err) {
   console.error("Withdraw failed:", err);
   alert("Withdrawal failed: " + (err.message || "Check console for details"));
