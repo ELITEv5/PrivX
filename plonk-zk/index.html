@@ -468,10 +468,10 @@ function buildTree(leaves) {
 
     for (let i = 0; i < LEVELS; i++) {
       if (index % 2 === 0) {
-        // left position → right padded
-        node = poseidonT3(node, zeros[i]);
+        // ✅ Match Solidity: left = zero, right = node
+        node = poseidonT3(zeros[i], node);
       } else {
-        // right position → left padded with last node at this level
+        // ✅ Match Solidity: left = filledSubtree, right = node
         node = poseidonT3(filledSubtrees[i], node);
       }
       filledSubtrees[i] = node;
