@@ -449,7 +449,7 @@ console.log("Poseidon(1,0) =", "0x" + testRight.toString(16).padStart(64, "0"));
 // Rebuilds the entire Merkle tree from on-chain deposit events,
 // using Solidity’s exact hashing order and subtree fill logic.
 function buildTree(leaves) {
-  const LEVELS = 14;  // ← Change from 20
+  const LEVELS = 14;  // ← Your tree depth
   const filledSubtrees = new Array(LEVELS);
   const zeros = [];
   let currentZero = 0n;
@@ -468,10 +468,9 @@ function buildTree(leaves) {
 
     for (let i = 0; i < LEVELS; i++) {
       if (index % 2 === 0) {
-        // left child
-        node = poseidonT3(zeros[i], node);
+        // ✅ Fix: insert new leaf on right, zero on left
+        node = poseidonT3(node, zeros[i]);
       } else {
-        // right child
         node = poseidonT3(filledSubtrees[i], node);
       }
       filledSubtrees[i] = node;
